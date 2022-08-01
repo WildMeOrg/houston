@@ -8,11 +8,13 @@ Classes for parsing and validating the received metadata in requests
 import enum
 import logging
 import os
+import uuid
 
 from flask import current_app
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog
+import app.modules.utils as util
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -56,6 +58,35 @@ class AssetGroupMetadata(object):
         self.anonymous_submitter = None
         self.data_processed = AssetGroupMetadata.DataProcessed.unprocessed
 
+    @classmethod
+    def _validate_field_type(cls, dictionary, field, field_type, error_str):
+        assert field in dictionary.keys()
+        # FE sends taxonomy guid as None if not populated so need to accept this
+        if field_type == uuid.UUID and dictionary[field]:
+            if not util.is_valid_uuid_string(dictionary[field]):
+                raise AssetGroupMetadataError(
+                    log, f'{field} is not a valid uuid string in {error_str}'
+                )
+        elif not isinstance(dictionary[field], field_type):
+
+            # change the int type to what it should be
+            if field_type == float and isinstance(dictionary[field], int):
+                # change the int type to what it should be
+                dictionary[field] = float(dictionary[field])
+            elif dictionary[field]:
+                # if present it must be the correct type
+                raise AssetGroupMetadataError(
+                    log,
+                    f'{field} field had incorrect type, expected {field_type.__name__} in {error_str}',
+                )
+            # most fields can be None (as that is what the FE sends for ints, floats and strings)
+            # but lists and dicts must be the correct type
+            elif field_type == dict or field_type == list:
+                raise AssetGroupMetadataError(
+                    log,
+                    f'{field} field had incorrect type, expected {field_type.__name__} in {error_str}',
+                )
+
     # Helper for validating the required fields in any level dictionary
     @classmethod
     def _validate_fields(cls, dictionary, fields, error_str):
@@ -65,11 +96,7 @@ class AssetGroupMetadata(object):
                     raise AssetGroupMetadataError(
                         log, f'{field} field missing from {error_str}'
                     )
-                if not isinstance(dictionary[field], field_type):
-                    raise AssetGroupMetadataError(
-                        log,
-                        f'{field} field had incorrect type, expected {field_type.__name__} in {error_str}',
-                    )
+                cls._validate_field_type(dictionary, field, field_type, error_str)
                 if field_type == list:
                     # All mandatory lists must have at least one entry
                     if len(dictionary[field]) < 1:
@@ -77,15 +104,7 @@ class AssetGroupMetadata(object):
                             log, f'{field} in {error_str} must have at least one entry'
                         )
             elif field in dictionary:
-                if not isinstance(dictionary[field], field_type):
-                    raise AssetGroupMetadataError(
-                        log, f'{field} incorrect type in {error_str}'
-                    )
-
-            if field_type == str and field in dictionary and len(dictionary[field]) == 0:
-                raise AssetGroupMetadataError(
-                    log, f'{field} cannot be empty string in {error_str}'
-                )
+                cls._validate_field_type(dictionary, field, field_type, error_str)
 
     @classmethod
     def validate_id_configs(cls, id_configs, debug):
@@ -142,11 +161,6 @@ class AssetGroupMetadata(object):
                 f'Need both or neither of decimalLatitude and decimalLongitude in {error_str}',
             )
 
-        MAX_LATITUDE = 90.0
-        MIN_LATITUDE = -90.0
-        MAX_LONGITUDE = 180.0
-        MIN_LONGITUDE = -180.0
-
         # Strings are permitted on creation but must convert to valid floats
         if isinstance(dictionary['decimalLatitude'], str):
             try:
@@ -176,12 +190,12 @@ class AssetGroupMetadata(object):
             )
 
         # Validate range
-        if lat_val < MIN_LATITUDE or lat_val > MAX_LATITUDE:
+        if not util.is_valid_latitude(lat_val):
             raise AssetGroupMetadataError(
                 log, f'decimalLatitude {lat_val} out of range in {error_str}'
             )
 
-        if long_val < MIN_LONGITUDE or long_val > MAX_LONGITUDE:
+        if not util.is_valid_longitude(long_val):
             raise AssetGroupMetadataError(
                 log, f'decimalLongitude {long_val} out of range in {error_str}'
             )
@@ -243,7 +257,14 @@ class AssetGroupMetadata(object):
                     log, f'{debug}{encounter_num} needs to be a dict'
                 )
             encounter_fields = [
+                ('locationId', uuid.UUID, False),
+                ('taxonomy', uuid.UUID, False),
+                ('decimalLatitude', float, False),
+                ('decimalLongitude', float, False),
+                ('verbatimLocality', str, False),
+                ('customFields', dict, False),
                 ('ownerEmail', str, False),
+                ('sex', str, False),
                 ('annotations', list, False),
                 ('individualUuid', str, False),
             ]
@@ -273,13 +294,17 @@ class AssetGroupMetadata(object):
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
 
         sighting_fields = [
-            ('locationId', str, True),
+            ('locationId', uuid.UUID, True),
+            ('decimalLatitude', float, False),
+            ('decimalLongitude', float, False),
+            ('verbatimLocality', str, False),
             ('time', str, True),
             ('timeSpecificity', str, True),
             ('encounters', list, True),
             ('name', str, False),
             ('assetReferences', list, False),
             ('idConfigs', list, False),
+            ('customFields', dict, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
         from app.utils import get_stored_filename

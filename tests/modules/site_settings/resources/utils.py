@@ -105,29 +105,88 @@ def write_file(flask_app_client, user, data, expected_status_code=200):
     )
 
 
+def _get_default_custom_field_categories(flask_app_client, user, cls):
+    cat_name = 'site.custom.customFieldCategories'
+    categories = read_main_settings(flask_app_client, user, cat_name).json['value']
+    type = None
+    label = None
+    if cls == 'Sighting' or cls == 'Occurrence':
+        type = 'sighting'
+        label = 'distance'
+    elif cls == 'Encounter':
+        type = 'encounter'
+        label = 'distance'
+    elif cls == 'Individual' or cls == 'MarkedIndividual':
+        type = 'individual'
+        label = 'grumpiness'
+
+    for cat in categories:
+        if cat['type'] == type and cat['label'] == label:
+            break
+    else:
+        categories.append({'id': str(uuid.uuid4()), 'label': label, 'type': type})
+        message = {'_value': categories}
+        modify_main_settings(flask_app_client, user, message, cat_name)
+        categories = read_main_settings(flask_app_client, user, cat_name).json['value']
+
+    class_cats = [cat for cat in categories if cat['type'] == type]
+    return class_cats
+
+
+# note: this returns the *id of the CustomFieldDefinition*
 def custom_field_create(
     flask_app_client,
     user,
     name,
-    cls='Occurrence',
+    cls='Sighting',
     type='string',
     multiple=False,
+    schema_mods=None,  # will overwrite default (in a good way)
 ):
-    data = {
-        'definitions': [
-            {
-                'name': name,
-                'type': type,
-                'multiple': multiple,
-            }
-        ]
+    fieldname = 'site.custom.customFields.' + cls
+    custom_fields = read_main_settings(flask_app_client, user, fieldname).json['value']
+    if 'definitions' not in custom_fields:
+        custom_fields['definitions'] = []
+    for cust in custom_fields['definitions']:
+        if cust['type'] == type and cust['name'] == name:
+            return cust['id']
+
+    categories = _get_default_custom_field_categories(flask_app_client, user, cls)
+    assert len(categories) >= 1
+    cat = categories[0]
+
+    # default schema
+    schema = {
+        'category': cat['id'],
+        'description': 'some random text',
+        'displayType': type,
+        'label': 'stuff',
     }
+    if isinstance(schema_mods, dict):
+        for mod in schema_mods:
+            schema[mod] = schema_mods[mod]
+
+    if 'definitions' not in custom_fields:
+        custom_fields['definitions'] = []
+    cfd_id = str(uuid.uuid4())
+    custom_fields['definitions'].append(
+        {
+            'id': cfd_id,
+            'name': name,
+            'type': type,
+            'multiple': multiple,
+            'schema': schema,
+        }
+    )
+
     payload = {}
-    payload['site.custom.customFields.' + cls] = data
-    response = modify_main_settings(flask_app_client, user, payload)
-    cfd_list = response.json.get('updatedCustomFieldDefinitionIds', None)
+    payload[fieldname] = custom_fields
+    modify_main_settings(flask_app_client, user, payload)
+    custom_fields = read_main_settings(flask_app_client, user, fieldname).json['value']
+    cfd_list = custom_fields.get('definitions', None)
+
     assert cfd_list
-    return cfd_list[0]
+    return cfd_id
 
 
 def patch_main_setting(

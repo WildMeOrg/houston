@@ -31,13 +31,6 @@ def test_initialize_admin_user(flask_app):
     assert not success
 
 
-# test that we are running against minimal needed version
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
-def test_edm_version(flask_app):
-    version_ok = flask_app.edm.version_check()
-    assert version_ok
-
-
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_reauthentication(flask_app):
     flask_app.edm._ensure_initialized()

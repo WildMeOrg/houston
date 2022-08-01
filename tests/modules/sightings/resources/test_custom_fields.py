@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
 
 import pytest
 
@@ -28,7 +29,7 @@ def test_custom_fields_on_sighting(
     )
     assert cfd_id is not None
     cfd_multi_id = setting_utils.custom_field_create(
-        flask_app_client, admin_user, 'test_multi_cfd', multiple=True
+        flask_app_client, admin_user, 'test_multi_cfd', multiple=True, cls='Sighting'
     )
     assert cfd_multi_id is not None
 
@@ -39,7 +40,7 @@ def test_custom_fields_on_sighting(
     data_in = {
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'customFields': {
             cfd_id: cfd_test_value,
             cfd_multi_id: cfd_multi_value,
@@ -77,9 +78,8 @@ def test_custom_fields_on_sighting(
             'guid': str(encounter.guid),
             'hasEdit': True,
             'hasView': True,
-            'version': encounter.version,
-            'createdHouston': encounter.created.isoformat() + '+00:00',
-            'updatedHouston': encounter.updated.isoformat() + '+00:00',
+            'created': encounter.created.isoformat() + '+00:00',
+            'updated': encounter.updated.isoformat() + '+00:00',
             'owner': {
                 'full_name': encounter.owner.full_name,
                 'guid': str(encounter.owner.guid),
@@ -108,13 +108,11 @@ def test_custom_fields_on_sighting(
             'guid': str(sighting.guid),
             'hasEdit': True,
             'hasView': True,
-            'locationId': 'test',
-            'comments': 'None',
+            'locationId': sighting.location_guid,
+            'comments': None,
             'encounters': encounters,
-            'encounterCounts': {'sex': {}, 'individuals': 0},
-            'version': sighting.version,
-            'createdHouston': sighting.created.isoformat() + '+00:00',
-            'updatedHouston': sighting.updated.isoformat() + '+00:00',
+            'created': sighting.created.isoformat() + '+00:00',
+            'updated': sighting.updated.isoformat() + '+00:00',
             'assets': assets,
             'featuredAssetGuid': str(sighting.featured_asset_guid),
             'customFields': {
@@ -124,7 +122,6 @@ def test_custom_fields_on_sighting(
             # Only asserting that these fields exist
             'time': full_sighting.json['time'],
             'timeSpecificity': full_sighting.json['timeSpecificity'],
-            'createdEDM': full_sighting.json['createdEDM'],
         }
     )
 

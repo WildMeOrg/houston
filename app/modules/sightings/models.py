@@ -12,7 +12,7 @@ from http import HTTPStatus
 from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
-from app.extensions import FeatherModel, HoustonModel, db
+from app.extensions import CustomFieldMixin, FeatherModel, HoustonModel, db
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
@@ -42,6 +42,11 @@ class SightingAssets(db.Model, HoustonModel):
     )
 
 
+class SightingTaxonomies(db.Model):
+    sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
+    taxonomy_guid = db.Column(db.GUID, primary_key=True)
+
+
 class SightingStage(str, enum.Enum):
     identification = 'identification'
     un_reviewed = 'un_reviewed'
@@ -49,7 +54,7 @@ class SightingStage(str, enum.Enum):
     failed = 'failed'
 
 
-class Sighting(db.Model, FeatherModel):
+class Sighting(db.Model, FeatherModel, CustomFieldMixin):
     """
     Sightings database model.
     """
@@ -57,7 +62,6 @@ class Sighting(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     sighting_assets = db.relationship('SightingAssets')
     stage = db.Column(
@@ -106,6 +110,22 @@ class Sighting(db.Model, FeatherModel):
     encounters = db.relationship(
         'Encounter', back_populates='sighting', order_by='Encounter.guid'
     )
+
+    decimal_latitude = db.Column(db.Float, nullable=True)
+    decimal_longitude = db.Column(db.Float, nullable=True)
+
+    # Matches guid in site.custom.regions
+    # This is logically required on a sighting so should not really be nullable
+    # but so much migrated data will not have it that it must be nullable for now
+    location_guid = db.Column(db.GUID, index=True, nullable=True)
+
+    taxonomy_joins = db.relationship('SightingTaxonomies')
+
+    comments = db.Column(db.String(), nullable=True)
+    verbatim_locality = db.Column(db.String(), nullable=True)
+
+    custom_fields = db.Column(db.JSON, default=lambda: {}, nullable=True)
+
     unreviewed_start = db.Column(
         db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
     )
@@ -184,7 +204,7 @@ class Sighting(db.Model, FeatherModel):
     def remove_all_empty(cls):
         # Sightings without encounters are an error that should never really happen
         for sighting in Sighting.query.filter(~Sighting.encounters.any()).all():
-            sighting.delete_from_edm_and_houston()
+            sighting.delete()
 
     def get_owners(self):
         owners = []
@@ -195,7 +215,7 @@ class Sighting(db.Model, FeatherModel):
 
     def get_owner(self):
         # this is what we talked about but it makes me squeamish
-        if self.get_owners() is not None:
+        if self.get_owners():
             return self.get_owners()[0]
         return None
 
@@ -206,27 +226,12 @@ class Sighting(db.Model, FeatherModel):
             return None
 
     def get_location_id(self):
-        return self.get_edm_data_field('locationId')
+        return self.location_guid
 
     def get_location_id_value(self):
-        location_id_value = None
-        location_id = self.get_location_id()
-
         from app.modules.site_settings.models import Regions
 
-        try:
-            regions = Regions()
-        except ValueError as e:
-            if str(e) == 'no region data available':
-                AuditLog.audit_log_object_warning(log, self, str(e))
-                log.warning(str(e))
-                return None
-            raise
-        region_data = regions.find(location_id, id_only=False)
-        if region_data:
-            location_id_value = region_data[0].get('name', location_id)
-
-        return location_id_value
+        return Regions.get_region_name(str(self.location_guid))
 
     def get_location_id_keyword(self):
         from app.extensions.elasticsearch import MAX_UNICODE_CODE_POINT_CHAR
@@ -238,16 +243,55 @@ class Sighting(db.Model, FeatherModel):
         return location_id_keyword
 
     def get_locality(self):
-        return self.get_edm_data_field('verbatimLocality')
+        return self.verbatim_locality
 
-    def get_taxonomy_guid(self):
-        return self.get_edm_data_field('taxonomy')
+    def get_taxonomies(self):
+        from app.modules.site_settings.models import Taxonomy
 
-    def get_comments(self):
-        return self.get_edm_data_field('comments')
+        tx_guids = [tx.taxonomy_guid for tx in self.taxonomy_joins]
+        txs = []
+        for tx_guid in tx_guids:
+            try:
+                txs.append(Taxonomy(tx_guid))
+            except Exception:
+                # An integrity check will be added to find (and potentially fix) these
+                AuditLog.audit_log_object_warning(
+                    log,
+                    self,
+                    f'found invalid taxonomy_guid {tx_guid} on sighting {self.guid}',
+                )
+        return txs
+
+    def get_taxonomy_guids(self):
+        # we use get_taxonomies() as it will validate taxonomy guid
+        return [tx.guid for tx in self.get_taxonomies()]
+
+    # Taxonomy objects, so we "can trust the guids"  :/
+    def set_taxonomies(self, txs):
+        with db.session.begin(subtransactions=True):
+            for rel in self.taxonomy_joins:
+                db.session.delete(rel)
+            rels = self.taxonomy_joins or []
+            for tx in txs:
+                rel = SightingTaxonomies(sighting_guid=self.guid, taxonomy_guid=tx.guid)
+                db.session.add(rel)
+                rels.append(rel)
+            self.taxonomy_joins = rels
+            db.session.merge(self)
+
+    def add_taxonomy(self, tx):
+        rels = self.taxonomy_joins or []
+        if tx in self.get_taxonomies():
+            return
+        with db.session.begin():
+            rel = SightingTaxonomies(sighting_guid=self.guid, taxonomy_guid=tx.guid)
+            db.session.add(rel)
+            rels.append(rel)
+            self.taxonomy_joins = rels
+            db.session.merge(self)
 
     def get_custom_fields(self):
-        return self.get_edm_data_field('customFields')
+        return self.custom_fields
 
     def init_progress_identification(self, overwrite=False):
         from app.modules.progress.models import Progress
@@ -320,7 +364,15 @@ class Sighting(db.Model, FeatherModel):
 
     def add_encounter(self, encounter):
         if encounter not in self.encounters:
-            self.encounters.append(encounter)
+            with db.session.begin(subtransactions=True):
+                self.encounters.append(encounter)
+                db.session.merge(self)
+
+    def remove_encounter(self, encounter):
+        if encounter in self.encounters:
+            with db.session.begin(subtransactions=True):
+                self.encounters.remove(encounter)
+                db.session.merge(self)
 
     def reviewed(self):
         ret_val = False
@@ -807,9 +859,13 @@ class Sighting(db.Model, FeatherModel):
 
     def delete(self):
         AuditLog.delete_object(log, self)
-        while self.sighting_assets:
-            db.session.delete(self.sighting_assets.pop())
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
+            while self.sighting_assets:
+                db.session.delete(self.sighting_assets.pop())
+            while self.encounters:
+                self.encounters.pop().delete()
+            while self.taxonomy_joins:
+                db.session.delete(self.taxonomy_joins.pop())
             db.session.delete(self)
 
     def delete_cascade(self):
@@ -822,142 +878,41 @@ class Sighting(db.Model, FeatherModel):
                 enc = self.encounters.pop()
                 enc.delete_cascade()
             AuditLog.delete_object(log, self)
+            while self.taxonomy_joins:
+                db.session.delete(self.taxonomy_joins.pop())
             db.session.delete(self)
             while assets:
                 asset = assets.pop()
                 asset.delete()
 
-    def delete_from_edm(self, current_app, request):
-        return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
+    def delete_frontend_request(self, delete_individual):
+        response = {}
 
-    def delete_from_edm_and_houston(self, request=None):
-        # first try delete on edm, deleting all sub components too
-        class DummyRequest(object):
-            def __init__(self, headers):
-                self.headers = headers
+        individuals = [
+            enc.individual
+            for enc in self.encounters
+            if enc.individual and len(enc.individual.encounters) == 1
+        ]
+        if not delete_individual and individuals:
+            # EDM could only report the first vulnerable Individual it found so that is sadly the API
+            # we are left with
+            response['vulnerableIndividual'] = individuals[0].guid
+            return False, response
 
-        if not request:
-            request = DummyRequest(
-                headers={
-                    'x-allow-delete-cascade-individual': 'True',
-                    'x-allow-delete-cascade-sighting': 'True',
-                }
-            )
+        if individuals:
+            response['deletedIndividuals'] = []
+            for ind in individuals:
+                response['deletedIndividuals'].append(str(ind.guid))
+                ind.delete()
 
-        try:
-            (response, response_data, result) = self.delete_from_edm(current_app, request)
-        except HoustonException as ex:
-            if (
-                ex.get_val('edm_status_code', 0) == 404
-                or ex.get_val('edm_status_code', 0) == 500
-            ):
-                # assume that means that we tried to delete a non-existent sighting
-                # TODO handle failure
-                self.delete_cascade()
-                AuditLog.audit_log_object(
-                    log,
-                    self,
-                    f'deleted of {self.guid} on EDM failed, assuming it was not there',
-                )
-                return
-            raise
-
-        deleted_individuals = None
-        deleted_ids = []
-        if result and isinstance(result, dict):
-            deleted_individuals = result.get('deletedIndividuals', None)
-        if deleted_individuals:
-            from app.modules.individuals.models import Individual
-
-            deleted_ids = []
-            for indiv_guid in deleted_individuals:
-                goner = Individual.query.get(indiv_guid)
-                if goner is None:
-                    log.error(
-                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
-                    )
-                else:
-                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
-                    deleted_ids.append(indiv_guid)
-                    goner.delete()
-        # if we get here, edm has deleted the sighting, now houston feather
-        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync = bad
-        self.delete_cascade()
-
-        return deleted_ids
-
-    @classmethod
-    def delete_from_edm_by_guid(cls, current_app, guid, request):
-        assert guid is not None
-        return current_app.edm.request_passthrough_parsed(
-            'sighting.data',
-            'delete',
-            {},
-            guid,
-            request_headers=request.headers,
-        )
-
-    def get_debug_json(self):
-        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
-
-        result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
-
-        # Strip out old EDM ID
-        result_json.pop('id', None)
-
-        from .schemas import DebugSightingSchema
-
-        sighting_schema = DebugSightingSchema()
-        result_json.update(sighting_schema.dump(self).data)
-        return result_json
+        self.delete()
+        return True, response
 
     def get_detailed_json(self):
-        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
+        from .schemas import DetailedSightingSchema
 
-        result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
-        # Strip out old EDM ID
-        result_json.pop('id', None)
-
-        from .schemas import AugmentedEdmSightingSchema
-
-        sighting_schema = AugmentedEdmSightingSchema()
-        result_json.update(sighting_schema.dump(self).data)
-        return result_json
-
-    # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly
-    def rectify_edm_encounters(self, edm_encs_json, user=None):
-        log.debug(f' RECTIFY IN {edm_encs_json}')
-        edm_map = {}  # id => version of new results
-        if edm_encs_json:
-            for edm_enc in edm_encs_json:
-                edm_map[edm_enc['id']] = edm_enc
-        log.debug(f' RECTIFY EDM_MAP {edm_map}')
-        # find which have been removed and which updated
-        if self.encounters:
-            for enc in self.encounters:
-                if str(enc.guid) not in edm_map.keys():
-                    # TODO candidate for audit log
-                    log.info(f'houston Encounter {enc.guid} removed')
-                    enc.delete_cascade()
-                else:
-                    if edm_map[str(enc.guid)].get('version', 0) > enc.version:
-                        log.debug(
-                            f'houston Encounter {enc.guid} VERSION UPDATED {edm_map[str(enc.guid)]} > {enc.version}'
-                        )
-                    del edm_map[str(enc.guid)]
-
-        # now any left should be new encounters from edm
-        for enc_id in edm_map.keys():
-            log.debug(f'adding new houston Encounter guid={enc_id}')
-            user_guid = user.guid if user else None
-            encounter = Encounter(
-                guid=enc_id,
-                asset_group_sighting_encounter_guid=uuid.uuid4(),
-                version=edm_map[enc_id].get('version', 3),
-                owner_guid=user_guid,
-                submitter_guid=user_guid,
-            )
-            self.add_encounter(encounter)
+        sighting_schema = DetailedSightingSchema()
+        return sighting_schema.dump(self).data
 
     # specifically to pass to Sage, so we dress it up accordingly
     def get_matching_set_data(self, annotation, matching_set_config=None):

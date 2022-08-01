@@ -210,6 +210,18 @@ def email_setup(flask_app):
     SiteSetting.query.delete()
 
 
+# Needs to be an autouse to ensure that these are actually created. Any user can read them but only admin can create
+@pytest.fixture(autouse=True)
+def create_test_data(db, flask_app_client, admin_user):
+    import tests.modules.site_settings.resources.utils as site_setting_utils
+
+    site_setting_utils.get_and_ensure_test_regions(flask_app_client, admin_user)
+
+    # Potentially add taxonomy too
+    yield
+    # Do not remove afterwards as not supported
+
+
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 

@@ -69,7 +69,7 @@ def test_create_read_delete_individual(db, flask_app_client):
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_read_encounter_from_edm(db, flask_app_client):
+def test_read_encounter(db, flask_app_client):
     from app.modules.individuals.models import Individual
 
     temp_owner = utils.generate_user_instance(
@@ -121,13 +121,13 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     data_in = {
         'time': test_time,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'encounters': [
             {},
             {},
             {},
             {},
-            {'locationId': 'Monster Island'},
+            {'locationId': str(uuid.uuid4())},
         ],
     }
 
@@ -261,7 +261,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_individual_has_detailed_encounter_from_edm(
+def test_individual_has_detailed_encounter(
     db,
     flask_app_client,
     researcher_1,
@@ -273,20 +273,21 @@ def test_individual_has_detailed_encounter_from_edm(
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
 
+    loc_id = str(uuid.uuid4())
     data_in = {
         'encounters': [
             {
                 'decimalLatitude': 25.9999,
                 'decimalLongitude': 25.9999,
                 'verbatimLocality': 'Antarctica',
-                'locationId': 'Antarctica',
+                'locationId': loc_id,
                 'time': '2010-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
             }
         ],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': loc_id,
     }
 
     individual_id = None
@@ -338,7 +339,7 @@ def test_individual_has_detailed_encounter_from_edm(
         assert enc_json['decimalLatitude'] == 25.9999
         assert enc_json['decimalLongitude'] == 25.9999
         assert enc_json['verbatimLocality'] == 'Antarctica'
-        assert enc_json['locationId'] == 'Antarctica'
+        assert enc_json['locationId'] == loc_id
         assert enc_json['time'] == '2010-01-01T01:01:01+00:00'
         assert enc_json['annotations']
         assert enc_json['annotations'][0]['asset_src']
@@ -352,9 +353,7 @@ def test_individual_has_detailed_encounter_from_edm(
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_individual_mixed_edm_houston_patch(
-    db, flask_app_client, researcher_1, request, test_root
-):
+def test_individual_patch_errors(db, flask_app_client, researcher_1, request, test_root):
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -369,20 +368,34 @@ def test_individual_mixed_edm_houston_patch(
         researcher_1,
         individual_id,
         [
-            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '2000-01-02T03:04:05'},
             {'op': 'replace', 'path': '/timeOfDeath', 'value': 'cedric'},
         ],
-        expected_status_code=500,
+        expected_status_code=409,
     )
-
+    assert (
+        '"cedric" is not a valid value for timeOfDeath'
+        in edm_patch_response.json['message']
+    )
+    edm_patch_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': 'week last wednesday'},
+        ],
+        expected_status_code=409,
+    )
+    assert (
+        '"week last wednesday" is not a valid value for timeOfBirth'
+        in edm_patch_response.json['message']
+    )
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
-    assert (
-        'due to an invalid String cedric for Long conversion'
-        in edm_patch_response.json['message']
-    )
-    assert individual_json['timeOfBirth'] == '0'
+
+    assert not individual_json['timeOfBirth']
+    assert not individual_json['timeOfDeath']
 
     patch_individual_response = individual_utils.patch_individual(
         flask_app_client,
@@ -403,18 +416,31 @@ def test_individual_mixed_edm_houston_patch(
         in patch_individual_response.json['message']
     )
     assert individual_json['featuredAssetGuid'] is None
+    new_sex = 'invalid value'
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/sex', 'value': new_sex},
+        ],
+        expected_status_code=409,
+    )
+    assert (
+        f'"{new_sex}" is not a valid value for sex'
+        in patch_individual_response.json['message']
+    )
 
-    # Houston and EDM patch together
     individual_utils.patch_individual(
         flask_app_client,
         researcher_1,
         individual_id,
         [
-            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '2000-01-02T03:04:05'},
             {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
             {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
         ],
-        expected_status_code=417,
+        expected_status_code=409,
     )
 
     individual_json = individual_utils.read_individual(
@@ -422,14 +448,17 @@ def test_individual_mixed_edm_houston_patch(
     ).json
 
     # EDM patch should have succeeded, Houston failed
-    assert individual_json['timeOfBirth'] == '1445410800000'
+    #  no longer true:  edm is gone, so everything failed
+    assert not individual_json['timeOfBirth']
     assert individual_json['names'] == []
 
 
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, test_root):
+def test_individual_patch_add_remove(
+    db, flask_app_client, researcher_1, request, test_root
+):
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -437,9 +466,10 @@ def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, t
         test_root,
     )
     individual_id = uuids['individual']
-    time_of_death = 1445410803000  # I feel incredible power setting this var
-    time_of_birth_str = '1445410800000'
+    time_of_death = '2099-01-01T00:00'
+    time_of_birth = '1999-02-02T00:01'
     sex = 'female'
+    comments = 'some random text'
 
     individual_utils.patch_individual(
         flask_app_client,
@@ -447,23 +477,46 @@ def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, t
         individual_id,
         [
             {'op': 'add', 'path': '/timeOfDeath', 'value': time_of_death},
-            {'op': 'add', 'path': '/timeOfBirth', 'value': time_of_birth_str},
+            {'op': 'add', 'path': '/timeOfBirth', 'value': time_of_birth},
             {'op': 'add', 'path': '/sex', 'value': sex},
+            {'op': 'add', 'path': '/comments', 'value': comments},
         ],
     )
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
 
-    assert individual_json['timeOfDeath'] == str(time_of_death)
-    assert individual_json['timeOfBirth'] == time_of_birth_str
+    # the output always includes seconds + timezone, so we deal
+    assert individual_json['timeOfDeath'] == time_of_death + ':00+00:00'
+    assert individual_json['timeOfBirth'] == time_of_birth + ':00+00:00'
     assert individual_json['sex'] == sex
+    assert individual_json['comments'] == comments
+
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'remove', 'path': '/timeOfDeath'},
+            {'op': 'remove', 'path': '/timeOfBirth'},
+            {'op': 'remove', 'path': '/sex'},
+            {'op': 'remove', 'path': '/comments'},
+        ],
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert individual_json['timeOfDeath'] is None
+    assert individual_json['timeOfBirth'] is None
+    assert individual_json['sex'] is None
+    assert individual_json['comments'] is None
 
 
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_edm_custom_field_patch(
+def test_custom_field_patch(
     db, flask_app_client, researcher_1, admin_user, request, test_root
 ):
     uuids = individual_utils.create_individual_and_sighting(
@@ -519,7 +572,7 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     sighting_data_in = {
         'time': datetime.datetime.now().isoformat() + '+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'encounters': [{}],
     }
     uuids = sighting_utils.create_sighting(
@@ -546,7 +599,7 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     assert encounter_guid in individual_enc_guids
     # the encounters' individuals
     enc_individual_guids = {
-        enc['individual']['id'] for enc in individual_json['encounters']
+        enc['individual']['guid'] for enc in individual_json['encounters']
     }
     assert all([ind_guid == individual_guid for ind_guid in enc_individual_guids])
 

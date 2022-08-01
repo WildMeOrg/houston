@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import json
+import uuid
 
 import pytest
 
@@ -58,18 +59,13 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_field('sightings', [{}])
-        data.set_sighting_field(0, 'locationId', '')
-        resp_msg = 'locationId cannot be empty string in Sighting 1'
-        asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get(), 400, resp_msg
-        )
+        resp_msg = 'locationId is not a valid uuid string in Sighting 1'
 
         data.set_sighting_field(0, 'locationId', 37)
-        resp_msg = 'locationId field had incorrect type, expected str in Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-        data.set_sighting_field(0, 'locationId', 'Lacock')
+        data.set_sighting_field(0, 'locationId', str(uuid.uuid4()))
         resp_msg = 'time field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
@@ -96,7 +92,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
         data.set_sighting_field(0, 'assetReferences', '')
         # data.set_encounter_field(0, 0, 'assetReferences', '')
-        resp_msg = 'assetReferences incorrect type in Sighting 1'
+        resp_msg = 'assetReferences field had incorrect type, expected list in Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
@@ -214,14 +210,19 @@ def test_create_asset_group_invalid_gps(
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
+    expected_error = (
+        'Need both or neither of decimalLatitude and decimalLongitude in Sighting 1'
+    )
     data.set_sighting_field(0, 'decimalLongitude', None)
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
     # How confident is everyone that this doesn't exist anywhere in old world?
+    expected_error = (
+        'decimalLongitude field had incorrect type, expected float in Sighting 1'
+    )
     data.set_sighting_field(0, 'decimalLongitude', 'twenty five point nine nine nine')
-    expected_error = 'decimalLongitude needs to be a float in Sighting 1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
@@ -238,19 +239,19 @@ def test_create_asset_group_invalid_gps(
     )
 
     # Out of range vals
-    data.set_sighting_field(0, 'decimalLongitude', '-180.01')
+    data.set_sighting_field(0, 'decimalLongitude', -180.01)
     expected_error = 'decimalLongitude -180.01 out of range in Sighting 1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_sighting_field(0, 'decimalLongitude', '180.01')
+    data.set_sighting_field(0, 'decimalLongitude', 180.01)
     expected_error = 'decimalLongitude 180.01 out of range in Sighting 1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_sighting_field(0, 'decimalLongitude', '25.999')
+    data.set_sighting_field(0, 'decimalLongitude', 25.999)
 
     # Encounters data used for testing bad latitude values
     data.set_encounter_field(0, 0, 'decimalLongitude', 25.999)
@@ -260,13 +261,14 @@ def test_create_asset_group_invalid_gps(
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
-    data.set_encounter_field(0, 0, 'decimalLatitude', None)
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
     data.set_encounter_field(0, 0, 'decimalLatitude', 'twenty five point nine nine nine')
-    expected_error = 'decimalLatitude needs to be a float in Encounter 1.1'
+    expected_error = (
+        'decimalLatitude field had incorrect type, expected float in Encounter 1.1'
+    )
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
@@ -277,16 +279,25 @@ def test_create_asset_group_invalid_gps(
     )
 
     # Out of range vals
-    data.set_encounter_field(0, 0, 'decimalLatitude', '-90.01')
+    data.set_encounter_field(0, 0, 'decimalLatitude', -90.01)
     expected_error = 'decimalLatitude -90.01 out of range in Encounter 1.1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_encounter_field(0, 0, 'decimalLatitude', '90.01')
+    data.set_encounter_field(0, 0, 'decimalLatitude', 90.01)
     expected_error = 'decimalLatitude 90.01 out of range in Encounter 1.1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    # allowed incorrect type, user can enter this manually on the FE so we should allow it
+    data.set_encounter_field(0, 0, 'decimalLatitude', 90)
+    create_resp = asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get()
+    ).json
+    asset_group_utils.delete_asset_group(
+        flask_app_client, researcher_1, create_resp['guid']
     )
 
 

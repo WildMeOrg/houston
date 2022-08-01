@@ -194,38 +194,38 @@ services:
       HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
       HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
 
-  edm:
-    # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
-    #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
-    #  - ./scripts/build.docker.sh
-    image: wildme/edm:latest
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://127.0.0.1:8080/dbconnections.jsp"]
-      interval: 10s
-      timeout: 5s
-      retries: 60
-    labels:
-      - autoheal=true
-    volumes:
-      - edm-var:/data/wildbook_data_dir
-    networks:
-      - intranet
-    ports:
-      # FIXME: exposed for developer verification
-      - "81:8080"
-    environment:
-      DB_USER: "${WILDBOOK_DB_USER}"
-      DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
-      DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
-      # Admin user created on startup,
-      # https://github.com/WildMeOrg/Wildbook/commit/6d65e70e43691f1b281bb76edf151e5c7cdb7403
-      ADMIN_EMAIL: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
-      ADMIN_PASSWORD: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
-      # JAVA_OPTS from old-world wildbook, which gives us 4G heap memory
-      JAVA_OPTS: "-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xms4096m -Xmx4096m"
+  #edm:
+  #  # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
+  #  #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
+  #  #  - ./scripts/build.docker.sh
+  #  image: wildme/edm:latest
+  #  depends_on:
+  #    db:
+  #      condition: service_healthy
+  #  healthcheck:
+  #    test: [ "CMD", "curl", "-f", "http://127.0.0.1:8080/dbconnections.jsp"]
+  #    interval: 10s
+  #    timeout: 5s
+  #    retries: 60
+  #  labels:
+  #    - autoheal=true
+  #  volumes:
+  #    - edm-var:/data/wildbook_data_dir
+  #  networks:
+  #    - intranet
+  #  ports:
+  #    # FIXME: exposed for developer verification
+  #    - "81:8080"
+  #  environment:
+  #    DB_USER: "${WILDBOOK_DB_USER}"
+  #    DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+  #    DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
+  #    # Admin user created on startup,
+  #    # https://github.com/WildMeOrg/Wildbook/commit/6d65e70e43691f1b281bb76edf151e5c7cdb7403
+  #    ADMIN_EMAIL: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
+  #    ADMIN_PASSWORD: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
+  #    # JAVA_OPTS from old-world wildbook, which gives us 4G heap memory
+  #    JAVA_OPTS: "-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xms4096m -Xmx4096m"
 
   houston:
     # https://github.com/WildMeOrg/houston
@@ -421,8 +421,8 @@ services:
   localhost:
     image: nginx:latest
     depends_on:
-      edm:
-        condition: service_healthy
+      #edm:
+      #  condition: service_healthy
       # sage:
       #   condition: service_healthy
       houston:
@@ -462,7 +462,7 @@ networks:
 
 volumes:
   db-pgdata-var:
-  edm-var:
+  # edm-var:
   es-var1:
   es-var2:
   es-var3:

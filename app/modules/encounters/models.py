@@ -7,12 +7,12 @@ import logging
 import uuid
 
 import app.extensions.logging as AuditLog
-from app.extensions import FeatherModel, db
+from app.extensions import CustomFieldMixin, FeatherModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class Encounter(db.Model, FeatherModel):
+class Encounter(db.Model, FeatherModel, CustomFieldMixin):
     """
     Encounters database model.
     """
@@ -24,7 +24,6 @@ class Encounter(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     sighting_guid = db.Column(
         db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
@@ -89,6 +88,19 @@ class Encounter(db.Model, FeatherModel):
     )
     time = db.relationship('ComplexDateTime')
 
+    decimal_latitude = db.Column(db.Float, nullable=True)
+    decimal_longitude = db.Column(db.Float, nullable=True)
+
+    # Matches guid in site.custom.regions
+    location_guid = db.Column(db.GUID, index=True, nullable=True)
+    verbatim_locality = db.Column(db.String(), nullable=True)
+    sex = db.Column(db.String(length=40), nullable=True)
+
+    custom_fields = db.Column(db.JSON, default=lambda: {}, nullable=True)
+
+    # Matches guid in site.species
+    taxonomy_guid = db.Column(db.GUID, index=True, nullable=True)
+
     def user_is_owner(self, user) -> bool:
         return user is not None and user == self.owner
 
@@ -117,7 +129,6 @@ class Encounter(db.Model, FeatherModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'version={self.version}, '
             'owner={self.owner},'
             'individual={self.individual_guid},'
             'sighting={self.sighting_guid},'
@@ -140,29 +151,35 @@ class Encounter(db.Model, FeatherModel):
         return {ann.asset for ann in self.annotations}
 
     def get_custom_fields(self):
-        return self.get_edm_data_field('customFields')
+        return self.custom_fields
 
     # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
     #   unless sighting_fallback=False
     def get_location_id(self, sighting_fallback=True):
-        location_id = self.get_edm_data_field('locationId')
+        location_id = self.location_guid
         if not location_id and sighting_fallback and self.sighting:
             location_id = self.sighting.get_location_id()
         return location_id
 
-    def get_point(self):
-        dec_lat = self.get_edm_data_field('decimalLatitude')
-        dec_lon = self.get_edm_data_field('decimalLongitude')
-        if dec_lat is None or dec_lon is None:
-            return None
-        return {'lat': float(dec_lat), 'lon': float(dec_lon)}
+    def get_location_id_value(self):
+        from app.modules.site_settings.models import Regions
 
-    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+        return Regions.get_region_name(str(self.get_location_id()))
+
+    def get_point(self):
+        if self.decimal_latitude is None or self.decimal_longitude is None:
+            return None
+        return {'lat': self.decimal_latitude, 'lon': self.decimal_longitude}
+
+    # first tries encounter.taxonomy_guid, but will use sighting.taxonomy_guids if none on encounter,
     #   unless sighting_fallback=False
+    #  NOTE: now sighting has MULTIPLE taxonomy_guids -- this will return 0th; so caveat emptor
     def get_taxonomy_guid(self, sighting_fallback=True):
-        taxonomy_guid = self.get_edm_data_field('taxonomy')
+        taxonomy_guid = self.taxonomy_guid
         if not taxonomy_guid and sighting_fallback and self.sighting:
-            taxonomy_guid = self.sighting.get_taxonomy_guid()
+            guids = self.sighting.get_taxonomy_guids()
+            if guids:
+                taxonomy_guid = guids[0]
         return taxonomy_guid
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
@@ -215,25 +232,41 @@ class Encounter(db.Model, FeatherModel):
 
     def delete(self):
         AuditLog.delete_object(log, self)
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.delete(self)
 
     def delete_cascade(self):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
 
-    def delete_from_edm(self, current_app, request):
-        (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
-            'encounter.data',
-            'delete',
-            {},
-            self.guid,
-            request_headers=request.headers,
-        )
-        # changed something on EDM, remove the cache for anything that may have had this encounter
-        self.remove_cached_edm_data()
-        self.sighting.remove_cached_edm_data()
-        if self.individual:
-            self.individual.remove_cached_edm_data()
+    def delete_frontend_request(self, delete_individual, delete_sighting):
+        response = {}
 
-        return response, response_data, result
+        if self.sighting and (len(self.sighting.encounters) == 1) and not delete_sighting:
+            response['vulnerableSighting'] = str(self.sighting.guid)
+
+        if (
+            self.individual
+            and (len(self.individual.encounters) == 1)
+            and not delete_individual
+        ):
+            response['vulnerableIndividual'] = str(self.individual.guid)
+
+        if response:
+            return False, response
+
+        # we need to do this first, as we will be messing with self(enc) and sighting below
+        #   deleting the individual does *not* cascade to encounters, so this is ok to do now
+        indiv = self.individual
+        if indiv and len(indiv.encounters) == 1:
+            response['deletedIndividual'] = str(indiv.guid)
+            self.individual_guid = None
+            indiv.delete()
+
+        # this will *also delete this encounter (self)* so we have to take that into account
+        if self.sighting and len(self.sighting.encounters) == 1:
+            response['deletedSighting'] = str(self.sighting.guid)
+            self.sighting.delete()  # goodbye also self!
+        else:
+            self.delete()
+        return True, response

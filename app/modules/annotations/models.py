@@ -301,16 +301,18 @@ class Annotation(db.Model, HoustonModel, SageModel):
     # or the possible AGSs if the annot is not curated to be part of any AGS.
     def get_debug_json(self):
         from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
+        from app.modules.sightings.schemas import DebugSightingSchema
 
         from .schemas import DetailedAnnotationSchema
 
         ags_schema = DebugAssetGroupSightingSchema()
         annot_schema = DetailedAnnotationSchema()
-        ()
+        sighting_schema = DebugSightingSchema()
+
         returned_json = {'annotation': annot_schema.dump(self).data}
 
         if self.encounter:
-            returned_json['sighting'] = self.encounter.sighting.get_debug_json()
+            returned_json['sighting'] = sighting_schema.dump(self.encounter.sighting).data
             return returned_json
 
         assert self.asset.git_store
@@ -428,7 +430,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             )
 
         # same, re: nulls
-        tx_guid = self.get_taxonomy_guid()
+        tx_guid = self.get_taxonomy_guid_str()
         if tx_guid:
             parts['filter'].append({'match': {'taxonomy_guid': tx_guid}})
 
@@ -497,12 +499,20 @@ class Annotation(db.Model, HoustonModel, SageModel):
             else None
         )
 
+    def get_location_id_str(self, sighting_fallback=True):
+        guid = self.get_location_id(sighting_fallback)
+        return str(guid) if guid else None
+
     def get_taxonomy_guid(self, sighting_fallback=True):
         return (
             self.encounter.get_taxonomy_guid(sighting_fallback)
             if self.encounter_guid
             else None
         )
+
+    def get_taxonomy_guid_str(self, sighting_fallback=True):
+        guid = self.get_taxonomy_guid(sighting_fallback)
+        return str(guid) if guid else None
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
         return self.encounter and self.encounter.get_time_isoformat_in_timezone(

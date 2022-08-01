@@ -388,7 +388,7 @@ def test_search_with_elasticsearch(
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
     assert len(Annotation.elasticsearch(None, load=False)) == 1
 
-    locationId = annotation.get_location_id()
+    locationId = annotation.get_location_id_str()
     search = {
         'bool': {
             'filter': [

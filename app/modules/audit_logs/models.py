@@ -76,7 +76,7 @@ class AuditLog(db.Model, HoustonModel):
         elif current_user and not current_user.is_anonymous:
             user_email = current_user.email
 
-        # Some messages back from EDM are enormous and we can only store so much data
+        # Some messages are enormous and we can only store so much data
         if len(msg) > 2500:
             # The start and the end are usually the most useful
             new_msg = msg[:1000]

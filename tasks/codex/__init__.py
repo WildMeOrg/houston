@@ -11,6 +11,7 @@ from tasks.codex import (
     asset_groups,
     collaborations,
     consistency,
+    edm,
     encounters,
     individuals,
     initialize,
@@ -38,6 +39,7 @@ namespace = Collection(
     projects,
     sightings,
     run,
+    edm,
 )
 
 namespace.configure({'app': {'static_root': get_preliminary_config().STATIC_ROOT}})

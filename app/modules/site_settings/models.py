@@ -8,11 +8,10 @@ import logging
 from flask import current_app
 from flask_login import current_user  # NOQA
 
-from app.extensions import Timestamp, db, extension_required, is_extension_enabled
-from app.modules import is_module_enabled
+from app.extensions import Timestamp, db, is_extension_enabled
 from app.utils import HoustonException
 
-from .external import SiteSettingModules
+from .helpers import SiteSettingCustomFields, SiteSettingModules, SiteSettingSpecies
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -28,6 +27,175 @@ class SiteSetting(db.Model, Timestamp):
 
     # public=False means the setting is only used in the backend
     HOUSTON_SETTINGS = {
+        'site.name': {
+            'type': str,
+            'definition': {'schema': {'panel': True}},
+            'default': '<your site name>',
+        },
+        'site.private': {
+            'type': bool,
+            'definition': {'schema': {'panel': True}},
+            'default': True,
+        },
+        'site.needsSetup': {
+            'type': bool,
+            'definition': {'schema': {'hidden': True}},
+            'default': True,
+        },
+        'site.species': {
+            'type': list,
+            'definition': {
+                'displayType': 'taxonomy',
+            },
+            'validate_function': SiteSettingSpecies.validate,
+            'set_function': SiteSettingSpecies.set,
+        },
+        'site.general.description': {
+            'type': str,
+            'default': 'Researchers use <your site name> to identify and organize sightings of <your species here>.',
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+        },
+        'site.general.tagline': {
+            'type': str,
+            'definition': {
+                'displayType': 'string',
+                'fieldType': 'string',
+            },
+            'default': 'Welcome to <your site name>',
+        },
+        'site.general.taglineSubtitle': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+            'default': 'AI for the conservation of <your species here>.',
+        },
+        'site.general.donationButtonUrl': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',  # TODO so why is this not url?
+            },
+        },
+        'site.general.helpDescription': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+            'default': 'Every sighting counts! Citizen scientist reports make a big difference. We also accept donations to support the continued development of <your site name>.',
+        },
+        'site.general.customCardButtonText': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+            'default': 'Take action',
+        },
+        'site.general.customCardButtonUrl': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',  # TODO why is this not a url? DEX 1352
+            },
+            'default': 'Take action',
+        },
+        'site.general.customCardLine1': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+            'default': 'Set up your custom card in the site configuration menu.',
+        },
+        'site.general.customCardLine2': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',
+            },
+            'default': 'Set up your custom card in the site configuration menu.',
+        },
+        'site.general.photoGuidelinesUrl': {
+            'type': str,
+            'definition': {
+                'displayType': 'longstring',
+                'fieldType': 'string',  # TODO why is this not a url DEX 1352
+            },
+        },
+        'site.look.themeColor': {
+            'type': str,
+            'definition': {
+                'schema': {},
+                'displayType': 'color',
+            },
+            'default': '#68F6E5',
+        },
+        'site.look.logoIncludesSiteName': {
+            'type': bool,
+            'definition': {
+                'displayType': 'boolean',
+            },
+            'default': False,
+        },
+        'site.links.facebookLink': {
+            'type': str,
+            'definition': {
+                'fieldType': 'url',
+            },
+        },
+        'site.links.instagramLink': {
+            'type': str,
+            'definition': {
+                'fieldType': 'url',
+            },
+        },
+        'site.links.twitterLink': {
+            'type': str,
+            'definition': {
+                'fieldType': 'url',
+            },
+        },
+        'site.custom.regions': {
+            'type': dict,
+            'definition': {
+                'displayType': 'locationIds',
+            },
+        },
+        'site.custom.customFieldCategories': {
+            'type': list,
+            'definition': {
+                'displayType': 'categoryList',
+            },
+            'default': [],
+            'validate_function': SiteSettingCustomFields.validate_categories,
+        },
+        'site.custom.customFields.Encounter': {
+            'type': dict,
+            'definition': {
+                'displayType': 'customFields',
+            },
+            'validate_function': SiteSettingCustomFields.validate_encounters,
+        },
+        'site.custom.customFields.Sighting': {
+            'type': dict,
+            'definition': {
+                'displayType': 'customFields',
+            },
+            'validate_function': SiteSettingCustomFields.validate_sightings,
+        },
+        'site.custom.customFields.Individual': {
+            'type': dict,
+            'definition': {
+                'displayType': 'customFields',
+            },
+            'validate_function': SiteSettingCustomFields.validate_individuals,
+        },
         'email_service': {
             'type': str,
             'public': False,
@@ -236,11 +404,7 @@ class SiteSetting(db.Model, Timestamp):
         boolean=None,
         override_readonly=False,
     ):
-        if (
-            is_extension_enabled('edm')
-            and not file_upload_guid
-            and not cls.is_houston_setting(key)
-        ):
+        if not file_upload_guid and not cls.is_houston_setting(key):
             # Can set any file you wish but value settings must be in the approved list
             raise ValueError(f'forbidden to directly set key {key}')
         key_conf = cls._get_houston_setting_conf(key)
@@ -266,6 +430,7 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def is_houston_setting(cls, key):
+        changed, key = cls._map_to_new_key(key)
         return key in cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
@@ -287,15 +452,25 @@ class SiteSetting(db.Model, Timestamp):
             return default_value
         if cls.HOUSTON_SETTINGS[key]['type'] == dict:
             def_val = {}
+        if cls.HOUSTON_SETTINGS[key]['type'] == list:
+            def_val = []
         if cls.HOUSTON_SETTINGS[key]['type'] == bool:
             def_val = False
         return def_val
 
     @classmethod
     def set_key_value(cls, key, value):
-
+        changed, key = cls._map_to_new_key(key)
         assert key in cls.HOUSTON_SETTINGS.keys()
         key_data = cls.HOUSTON_SETTINGS[key]
+
+        if 'sub_field' in key_data:
+            # some fields are passed at a sub field level, for no readily apparent reason
+            if key_data['sub_field'] not in value:
+                raise HoustonException(
+                    log, f"{key} must be passed within a {key_data['sub_field']} part"
+                )
+            value = value[key_data['sub_field']]
 
         if not isinstance(value, key_data['type']):
             msg = f'Houston Setting key={key}, value incorrect type value={value},'
@@ -305,15 +480,21 @@ class SiteSetting(db.Model, Timestamp):
         if 'validate_function' in key_data:
             key_data['validate_function'](value)
 
-        if isinstance(value, str):
-            log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, string=value, public=key_data['public'])
+        is_public = key_data.get('public', True)
+        if 'set_function' in key_data:
+            key_data['set_function'](key, value, key_data)
+        elif isinstance(value, str):
+            if is_public:
+                log.debug(f'updating Houston Setting key={key} value={value}')
+            else:
+                log.debug(f'updating Houston Setting key={key}')
+            cls.set(key, string=value, public=is_public)
         elif isinstance(value, dict) or isinstance(value, list):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, data=value, public=key_data['public'])
+            cls.set(key, data=value, public=key_data.get('public', True))
         elif isinstance(value, bool):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, boolean=value, public=key_data['public'])
+            cls.set(key, boolean=value, public=key_data.get('public', True))
         else:
             msg = f'Houston Setting key={key}, value is not string, list or dict; value={value}'
             raise HoustonException(log, msg)
@@ -323,44 +504,16 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def forget_key_value(cls, key):
-        if not cls.is_houston_setting(key) and is_extension_enabled('edm'):
-            # Only support removal of EDM keys that start with 'site.custom.customFields' and end with '/{guid}'
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        key_data = cls.HOUSTON_SETTINGS[key]
 
-            edm_path_parts = key.split('/')
-            if len(edm_path_parts) != 2:
-                raise HoustonException(log, f'removal of {key} not supported')
+        setting = cls.query.get(key)
+        if setting:
+            with db.session.begin(subtransactions=True):
+                db.session.delete(setting)
 
-            name = edm_path_parts[0]
-            guid = edm_path_parts[1]
-            try:
-                # this is just to test it is a valid uuid - will throw ValueError if not
-                from uuid import UUID
-
-                UUID(guid, version=4)
-            except ValueError:
-                raise HoustonException(
-                    log, f'removal of {key} not supported, guid not valid'
-                )
-            if not name.startswith('site.custom.customFields'):
-                raise HoustonException(
-                    log, 'Ony support removal of EDM site.custom.customFields entries'
-                )
-            changed, name = cls._map_to_deprecated_edm_key(name)
-            if changed:
-                key = f'{name}/{guid}'
-            patch_data = {'force': False, 'op': 'remove', 'path': key}
-            cls._patch_edm_configuration({'json': patch_data})
-
-        else:
-            setting = cls.query.get(key)
-            if setting:
-                with db.session.begin(subtransactions=True):
-                    db.session.delete(setting)
-
-                if key == 'social_group_roles' and is_module_enabled('social_groups'):
-                    from app.modules.social_groups.models import SocialGroup
-
-                    SocialGroup.site_settings_updated()
+            if 'update_function' in key_data:
+                key_data['update_function']()
 
     @classmethod
     def get_string(cls, key, default=None):
@@ -387,13 +540,13 @@ class SiteSetting(db.Model, Timestamp):
     def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if is_extension_enabled('edm') and not cls.is_houston_setting(key):
-            return cls._get_edm_value(key, default=default, **kwargs)
+        if not cls.is_houston_setting(key):
+            raise HoustonException(log, f'Key {key} Not supported')
 
         setting = cls.query.get(key)
         if not setting:
             setting_default = cls._get_default_value(key)
-            if default is None and setting_default:
+            if default is None and setting_default is not None:
                 if callable(setting_default):
                     setting_default = setting_default()
                 return setting_default
@@ -419,6 +572,7 @@ class SiteSetting(db.Model, Timestamp):
 
     # Deprecating the support opf the old Occurrence and MarkedIndividual fields to replace with Sighting and
     # Individual but support both until EDM is retired, mapping the new names to the old names
+    # These will be removed once https://github.com/WildMeOrg/codex-frontend/pull/418 goes into the FE
     @classmethod
     def _map_to_deprecated_edm_key(cls, key):
         if key == 'block':
@@ -439,81 +593,16 @@ class SiteSetting(db.Model, Timestamp):
         return False, key
 
     @classmethod
-    @extension_required('edm')
-    def _get_edm_value(cls, key, default=None, **kwargs):
-        # There are certain fields that are Old Wildbook specific that we still support for the moment but
-        # will be deprecated so allow gets of both old and new (and map the new to the old here)
-        changed, key = cls._map_to_deprecated_edm_key(key)
-
-        res = current_app.edm.get_dict('configuration.data', key)
-        if (
-            not isinstance(res, dict)
-            or not res['success']
-            or 'response' not in res
-            or 'value' not in res['response']
-        ):
-            raise ValueError(
-                f'invalid EDM configuration key {key} (status {res.status_code})'
-            )
-        # edm conf lets us know if there is no value set like this:
-        if 'valueNotSet' in res['response'] and res['response']['valueNotSet']:
-            return default
-            # if no default= via kwargs it falls thru to below, which is fine (edm picks default value)
-        return res['response']['value']
-
-    @classmethod
-    def _get_edm_rest_data(cls):
-        changed, edm_key = cls._map_to_deprecated_edm_key('block')
-        data = current_app.edm.get_dict(
-            'configuration.data',
-            edm_key,
-            target='default',
-        )
-        # For the deprecated fields from EDM, also add the new names if it's the block get
-        if (
-            isinstance(data, dict)
-            and data['success']
-            and 'response' in data
-            and 'configuration' in data['response']
-        ):
-            import copy
-
-            config = copy.deepcopy(data['response']['configuration'])
-            for key in data['response']['configuration'].keys():
-                changed, new_key = cls._map_to_new_key(key)
-
-                #  strip down the configuration to only the values
-                if changed and 'value' in config[key].keys():
-                    old_config_value = config[key]['value']
-                    config[key] = {}
-                    config[key]['value'] = old_config_value
-                    config[new_key] = {'value': old_config_value}
-
-                elif 'value' in config[key].keys() and key != 'site.species':
-                    old_config_value = config[key]['value']
-                    config[key] = {}
-                    config[key]['value'] = old_config_value
-                elif key != 'site.species':
-                    # Yes site.species needs to be special at the moment, this needs further investigation
-                    config[key] = {}
-
-            data['response']['configuration'] = config
-
-        # simplify this by only sending back the fields that the FE actually uses
-        returned_data = {
-            'response': {
-                'version': data['response']['version'],
-                'configuration': data['response']['configuration'],
-            }
-        }
-        return returned_data
-
-    @classmethod
     def _set_houston_rest_data(cls, data):
         assert isinstance(data, dict)
         success_keys = []
+        # All keys must be valid
+        for key in data.keys():
+            if key not in cls.get_setting_keys():
+                raise HoustonException(log, f'{key} not supported')
         for key in data.keys():
             if key in cls.get_setting_keys():
+                changed, key = cls._map_to_new_key(key)
                 if data[key] is not None:
                     cls.set_key_value(key, data[key])
                 else:
@@ -525,6 +614,7 @@ class SiteSetting(db.Model, Timestamp):
     # All houston rest value getting needs common logic so factored out into separate function
     @classmethod
     def get_houston_rest_value(cls, key):
+        changed, key = cls._map_to_new_key(key)
         init_value = cls.get_value(key)
         key_conf = cls._get_houston_setting_conf(key)
 
@@ -564,70 +654,49 @@ class SiteSetting(db.Model, Timestamp):
             permission = type_def.get('permission', lambda: True)()
             if is_admin or type_def.get('public', True) and permission:
                 houston_data[key] = {'value': cls.get_houston_rest_value(key)}
+                if key == 'site.custom.customFields.Sighting':
+                    houston_data['site.custom.customFields.Occurrence'] = {
+                        'value': cls.get_houston_rest_value(key)
+                    }
+                if key == 'site.custom.customFields.Individual':
+                    houston_data['site.custom.customFields.MarkedIndividual'] = {
+                        'value': cls.get_houston_rest_value(key)
+                    }
 
-        data = {'response': {'configuration': houston_data}}
-
-        # If we have EDM, add it's data
-        if is_extension_enabled('edm'):
-            edm_data = cls._get_edm_rest_data()
-            edm_data['response']['configuration'].update(
-                data['response']['configuration']
-            )
-            data = edm_data
-
-        return data
+        return {'response': {'configuration': houston_data}}
 
     ###############################################
     # Definitions based code. Currently, only support getting all the definitions as a block, not individually
     @classmethod
-    def _get_edm_definitions(cls):
-        changed, edm_key = cls._map_to_deprecated_edm_key('block')
-        data = current_app.edm.get_dict(
-            'configurationDefinition.data',
-            edm_key,
-            target='default',
-        )
-        # For the deprecated fields from EDM, also add the new names if it's the block get
-        if (
-            isinstance(data, dict)
-            and data['success']
-            and 'response' in data
-            and 'configuration' in data['response']
-        ):
-            import copy
-
-            config = copy.deepcopy(data['response']['configuration'])
-            for key in data['response']['configuration'].keys():
-                # Don't pass back current Value here as frontend never uses it
-                config[key].pop('currentValue', None)
-                changed, new_key = cls._map_to_new_key(key)
-                # Send the definition as is from EDM. TODO. Look to stripping this down too
-                if changed and 'value' in config[key].keys():
-                    config[new_key] = config[key]
-            data['response']['configuration'] = config
-
-        # simplify this by only sending back the fields that the FE actually uses
-        returned_data = {
-            'response': {
-                'version': data['response']['version'],
-                'configuration': data['response']['configuration'],
-            }
-        }
-        return returned_data
-
-    @classmethod
     def _get_houston_definition(cls, key):
         key_conf = cls._get_houston_setting_conf(key)
         is_public = key_conf.get('public', True)
+        field_type = 'string'
+        display_type = 'string'
+        default = ''
+        # Used for generating the ID strings used by the FE
+        id_key = key.upper()
+        id_key = id_key.replace('.', '_')
+
+        # Use the default from the conf only if data is public
+        if is_public:
+            default = key_conf.get('default', default)
+            if callable(default):
+                default = default()
+
+        definition = key_conf.get('definition')
+        if definition:
+            display_type = definition.get('displayType', 'string')
+            field_type = definition.get('fieldType', display_type)
+
         data = {
-            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
-            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
-            'defaultValue': '',
-            'isPrivate': not is_public,
-            'settable': True,
+            'descriptionId': f'CONFIGURATION_{id_key}_DESCRIPTION',
+            'labelId': f'CONFIGURATION_{id_key}_LABEL',
+            'defaultValue': default,
+            # 'isPrivate': not is_public,
             'required': True,
-            'fieldType': 'string',
-            'displayType': 'string',
+            'fieldType': field_type,
+            'displayType': display_type,
         }
 
         # Some variables have specific values so incorporate those as required
@@ -642,78 +711,63 @@ class SiteSetting(db.Model, Timestamp):
         for key in cls.get_setting_keys():
             houston_definitions[key] = cls._get_houston_definition(key)
 
-        data = {'response': {'configuration': houston_definitions}}
-        if not is_extension_enabled('edm'):
-            return data
-
-        # Add all the EDM configuration data
-        edm_definitions = cls._get_edm_definitions()
-        edm_definitions['response']['configuration'].update(
-            data['response']['configuration']
-        )
-        data = edm_definitions
-
         # Populate site.species suggested values from the ia_config
-        species_json = data['response']['configuration']['site.species']
+        # TODO factor this out of here
+        species_json = houston_definitions['site.species']
+        from app.modules.ia_config_reader import IaConfig
 
-        if species_json is not None:
-            from app.modules.ia_config_reader import IaConfig
+        ia_config_reader = IaConfig()
+        species = ia_config_reader.get_configured_species()
+        if not isinstance(species_json.get('suggestedValues'), list):
+            species_json['suggestedValues'] = []
+        # only adds a species that is not already in suggestedValues
+        for scientific_name in species:
+            needed = True
+            for suggestion in species_json['suggestedValues']:
+                if suggestion.get('scientificName', None) == scientific_name:
+                    needed = True
+            if needed:
+                details = ia_config_reader.get_frontend_species_summary(scientific_name)
+                if details is None:
+                    details = {}
+                species_json['suggestedValues'].insert(
+                    0,
+                    {
+                        'scientificName': scientific_name,
+                        'commonNames': [details.get('common_name', scientific_name)],
+                        'itisTsn': details.get('itis_id'),
+                    },
+                )
 
-            ia_config_reader = IaConfig()
-            species = ia_config_reader.get_configured_species()
-            if not isinstance(species_json['suggestedValues'], list):
-                species_json['suggestedValues'] = ()
-            for (
-                scientific_name
-            ) in species:  # only adds a species that is not already in suggestedValues
-                needed = True
-                for suggestion in species_json['suggestedValues']:
-                    if suggestion.get('scientificName', None) == scientific_name:
-                        needed = True
-                if needed:
-                    details = ia_config_reader.get_frontend_species_summary(
-                        scientific_name
-                    )
-                    if details is None:
-                        details = {}
-                    species_json['suggestedValues'].insert(
-                        0,
-                        {
-                            'scientificName': scientific_name,
-                            'commonNames': [details.get('common_name', scientific_name)],
-                            'itisTsn': details.get('itis_id'),
-                        },
-                    )
-
-        # TODO Transient, to be removed as part of EDM retirement.
-        # Needed temporarily to allow FE to change to use these new names rather than the old Occurrence and
+        # TODO Transient, to be removed as part of EDM retirement DEX 1306
+        # Needed temporarily to allow FE to change to use the new names rather than the old Occurrence and
         # MarkedIndividual from old wildbook
-        data['response']['configuration']['site.custom.customFields.Sighting'] = {
+        houston_definitions['site.custom.customFields.Occurrence'] = {
             'readOnly': False,
             'isPrivate': False,
             'required': False,
             'displayType': 'customFields',
             'settable': True,
-            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING_DESCRIPTION',
-            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING',
-            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING_LABEL',
-            'name': 'configuration_site_custom_customFields_Sighting',
+            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE_DESCRIPTION',
+            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE',
+            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE_LABEL',
+            'name': 'configuration_site_custom_customFields_Occurrence',
             'fieldType': 'customFields',
         }
-        data['response']['configuration']['site.custom.customFields.Individual'] = {
+        houston_definitions['site.custom.customFields.MarkedIndividual'] = {
             'readOnly': False,
             'isPrivate': False,
             'required': False,
             'displayType': 'customFields',
             'settable': True,
-            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL_DESCRIPTION',
-            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL',
-            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL_LABEL',
-            'name': 'configuration_site_custom_customFields_Individual',
+            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL_DESCRIPTION',
+            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL',
+            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL_LABEL',
+            'name': 'configuration_site_custom_customFields_MarkedIndividual',
             'fieldType': 'customFields',
         }
 
-        return data
+        return {'response': {'configuration': houston_definitions}}
 
     #####################################
     # Other APIs
@@ -728,82 +782,7 @@ class SiteSetting(db.Model, Timestamp):
         if not data:  # All keys processed
             return ret_data
 
-        passthrough_kwargs = {'data': data}
-
-        if len(files) > 0:
-            passthrough_kwargs['files'] = files
-
-        if is_extension_enabled('edm'):
-            response = cls.set_edm_rest_data('', passthrough_kwargs)
-            if 'updated' in response:
-                ret_data['updated'].extend(response['updated'])
-            if 'updatedCustomFieldDefinitionIds' in response:
-                ret_data['updatedCustomFieldDefinitionIds'] = response[
-                    'updatedCustomFieldDefinitionIds'
-                ]
-        else:
-            raise HoustonException(log, 'key not supported')
         return ret_data
-
-    @classmethod
-    def set_edm_rest_data(cls, path, kwargs):
-
-        if not is_extension_enabled('edm'):
-            raise HoustonException(log, f'key {path} not supported')
-
-        if path == 'block' or path == '':
-            # Use edm value for block
-            path = ''
-            if isinstance(kwargs, dict) and 'data' in kwargs:
-                import copy
-
-                config = copy.deepcopy(kwargs['data'])
-            for key in kwargs['data']:
-                changed, edm_key = cls._map_to_deprecated_edm_key(key)
-                if changed:
-                    config[edm_key] = config[key]
-                    config.pop(key)
-            kwargs['data'] = config
-        else:
-            changed, path = cls._map_to_deprecated_edm_key(path)
-
-        response = current_app.edm.request_passthrough(
-            'configuration.data',
-            'post',
-            kwargs,
-            path,
-            target='default',
-        )
-
-        if not response.ok or response.status_code != 200:
-            raise HoustonException(
-                log,
-                f'non-OK ({response.status_code}) response from edm: {response.json()}',
-            )
-
-        res = response.json()
-        if not res['success']:
-            raise HoustonException(log, res)
-
-        return res
-
-    @classmethod
-    def _patch_edm_configuration(cls, kwargs):
-        response = current_app.edm.request_passthrough(
-            'configuration.data',
-            'patch',
-            kwargs,
-            '',
-            target='default',
-        )
-
-        if not response.ok or response.status_code != 200:
-            raise HoustonException(
-                log,
-                f'non-OK ({response.status_code}) response from edm: {response.json()}',
-            )
-
-        return response
 
     # the idea here is to have a unique uuid for each installation
     #   this should be used to read this value, as it will create it if it does not exist
@@ -837,6 +816,33 @@ class Regions(dict):
 
     def full_path(self, loc, id_only=True):
         return self._find_path(self, loc, [], id_only)
+
+    @classmethod
+    def is_region_guid_valid(cls, guid):
+        try:
+            regions = Regions()
+        except ValueError:
+            # No regions so this guid (and all others) are not valid
+            return False
+        region_data = regions.find(guid)
+
+        return True if region_data else False
+
+    @classmethod
+    def get_region_name(cls, guid):
+        region_name = None
+
+        try:
+            regions = Regions()
+            region_data = regions.find(guid, id_only=False)
+            if region_data:
+                region_name = region_data[0].get('name', guid)
+        except ValueError:
+            # something went wrong presumably no region data,
+            # whatever, the region name is None so just use that
+            pass
+
+        return region_name
 
     # as with any region-tree-traversal, this does not handle duplication of ids across nodes well.
     # first come, first served   :(
@@ -942,6 +948,16 @@ class Regions(dict):
                 nodes.extend(self.traverse(n))
         return nodes
 
+    # finds based on old or new id
+    def transfer_find(self, val):
+        if not val:
+            return None
+        nodes = self.traverse()
+        for reg in nodes:
+            if reg.get('_prev_id') == val or reg.get('id') == val:
+                return reg
+        return None
+
     def find_fuzzy(self, match):
         from app.utils import fuzzy_match
 
@@ -973,6 +989,23 @@ class Regions(dict):
                 once.append(m)
                 already.add(m['id'])
         return once
+
+    @classmethod
+    def guidify(cls, data):
+        import uuid
+
+        if not isinstance(data, dict):
+            return
+        prev_id = data.get('id')
+        try:
+            uuid.UUID(prev_id, version=4)
+        except Exception:
+            data['_prev_id'] = prev_id
+            data['id'] = str(uuid.uuid4())
+        if 'locationID' in data and isinstance(data['locationID'], list):
+            for loc in data['locationID']:
+                cls.guidify(loc)
+        return data
 
     def __repr__(self):
         return (

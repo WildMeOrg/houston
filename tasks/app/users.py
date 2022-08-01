@@ -162,13 +162,3 @@ def list_all(context):
     users = User.query.all()
     for user in users:
         print('User : {} '.format(user))
-
-
-@app_context_task
-def sync_edm(context, refresh=False):
-    """
-    Sync the users from the EDM onto the local Hudson
-    """
-    from app.modules.users.models import User
-
-    User.edm_sync_all(refresh=refresh)

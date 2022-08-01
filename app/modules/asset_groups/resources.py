@@ -19,6 +19,7 @@ from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.auth.utils import recaptcha_required
+from app.modules.sightings.schemas import DetailedSightingSchema
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -794,7 +795,7 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         schema = schemas.AssetGroupSightingEncounterSchema()
-        returned_json = {'version': 00000000000000}
+        returned_json = {}
         houston_encounter_json = asset_group_sighting.get_encounter_json(encounter_guid)
         returned_json.update(schema.dump(houston_encounter_json).data)
         return returned_json
@@ -820,14 +821,15 @@ class AssetGroupSightingCommit(Resource):
         },
     )
     # NOTE this returns a sighting schema not an AssetGroup one as the output of this is that
-    # a sighting is created. This is also an augmented Sighting schema with the EDM data
+    # a sighting is created.
+    @api.response(DetailedSightingSchema())
     def post(self, asset_group_sighting):
         try:
             sighting = asset_group_sighting.commit()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
-        return sighting.get_detailed_json()
+        return sighting
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/detect')

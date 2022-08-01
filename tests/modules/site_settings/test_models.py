@@ -6,7 +6,7 @@ import pytest
 
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
-from tests.utils import extension_unavailable, is_extension_enabled
+from tests.utils import extension_unavailable
 
 
 def test_create_header_image(db, flask_app, test_root):
@@ -79,22 +79,6 @@ def test_boolean(db):
 
 
 def test_get_value(db, flask_app):
-    if is_extension_enabled('edm'):
-        # Make sure site.name is set in edm
-        flask_app.edm.request_passthrough(
-            'configuration.data',
-            'post',
-            {'json': {'site.name': 'My test site'}},
-            '',
-            target='default',
-        )
-    # this should grab from edm and return a string
-    val = SiteSetting.get_value('site.name')
-    if is_extension_enabled('edm'):
-        assert isinstance(val, str)
-    else:
-        assert val is None
-
     guid = SiteSetting.get_system_guid()
     uuid.UUID(guid, version=4)  # will throw ValueError if not a uuid
     assert guid == SiteSetting.get_value('system_guid')
@@ -103,42 +87,3 @@ def test_get_value(db, flask_app):
     guid_setting = SiteSetting.query.get('system_guid')
     assert guid_setting is not None
     db.session.delete(guid_setting)
-
-
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
-def test_read_edm_configuration(flask_app):
-    flask_app.edm.request_passthrough(
-        'configuration.data',
-        'post',
-        {'json': {'site.name': 'My test site'}},
-        '',
-        target='default',
-    )
-    block_config_data = SiteSetting._get_edm_rest_data()['response']['configuration']
-    assert isinstance(block_config_data['site.name']['value'], str)
-    species_ = block_config_data.get('site.species')
-    species = None
-    if species_ and 'value' in species_:
-        species = species_['value']
-    if species is None:
-        flask_app.edm.request_passthrough(
-            'configuration.data',
-            'post',
-            {
-                'json': {
-                    'site.species': [
-                        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'}
-                    ]
-                }
-            },
-            '',
-            target='default',
-        )
-        block_config_data = SiteSetting._get_edm_definitions()['response'][
-            'configuration'
-        ]
-        species = block_config_data.get('site.species')['value']
-
-    assert isinstance(species, list)
-    with pytest.raises(ValueError):
-        SiteSetting.get_value('_fu_bar_')

@@ -8,14 +8,13 @@ from tests import utils as test_utils
 PATH = '/api/v1/encounters/'
 
 EXPECTED_FIELDS = {
-    'version',
     'hasView',
     'hasEdit',
     'guid',
     'owner',
-    'updatedHouston',
+    'updated',
     'annotations',
-    'createdHouston',
+    'created',
     'submitter',
 }
 

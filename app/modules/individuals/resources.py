@@ -9,7 +9,7 @@ import json
 import logging
 from http import HTTPStatus
 
-from flask import current_app, request, send_file
+from flask import request, send_file
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog
@@ -45,18 +45,7 @@ class IndividualCleanup(object):
     def rollback_and_abort(self, message='Unknown Error', code=400):
         if self.individual_guid is not None:
             failed_individual = Individual.query.get(self.individual_guid)
-            # we try deleting from edm *regardless of failed_individual*, as sometimes
-            #   the houston individual did not get made, but the edm did
-            message = f'Attempting to delete Individual {self.individual_guid} from EDM'
-            if failed_individual:
-                AuditLog.audit_log_object_error(log, failed_individual, message)
-            log.error(message)
-            try:
-                current_app.edm.request_passthrough(
-                    'individual.data', 'delete', {}, self.individual_guid
-                )
-            except Exception:
-                pass
+
             if failed_individual is not None:
                 message = f'The Individual with guid {self.individual_guid} has been deleted from Houston'
                 AuditLog.audit_log_object_error(log, failed_individual, message)
@@ -93,11 +82,15 @@ class Individuals(Resource):
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
     @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(schemas.DetailedIndividualSchema())
     def post(self, args):
         """
         Create a new instance of Individual.
         """
+        import app.modules.utils as util
         from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+        from app.modules.site_settings.models import Taxonomy
 
         timer = ElapsedTime()
 
@@ -126,30 +119,6 @@ class Individuals(Resource):
                     cleanup.rollback_and_abort(
                         message='Individual POST included an encounter that already has an Individual.'
                     )
-        try:
-            result_data = current_app.edm.request_passthrough_result(
-                'individual.data', 'post', {'data': request_in}, ''
-            )
-        except HoustonException as ex:
-            cleanup.rollback_and_abort(ex.message)
-
-        # if you get 'success' back and there is no id, we have problems indeed
-        if result_data['id'] is not None:
-            cleanup.individual_guid = result_data['id']
-        else:
-            cleanup.rollback_and_abort(
-                message='Individual.post: Improbable error. success=True but no Individual id in response.'
-            )
-
-        if 'encounters' in request_in and 'encounters' not in result_data:
-            cleanup.rollback_and_abort(
-                message='Individual.post: request_in had an encounters list, but result_data did not.'
-            )
-
-        if not len(request_in['encounters']) == len(result_data['encounters']):
-            cleanup.rollback_and_abort(
-                message='Individual.post: Imbalance in encounters between request_in and result_data.'
-            )
 
         encounters = []
 
@@ -170,12 +139,52 @@ class Individuals(Resource):
 
         names = self._parse_names(request_in.get('names'), cleanup)
 
+        error_messages = []
+        in_sex = request_in.get('sex')
+        if not util.is_valid_sex(in_sex):  # None passes True here
+            error_messages.append(f'"{in_sex}" not a valid value for sex')
+        in_tob = request_in.get('timeOfBirth')
+        if in_tob and not util.is_valid_datetime_string(in_tob):
+            error_messages.append(f'"{in_tob}" not a valid value for timeOfBirth')
+        in_tod = request_in.get('timeOfDeath')
+        if in_tod and not util.is_valid_datetime_string(in_tod):
+            error_messages.append(f'"{in_tod}" not a valid value for timeOfDeath')
+        in_tx = request_in.get('taxonomy')
+        if in_tx:
+            try:
+                Taxonomy(in_tx)
+            except ValueError:
+                error_messages.append(f'"{in_tx}" not a valid taxonomy guid')
+        in_cf = request_in.get('customFields')
+        if in_cf:
+            if not isinstance(in_cf, dict):
+                error_messages.append(f'{in_cf}: customFields must be a dict')
+            else:
+                for cfd_id in in_cf:
+                    if not SiteSettingCustomFields.is_valid_value_for_class(
+                        'Individual', cfd_id, in_cf[cfd_id]
+                    ):
+                        error_messages.append(
+                            f'customFields id={cfd_id} value="{in_cf[cfd_id]}" is not valid'
+                        )
+        if error_messages:  # something failed
+            msg = f"problem with passed values: {'; '.join(error_messages)}"
+            log.error(f'Individual.post: {msg}. Aborting Individual creation.')
+            cleanup.rollback_and_abort(
+                message=msg,
+                code=500,
+            )
+
         # finally make the Individual if all encounters are found
         individual = Individual(
-            guid=result_data['id'],
             encounters=encounters,
             names=names,
-            version=result_data.get('version'),
+            comments=request_in.get('comments'),
+            sex=in_sex,
+            time_of_birth=in_tob,
+            time_of_death=in_tod,
+            taxonomy_guid=in_tx,
+            custom_fields=in_cf,
         )
         individual.add_autogenerated_species_name(current_user)
         AuditLog.user_create_object(log, individual, duration=timer.elapsed())
@@ -187,7 +196,7 @@ class Individuals(Resource):
             db.session.add(individual)
         db.session.refresh(individual)
 
-        return individual.get_detailed_json()
+        return individual
 
     def _parse_names(self, names_data, cleanup):
         names = []
@@ -301,19 +310,12 @@ class IndividualByID(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.response(schemas.DetailedIndividualSchema())
     def get(self, individual):
         """
         Get Individual details by ID.
         """
-        if individual is not None:
-            log.info(
-                'GET passthrough called for Individual with GUID: %r ', individual.guid
-            )
-        else:
-            log.error('GET passthrough called for nonexistent Individual')
-            return {}
-
-        return individual.get_detailed_json()
+        return individual
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -338,67 +340,20 @@ class IndividualByID(Resource):
             if arg['path'] == '/encounters' and isinstance(arg['value'], str):
                 arg['value'] = [arg['value']]
 
-        houston_args = [
-            arg
-            for arg in args
-            if arg['path']
-            in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_HOUSTON
-        ]
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Individual details.',
+        )
 
-        edm_args = [
-            arg
-            for arg in args
-            if arg['path'] in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
-        ]
-
-        if len(edm_args) > 0:
-            log.debug(f'wanting to do edm patch on args={edm_args}')
-            result = None
+        with context:
             try:
-                (
-                    response,
-                    response_data,
-                    result,
-                ) = current_app.edm.request_passthrough_parsed(
-                    'individual.data',
-                    'patch',
-                    {'data': edm_args},
-                    individual.guid,
-                    request_headers=request.headers,
+                parameters.PatchIndividualDetailsParameters.perform_patch(
+                    args, individual
                 )
             except HoustonException as ex:
-                if isinstance(ex.message, dict):
-                    message = ex.message.get('details', ex.message)
-                else:
-                    message = ex.message
-                abort(ex.status_code, message)
-
-            # TODO handle individual deletion if last encounter removed
-            # changed something on EDM, remove the cache
-            individual.remove_cached_edm_data()
-
-        if houston_args:
-            if not edm_args:
-                # regular houston-patching
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Individual details.',
-                )
-            else:
-                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Individual details.',
-                    code=417,  # Arbitrary choice (Expectation Failed)
-                    fields_written=edm_args,
-                )
-            with context:
-                try:
-                    parameters.PatchIndividualDetailsParameters.perform_patch(
-                        houston_args, individual
-                    )
-                except HoustonException as ex:
-                    abort(ex.status_code, ex.message)
+                # Only 409 and 422 are valid for patch (so Jon says)
+                status_code = ex.status_code if ex.status_code == 422 else 409
+                abort(status_code, ex.message)
 
         db.session.merge(individual)
         AuditLog.patch_object(log, individual, args, duration=timer.elapsed())
@@ -417,14 +372,6 @@ class IndividualByID(Resource):
         """
         Delete an Individual by ID.
         """
-        response = individual.delete_from_edm()
-
-        response_data = response.json()
-        if not response.ok or not response_data.get('success', False):
-            message = f'Individual.delete:  Failed to delete id {individual.guid} using delete_from_edm(). response_data={response_data}'
-            AuditLog.audit_log_object_warning(log, individual, message)
-            log.warning(message)
-
         try:
             individual.delete()
         except Exception:
@@ -793,19 +740,12 @@ class IndividualDebugByID(Resource):
             'action': AccessOperation.READ_DEBUG,
         },
     )
+    @api.response(schemas.DebugIndividualSchema())
     def get(self, individual):
         """
-        Get Individual details by ID.
+        Get Individual debug by ID.
         """
-        if individual is not None:
-            log.info(
-                f'GET passthrough called for Individual with GUID: {individual.guid}'
-            )
-        else:
-            log.error('GET passthrough called for nonexistent Individual')
-            return {}
-
-        return individual.get_debug_json()
+        return individual
 
 
 @api.route('/validate')

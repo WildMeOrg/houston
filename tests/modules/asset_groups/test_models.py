@@ -6,7 +6,7 @@ import pytest
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.utils as test_utils
 from app.utils import HoustonException
-from tests.utils import extension_unavailable, module_unavailable
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
@@ -183,7 +183,9 @@ def test_asset_group_sightings_bulk(
             )
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_asset_group_sighting_config_field_getter(researcher_1, request):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
 

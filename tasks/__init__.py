@@ -106,13 +106,6 @@ try:
 except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.sage.*\n{str(e)}')
 
-try:
-    from tasks import edm as edm_tasks  # NOQA
-
-    namespaces.append(edm_tasks)
-except ModuleNotFoundError as e:  # pragma: no cover
-    logger.warning(f'Unable to load tasks.edm.*\n{str(e)}')
-
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(*namespaces)
 

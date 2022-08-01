@@ -8,12 +8,13 @@ RESTful API Encounters resources
 import logging
 from http import HTTPStatus
 
-from flask import current_app, make_response, request
+from flask import make_response, request
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.modules.sightings import schemas as sighting_schemas
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -100,27 +101,13 @@ class EncounterByID(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.response(schemas.DetailedEncounterSchema())
     def get(self, encounter):
         """
         Get Encounter full details by ID.
         """
 
-        # note: should probably _still_ check edm for: stale cache, deletion!
-        #      user.edm_sync(version)
-
-        response = current_app.edm.get_dict('encounter.data_complete', encounter.guid)
-        if not isinstance(response, dict):  # some non-200 thing, incl 404
-            return response
-        if not response.get('success', False):
-            return response
-
-        edm_json = response['result']
-
-        schema = schemas.AugmentedEdmEncounterSchema()
-        edm_json.update(schema.dump(encounter).data)
-        # EDM uses id, houston API is all guid so ditch the id
-        edm_json.pop('id', None)
-        return edm_json
+        return encounter
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -132,6 +119,7 @@ class EncounterByID(Resource):
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.PatchEncounterDetailsParameters())
     @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(schemas.DetailedEncounterSchema())
     def patch(self, args, encounter):
         """
         Patch Encounter details by ID.
@@ -139,95 +127,24 @@ class EncounterByID(Resource):
         from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
-        edm_args = [
-            arg
-            for arg in args
-            if arg.get('path')
-            in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
-        ]
-        houston_args = [
-            arg
-            for arg in args
-            if arg.get('path')
-            in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_HOUSTON
-        ]
 
-        if edm_args:
-            log.debug(f'wanting to do edm patch on args={edm_args}')
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Encounter details.',
+        )
+
+        with context:
             try:
-                result_data = current_app.edm.request_passthrough_result(
-                    'encounter.data',
-                    'patch',
-                    {'data': edm_args},
-                    encounter.guid,
-                    request_headers=request.headers,
-                )
-                # EDM uses id, houston API is all guid so ditch the id
-                result_data.pop('id', None)
-
+                parameters.PatchEncounterDetailsParameters.perform_patch(args, encounter)
             except HoustonException as ex:
-                if isinstance(ex.message, dict):
-                    message = ex.message.get('details', ex.message)
-                else:
-                    message = ex.message
-                abort(
-                    ex.status_code,
-                    message,
-                    error=ex.get_val('error', 'Error'),
-                )
-            # changed something on EDM, remove the cache
-            encounter.remove_cached_edm_data()
-        else:
-            # this mimics output format of edm-patching
-            result_data = {
-                'version': encounter.version,
-            }
-
-        if houston_args:
-            if not edm_args:
-                # regular houston-patching
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Encounter details.',
-                )
-            else:
-                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Encounter details.',
-                    code=417,  # Arbitrary choice (Expectation Failed)
-                    fields_written=edm_args,
-                )
-
-            with context:
-                try:
-                    parameters.PatchEncounterDetailsParameters.perform_patch(
-                        houston_args, encounter
-                    )
-                except HoustonException as ex:
-                    abort(ex.status_code, ex.message)
-                db.session.merge(encounter)
-
-            schema = schemas.AugmentedEdmEncounterSchema()
-            result_data.update(schema.dump(encounter).data)
-
-        if edm_args:
-            # edm patch was successful
-            new_version = result_data.get('version', None)
-            if new_version is not None:
-                encounter.version = new_version
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Encounter version.',
-                )
-                with context:
-                    db.session.merge(encounter)
-            # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
+                # Only 409 and 422 are valid for patch (so Jon says)
+                status_code = ex.status_code if ex.status_code == 422 else 409
+                abort(status_code, ex.message)
+            db.session.merge(encounter)
 
         AuditLog.patch_object(log, encounter, args, duration=timer.elapsed())
-        schema = schemas.AugmentedEdmEncounterSchema()
-        result_data.update(schema.dump(encounter).data)
-        return result_data
+
+        return encounter
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -241,81 +158,44 @@ class EncounterByID(Resource):
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, encounter):
         """
-        Delete a Encounter by ID.
+        Delete an Encounter by ID.
         """
-        # first try delete on edm
-        response = None
-        try:
-            (response, response_data, result) = encounter.delete_from_edm(
-                current_app, request
-            )
-        except HoustonException as ex:
-            edm_status_code = ex.get_val('edm_status_code', 400)
-            message = f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
-            AuditLog.audit_log_object_warning(log, encounter, message)
-            log.warning(message)
-
-            ex_response_data = ex.get_val('response_data', {})
-            if (
-                'vulnerableIndividual' in ex_response_data
-                or 'vulnerableSighting' in ex_response_data
-            ):
+        # headers are strings, so we need to make into bools
+        delete_individual = (
+            request.headers.get('x-allow-delete-cascade-individual', 'false').lower()
+            == 'true'
+        )
+        delete_sighting = (
+            request.headers.get('x-allow-delete-cascade-sighting', 'false').lower()
+            == 'true'
+        )
+        success, response = encounter.delete_frontend_request(
+            delete_individual, delete_sighting
+        )
+        if not success:
+            if 'vulnerableIndividual' in response or 'vulnerableSighting' in response:
                 abort(
                     400,
                     'Delete failed because it would cause a delete cascade',
-                    vulnerableIndividualGuid=ex_response_data.get('vulnerableIndividual'),
-                    vulnerableSightingGuid=ex_response_data.get('vulnerableSighting'),
+                    vulnerableIndividualGuid=response.get('vulnerableIndividual'),
+                    vulnerableSightingGuid=response.get('vulnerableSighting'),
                 )
             else:
                 abort(400, 'Delete failed')
-
-        # we have to roll our own response here (to return) as it seems the only way we can add a header
-        #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since
-        #   no body is returned on a 204 for DELETE
-        resp = make_response()
-        resp.status_code = 204
-        sighting_id = None
-        deleted_individuals = None
-        if result is not None:
-            sighting_id = result.get('deletedSighting', None)
-            deleted_individuals = result.get('deletedIndividuals', None)
-        if sighting_id is not None:
-            from app.modules.sightings.models import Sighting
-
-            sighting = Sighting.query.get(sighting_id)
-            if sighting is None:
-                message = f'deletion of {encounter} triggered deletion of sighting {sighting_id}; but this was not found!'
-                AuditLog.audit_log_object_error(log, encounter, message)
-                log.error(message)
-
-                abort(400, f'Cascade-deleted Sighting not found id={sighting_id}')
-            else:
-                message = f'EDM triggered self-deletion of {sighting} result={result}'
-                AuditLog.audit_log_object_warning(log, encounter, message)
-                log.warning(message)
-
-                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to encounter.delete()
-                resp.headers['x-deletedSighting-guid'] = sighting_id
         else:
-            encounter.delete()
-        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        if deleted_individuals:
-            from app.modules.individuals.models import Individual
+            # we have to roll our own response here (to return) as it seems the only way we can add a header
+            #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since
+            #   no body is returned on a 204 for DELETE
+            resp = make_response()
+            resp.status_code = 204
+            sighting_id = response.get('deletedSighting')
+            if sighting_id:
+                resp.headers['x-deletedSighting-guid'] = sighting_id
+            individual_id = response.get('deletedIndividual')
+            if individual_id:
+                resp.headers['x-deletedIndividual-guids'] = individual_id
 
-            deleted_ids = []
-            for indiv_guid in deleted_individuals:
-                goner = Individual.query.get(indiv_guid)
-                if goner is None:
-                    log.error(
-                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
-                    )
-                else:
-                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
-                    deleted_ids.append(indiv_guid)
-                    goner.delete()
-
-            resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
-        return resp
+            return resp
 
 
 @api.route('/debug/<uuid:encounter_guid>', doc=False)
@@ -333,5 +213,6 @@ class EncounterDebugByID(Resource):
             'action': AccessOperation.READ_DEBUG,
         },
     )
+    @api.response(sighting_schemas.DebugSightingSchema())
     def get(self, encounter):
-        return encounter.sighting.get_debug_json()
+        return encounter.sighting

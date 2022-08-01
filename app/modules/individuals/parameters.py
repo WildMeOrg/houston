@@ -4,7 +4,6 @@ Input arguments (Parameters) for Individuals resources RESTful API
 -----------------------------------------------------------
 """
 import logging
-from http import HTTPStatus
 from uuid import UUID
 
 from flask_marshmallow import base_fields
@@ -24,6 +23,11 @@ class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
         description='List of Individual Names',
         required=False,
     )
+    encounters = base_fields.List(
+        base_fields.Raw(),
+        description='List of Encounter ids',
+        required=False,
+    )
 
     class Meta(schemas.DetailedIndividualSchema.Meta):
         pass
@@ -37,7 +41,9 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    PATH_CHOICES_EDM = (
+    PATH_CHOICES = (
+        '/featuredAssetGuid',
+        '/names',
         '/encounters',
         '/sex',
         '/timeOfBirth',
@@ -45,10 +51,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         '/comments',
         '/customFields',
     )
-
-    PATH_CHOICES_HOUSTON = ('/featuredAssetGuid', '/encounters', '/names')
-
-    PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
     @classmethod
     def remove(cls, obj, field, value, state):
@@ -61,8 +63,26 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 if encounter is not None and encounter in obj.encounters:
                     obj.remove_encounter(encounter)
                     ret_val = True
-        elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
-            obj.set_featured_asset_guid(UUID(value, version=4))
+        elif field == 'featuredAssetGuid':
+            # It is permitted to get rid of this without replacing it as without it, the code will 'guess' one
+            obj.featured_asset_guid = None
+            ret_val = True
+        elif field == 'sex':
+            obj.sex = None
+            ret_val = True
+        elif field == 'timeOfBirth':
+            obj.time_of_birth = None
+            ret_val = True
+        elif field == 'timeOfDeath':
+            obj.time_of_death = None
+            ret_val = True
+        elif field == 'comments':
+            obj.comments = None
+            ret_val = True
+        elif field == 'customFields':
+            # in this case, `value` is actually the CustomFieldDefinition guid to remove
+            #   this will raise ValueError if it is not valid
+            obj.reset_custom_field_value(value)
             ret_val = True
         elif (
             field == 'names'
@@ -76,7 +96,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     f'invalid name guid {value}',
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             try:
@@ -85,7 +104,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     f'{name} could not be removed from {obj}: {str(ve)}',
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             ret_val = True
@@ -106,9 +124,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             name = Name.query.get(value['guid'])
             if not name or name.individual_guid != obj.guid:
                 raise HoustonException(
-                    log,
-                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message=f"invalid name guid {value['guid']}",
+                    log, message=f"invalid name guid {value['guid']}", obj=obj
                 )
             user = User.query.get(value['preferring_user'])
             # decree from 2021-12-08 slack discussion is user can only add/remove self
@@ -117,7 +133,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     f"invalid user guid {value['preferring_user']}",
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             found = name.remove_preferring_user(user)
@@ -138,7 +153,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     'value must contain keys ("context", "value") or ("guid", "preferring_user")',
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             from flask_login import current_user
@@ -160,7 +174,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                             raise HoustonException(
                                 log,
                                 f'invalid user guid {user_guid}',
-                                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                                 obj=obj,
                             )
                         preferring_users.append(user)
@@ -168,6 +181,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     raise HoustonException(
                         log,
                         f'Cannot create name with context that begins with {AUTOGEN_NAME_CONTEXT_PREFIX}',
+                        obj=obj,
                     )
                 obj.add_name(
                     value['context'], value['value'], current_user, preferring_users
@@ -179,7 +193,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     raise HoustonException(
                         log,
                         f"invalid name guid {value['guid']}",
-                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                         obj=obj,
                     )
                 user = User.query.get(value['preferring_user'])
@@ -188,7 +201,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     raise HoustonException(
                         log,
                         f"invalid user guid {value['preferring_user']}",
-                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                         obj=obj,
                     )
                 name.add_preferring_user(user)
@@ -198,6 +210,8 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def replace(cls, obj, field, value, state):
+        import app.modules.utils as util
+
         ret_val = False
         if field == 'encounters':
             for encounter_guid in value:
@@ -210,6 +224,44 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     ret_val = True
         elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             ret_val = obj.set_featured_asset_guid(UUID(value, version=4))
+        elif field == 'sex':
+            if not util.is_valid_sex(value):
+                raise HoustonException(
+                    log,
+                    f'"{value}" is not a valid value for sex',
+                    obj=obj,
+                )
+            obj.sex = value
+            ret_val = True
+        elif field == 'timeOfBirth':
+            if not util.is_valid_datetime_string(value):
+                raise HoustonException(
+                    log,
+                    f'"{value}" is not a valid value for timeOfBirth',
+                    obj=obj,
+                )
+            obj.time_of_birth = value
+            ret_val = True
+        elif field == 'timeOfDeath':
+            if not util.is_valid_datetime_string(value):
+                raise HoustonException(
+                    log,
+                    f'"{value}" is not a valid value for timeOfDeath',
+                    obj=obj,
+                )
+            obj.time_of_death = value
+            ret_val = True
+        elif field == 'comments':
+            obj.comments = value
+            ret_val = True
+        elif field == 'customFields':
+            # see explanation on encounter patch
+            assert isinstance(value, dict), 'customFields must be passed a json object'
+            if value.get('id'):
+                assert value.get('value'), 'customFields id/value format needs both'
+                value = {value['id']: value['value']}
+            obj.set_custom_field_values(value)  # does all the validation etc
+            ret_val = True
         elif field == 'names':
             from app.modules.names.models import Name
 
@@ -222,7 +274,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     'value must contain keys "guid" and at least one of: "context", "value"',
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             name = Name.query.get(value['guid'])
@@ -230,7 +281,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log,
                     f"invalid name guid {value['guid']}",
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     obj=obj,
                 )
             if 'context' in value:

@@ -84,7 +84,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert 'value must contain keys' in patch_individual_response.json.get('message')
 
@@ -107,7 +107,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
 
@@ -167,7 +167,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert (
         patch_individual_response.json.get('message') == f'invalid name guid {bad_guid}'
@@ -199,7 +199,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert (
         patch_individual_response.json.get('message') == f'invalid name guid {bad_guid}'
@@ -214,7 +214,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert 'value must contain' in patch_individual_response.json.get('message')
 
@@ -312,7 +312,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert (
         patch_individual_response.json['message']
@@ -331,7 +331,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
 
@@ -344,7 +344,7 @@ def test_get_set_individual_names(
         researcher_1,
         individual_id,
         patch_data,
-        expected_status_code=422,
+        expected_status_code=409,
     )
     assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
 

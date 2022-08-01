@@ -7,12 +7,12 @@ import enum
 import logging
 import uuid
 
-from flask import current_app, url_for
+from flask import url_for
 from flask_login import current_user  # NOQA
 from sqlalchemy_utils import types as column_types
 
 import app.extensions.logging as AuditLog
-from app.extensions import FeatherModel, db, is_extension_enabled
+from app.extensions import FeatherModel, db
 from app.extensions.api.parameters import _get_is_static_role_property
 from app.extensions.auth import security
 from app.extensions.email import Email
@@ -21,92 +21,7 @@ from app.modules import is_module_enabled, module_required
 log = logging.getLogger(__name__)
 
 
-if is_extension_enabled('edm'):
-    from app.extensions.edm import EDMObjectMixin
-
-    class UserEDMMixin(EDMObjectMixin):
-
-        # fmt: off
-        # Name of the module, used for knowing what to sync i.e user.list, user.data
-        EDM_NAME = 'user'
-
-        # The EDM attribute for the version, if reported
-        EDM_VERSION_ATTRIBUTE = 'version'
-
-        #
-        EDM_LOG_ATTRIBUTES = [
-            'emailAddress',
-        ]
-
-        EDM_ATTRIBUTE_MAPPING = {
-            # Ignored
-            'id'                    : None,
-            'lastLogin'             : None,
-            'username'              : None,
-
-            # Attributes
-            'acceptedUserAgreement' : 'accepted_user_agreement',
-            'affiliation'           : 'affiliation',
-            'emailAddress'          : 'email',
-            'fullName'              : 'full_name',
-            'receiveEmails'         : 'receive_notification_emails',
-            'sharing'               : 'shares_data',
-            'userURL'               : 'website',
-            'version'               : 'version',
-
-            # Functions
-            'organizations'         : '_process_edm_user_organization',
-            'profileImageUrl'       : '_process_edm_user_profile_url',
-            'roles'                 : '_process_edm_user_roles',
-        }
-        # fmt: on
-
-        @classmethod
-        def ensure_edm_obj(cls, guid):
-            user = User.query.filter(User.guid == guid).first()
-            is_new = user is None
-
-            if is_new:
-                email = '{}@localhost'.format(guid)
-                password = User.initial_random_password()
-                user = User(
-                    guid=guid,
-                    email=email,
-                    password=password,
-                    version=None,
-                    is_active=True,
-                    in_alpha=False,
-                    # contributor assumed true for all migrated edm; rest are set based on roles later
-                    is_contributor=True,
-                    is_researcher=False,
-                    is_user_manager=False,
-                )
-                with db.session.begin():
-                    db.session.add(user)
-                db.session.refresh(user)
-
-            return user, is_new
-
-        def _process_edm_user_roles(self, roles):
-            if not roles or not isinstance(roles, list):
-                return
-            if 'researcher' in roles:
-                log.info('researcher role found, setting is_researcher')
-                self.is_researcher = True
-            if 'manager' in roles:
-                log.info('manager role found, setting is_user_manager, is_data_manager')
-                self.is_user_manager = True
-                self.is_data_manager = True
-            if 'admin' in roles:
-                log.info('admin role found, setting is_user_manager, is_admin')
-                self.is_user_manager = True
-                self.is_admin = True
-
-else:
-    UserEDMMixin = object
-
-
-class User(db.Model, FeatherModel, UserEDMMixin):
+class User(db.Model, FeatherModel):
     """
     User database model.
 
@@ -131,33 +46,21 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     password = db.Column(
         column_types.PasswordType(max_length=128, schemes=('bcrypt',)), nullable=False
-    )  # can me migrated from EDM field "password"
+    )
 
-    full_name = db.Column(
-        db.String(length=120), default='', nullable=False
-    )  # can be migrated from EDM field "fullName"
-    website = db.Column(
-        db.String(length=120), nullable=True
-    )  # can be migrated from EDM field "userURL"
+    full_name = db.Column(db.String(length=120), default='', nullable=False)
+    website = db.Column(db.String(length=120), nullable=True)
     location = db.Column(db.String(length=120), default='', nullable=True)
-    affiliation = db.Column(
-        db.String(length=120), default='', nullable=True
-    )  # can be migrated from BE field "affiliation"
+    affiliation = db.Column(db.String(length=120), default='', nullable=True)
     forum_id = db.Column(db.String(length=120), default='', nullable=True)
     locale = db.Column(db.String(length=20), default='EN', nullable=True)
 
-    accepted_user_agreement = db.Column(
-        db.Boolean, default=False, nullable=False
-    )  # can be migrated from EDM field "acceptedUserAgreement"
+    accepted_user_agreement = db.Column(db.Boolean, default=False, nullable=False)
     use_usa_date_format = db.Column(db.Boolean, default=True, nullable=False)
     show_email_in_profile = db.Column(db.Boolean, default=False, nullable=False)
-    receive_notification_emails = db.Column(
-        db.Boolean, default=True, nullable=False
-    )  # can be migrated from BE field "receiveEmails"
+    receive_notification_emails = db.Column(db.Boolean, default=True, nullable=False)
     receive_newsletter_emails = db.Column(db.Boolean, default=False, nullable=False)
-    shares_data = db.Column(
-        db.Boolean, default=True, nullable=False
-    )  # can be migrated from BE field "sharing"
+    shares_data = db.Column(db.Boolean, default=True, nullable=False)
 
     default_identification_catalogue = db.Column(
         db.GUID, nullable=True
@@ -459,7 +362,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return user
 
     @classmethod
-    def find(cls, email=None, password=None, edm_login_fallback=True):
+    def find(cls, email=None, password=None):
         # Look-up via email
 
         if email is None:
@@ -484,40 +387,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                     if user.password == password:
                         return user
 
-                # As a fallback, check all EDMs if the user can login
-                if edm_login_fallback and is_extension_enabled('edm'):
-                    # We want to check the EDM even if we don't have a local user record
-                    if current_app.edm.check_user_login(email_candidate, password):
-                        log.info(
-                            'User authenticated via EDM: {!r}'.format(email_candidate)
-                        )
-
-                        if user is not None:
-                            # We authenticated a local user against an EDM (but the local password failed)
-                            if user.password != password:
-                                # The user passed the login with an EDM, update local password
-                                message = "Updating user's local password: {!r}".format(
-                                    user
-                                )
-                                AuditLog.audit_log_object_warning(log, user, message)
-                                log.warning(message)
-
-                                user = user.set_password(password)
-                            return user
-                        else:
-                            log.critical(
-                                'The user authenticated via EDM but has no local user record'
-                            )
-                            # Try syncing all users from EDM
-                            cls.edm_sync_all()
-                            # If the user was just synced, go grab it (recursively) and return
-                            user = cls.find(email=email, edm_login_fallback=False)
-                            return user
-
         # If we have gotten here, one of these things happened:
         #    1) the user wasn't found
         #    2) the user's password was provided and was incorrect
-        #    3) the user authenticated against the EDM but has no local user record
 
         return None
 

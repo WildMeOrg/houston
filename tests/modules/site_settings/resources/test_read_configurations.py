@@ -24,13 +24,12 @@ def test_read_sentry_dsn(flask_app_client, researcher_1):
     assert 'value' in sentry_dsn_val['response']['configuration']['sentryDsn']
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_read_edm_site_settings(flask_app_client, researcher_1):
+def test_read_site_settings(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
-    conf_utils.read_main_settings(flask_app_client, researcher_1, 'site.name', 400)
+    conf_utils.read_main_settings(flask_app_client, researcher_1, 'site.name')
     conf_utils.read_main_settings_definition(
         flask_app_client, researcher_1, 'site.name', 400
     )
@@ -50,11 +49,10 @@ def test_read_edm_site_settings(flask_app_client, researcher_1):
         assert suggested_vals[i]['scientificName'] == species[len(species) - i - 1]
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_alter_edm_settings(flask_app_client, admin_user):
+def test_alter_settings(flask_app_client, admin_user):
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
     assert 'value' in response.json['response']['configuration']['site.species']
     vals = response.json['response']['configuration']['site.species']['value']
@@ -84,6 +82,7 @@ def test_alter_edm_settings(flask_app_client, admin_user):
     )
 
 
+# TODO sort this out as part of DEX 1306
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
@@ -189,7 +188,7 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     patch_data = [
         {
             'op': 'remove',
-            'path': f'site.custom.customFields.Occurrence/{second["id"]}',
+            'path': f'site.custom.customFields.Sighting/{second["id"]}',
         },
     ]
     conf_utils.patch_main_setting(

@@ -11,7 +11,7 @@ import uuid
 from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
-from app.extensions import FeatherModel, db
+from app.extensions import CustomFieldMixin, FeatherModel, db
 from app.modules.names.models import DEFAULT_NAME_CONTEXT, Name
 from app.utils import HoustonException
 
@@ -105,7 +105,7 @@ class IndividualMergeRequestVote(db.Model):
                 db.session.merge(notification)
 
 
-class Individual(db.Model, FeatherModel):
+class Individual(db.Model, FeatherModel, CustomFieldMixin):
     """
     Individuals database model.
     """
@@ -116,13 +116,22 @@ class Individual(db.Model, FeatherModel):
 
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 
-    version = db.Column(db.BigInteger, default=None, nullable=True)
-
     encounters = db.relationship(
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
     names = db.relationship('Name', back_populates='individual', order_by='Name.created')
+
+    comments = db.Column(db.String(), nullable=True)
+    sex = db.Column(db.String(length=40), nullable=True)
+
+    time_of_birth = db.Column(db.DateTime, index=True, default=None, nullable=True)
+    time_of_death = db.Column(db.DateTime, index=True, default=None, nullable=True)
+
+    # Matches guid in site.species
+    taxonomy_guid = db.Column(db.GUID, index=True, nullable=True)
+
+    custom_fields = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
     # social_groups = db.relationship(
     #     'SocialGroupIndividualMembership',
@@ -151,6 +160,21 @@ class Individual(db.Model, FeatherModel):
 
         return ElasticsearchIndividualSchema
 
+    # this ensures these mapping field/type values get into the Elasticsearch mapping for Individual
+    #   as these may not have values on the first object index and therefore not be auto-mapped
+    @classmethod
+    def patch_elasticsearch_mappings(cls, mappings):
+        mappings = super(Individual, cls).patch_elasticsearch_mappings(mappings)
+        mappings['death'] = {'type': 'date'}
+        mappings['birth'] = {'type': 'date'}
+        mappings['names'] = {
+            'fields': {'keyword': {'ignore_above': 256, 'type': 'keyword'}},
+            'type': 'text',
+        }
+        mappings['firstName'] = {'type': 'keyword'}
+        mappings['comments'] = {'type': 'text'}
+        return mappings
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -173,29 +197,28 @@ class Individual(db.Model, FeatherModel):
     def remove_all_empty(cls):
         # Individual without encounters are an error that should never really happen
         for indiv in Individual.query.filter(~Individual.encounters.any()).all():
-            indiv.delete_from_edm()
             indiv.delete()
 
     def get_sex(self):
-        return self.get_edm_data_field('sex')
+        return self.sex
 
     def get_time_of_birth(self):
-        return self.get_edm_data_field('timeOfBirth')
+        return self.time_of_birth
 
     def get_time_of_death(self):
-        return self.get_edm_data_field('timeOfDeath')
+        return self.time_of_death
 
     def get_comments(self):
-        return self.get_edm_data_field('comments')
+        return self.comments
 
     def get_custom_fields(self):
-        return self.get_edm_data_field('customFields')
+        return self.custom_fields
 
     def get_taxonomy_guid(self):
-        return self.get_edm_data_field('taxonomy')
+        return self.taxonomy_guid
 
     def get_taxonomy_guid_inherit_encounters(self, sighting_fallback=True):
-        tx_guid = self.get_edm_data_field('taxonomy')
+        tx_guid = self.taxonomy_guid
         if tx_guid is None:
             for encounter in self.encounters:
                 tx_guid = encounter.get_taxonomy_guid(sighting_fallback)
@@ -208,21 +231,15 @@ class Individual(db.Model, FeatherModel):
         if inherit_encounters:
             taxonomy_guid = self.get_taxonomy_guid_inherit_encounters()
         else:
-            taxonomy_guid = self.get_edm_data_field('taxonomy')
+            taxonomy_guid = self.taxonomy_guid
+        if not taxonomy_guid:
+            return None
 
-        taxonomy_names = []
-        if taxonomy_guid:
-            from app.modules.site_settings.models import SiteSetting
+        from app.modules.site_settings.models import Taxonomy
 
-            site_species = SiteSetting.get_value('site.species')
-            for species in site_species:
-                if species.get('id') == taxonomy_guid:
-                    taxonomy_names = species.get('commonNames', []) + [
-                        species.get('scientificName')
-                    ]
-                    break
-
-        return taxonomy_names
+        # will raise ValueError if no good, but snh  :)
+        tx = Taxonomy(taxonomy_guid)
+        return tx.get_all_names()
 
     def get_taxonomy_object(self):
         tx_guid = self.get_taxonomy_guid()
@@ -309,13 +326,6 @@ class Individual(db.Model, FeatherModel):
     def remove_encounter(self, encounter):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
-
-            # If an individual has not been encountered, it does not exist
-            # Although... I'm not satisfied with this. Auto delete only if the object is persisted? Hmm...
-            # TODO Fix this
-            # if len(self.encounters) == 0 and  Individual.query.get(self.guid) is not None:
-            #     self.delete_from_edm(current_app)
-            #     self.delete()
 
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
@@ -539,6 +549,7 @@ class Individual(db.Model, FeatherModel):
                     rt_val = True
         return rt_val
 
+    # note: since encounters are only re-assigned, no cascade problems happen around merging
     def merge_from(self, *source_individuals, parameters=None):
         if (
             not source_individuals
@@ -553,46 +564,14 @@ class Individual(db.Model, FeatherModel):
         }
         for indiv in source_individuals:
             data['sourceIndividualIds'].append(str(indiv.guid))
-        response = current_app.edm.request_passthrough(
-            'individual.merge',
-            'post',
-            {
-                'data': data,
-                'headers': {'Content-Type': 'application/json'},
-            },
-            None,
-        )
-        if not response.ok:
-            AuditLog.backend_fault(
-                log,
-                f'non-OK ({response.status_code}) response from edm: {response.json()}',
-                self,
-            )
-            return response
 
-        result = response.json()['result']
-        error_msg = None
-        if 'targetId' not in result or result['targetId'] != str(self.guid):
-            error_msg = 'edm merge-results targetId does not match self.guid'
-        elif (
-            'merged' not in result
-            or not isinstance(result['merged'], dict)
-            or len(result['merged'].keys()) != len(source_individuals)
-        ):
-            error_msg = 'edm merge-results merged dict invalid'
-        if error_msg:
-            AuditLog.backend_fault(log, error_msg, self)
-            raise ValueError(error_msg)
+        # this replicates what edm used to return
+        rtn = {'targetId': str(self.guid), 'merged': {}}
 
-        # first we sanity-check the reported removed individuals vs what was requested
-        for merged_id in result['merged'].keys():
-            if merged_id not in data['sourceIndividualIds']:
-                error_msg = f'merge mismatch against sourceIndividualIds with {merged_id}'
-                AuditLog.backend_fault(log, error_msg, self)
-                raise ValueError(error_msg)
-            log.info(
-                f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
-            )
+        # mvp dictates that *target* individual dictates sex and name, unless parameters.override indicate otherwise
+        if parameters and parameters.get('override') and 'sex' in parameters['override']:
+            self.sex = parameters['override']['sex']
+        rtn['targetSex'] = self.sex
         self.merge_names(
             source_individuals,
             parameters
@@ -603,6 +582,9 @@ class Individual(db.Model, FeatherModel):
         # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this individual
         #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
         for indiv in source_individuals:
+            rtn['merged'][
+                str(indiv.guid)
+            ] = []  # list of encounters that were moved from this source_indiv
             for enc in indiv.encounters:
                 AuditLog.audit_log_object(
                     log, indiv, f'merge assigning our {enc} to {self}'
@@ -611,6 +593,7 @@ class Individual(db.Model, FeatherModel):
                     log, self, f'assigned {enc} from merged {indiv}'
                 )
                 enc.individual_guid = self.guid
+                rtn['merged'][str(indiv.guid)].append(str(enc.guid))
             self._consolidate_social_groups(indiv)
             indiv.delete()
         AuditLog.audit_log_object(
@@ -618,7 +601,7 @@ class Individual(db.Model, FeatherModel):
             self,
             f"merge SUCCESS from {data['sourceIndividualIds']}",
         )
-        return result
+        return rtn
 
     # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
     #   and initiates a request including time-out etc
@@ -983,18 +966,7 @@ class Individual(db.Model, FeatherModel):
         for individual in individuals:
             for name in individual.names:
                 name_contexts[name.context] = name_contexts.get(name.context, 0) + 1
-            edm_res = current_app.edm.get_dict(
-                'individual.data_complete', individual.guid
-            )
-            if (
-                not isinstance(edm_res, dict)
-                or not edm_res.get('success')
-                or 'result' not in edm_res
-            ):
-                raise ValueError(
-                    f'could not get individual data from edm for id={individual.guid}'
-                )
-            values['sex'].add(edm_res['result'].get('sex', None))
+            values['sex'].add(individual.get_sex())
         conflicts = {'name_contexts': []}
         for key in values.keys():
             if len(values[key]) > 1:
@@ -1019,41 +991,6 @@ class Individual(db.Model, FeatherModel):
                     relationship_membership.delete()
 
             db.session.delete(self)
-
-    def delete_from_edm(self):
-        response = current_app.edm.request_passthrough(
-            'individual.data',
-            'delete',
-            {},
-            self.guid,
-        )
-        return response
-
-    def get_debug_json(self):
-        from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
-
-        result_json = self.get_edm_data_with_enc_schema(
-            AugmentedIndividualApiEncounterSchema()
-        )
-
-        from .schemas import DebugIndividualSchema
-
-        sighting_schema = DebugIndividualSchema()
-        result_json.update(sighting_schema.dump(self).data)
-        return result_json
-
-    def get_detailed_json(self):
-        from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
-
-        result_json = self.get_edm_data_with_enc_schema(
-            AugmentedIndividualApiEncounterSchema()
-        )
-
-        from .schemas import DetailedIndividualSchema
-
-        individual_schema = DetailedIndividualSchema()
-        result_json.update(individual_schema.dump(self).data)
-        return result_json
 
     def get_social_groups_json(self):
         from app.modules.social_groups.schemas import DetailedSocialGroupSchema

@@ -212,55 +212,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
         cleanup = Cleanup('AssetGroup')
 
-        # Create sighting in EDM
-        try:
-            # Don't send the encounter guids. EDM doesn't use them but they confuse anyone reading logs
-            sent_data = self.sighting_config
-            for enc in sent_data['encounters']:
-                enc.pop('guid')
-            result_data = current_app.edm.request_passthrough_result(
-                'sighting.data',
-                'post',
-                {'data': sent_data, 'headers': {'Content-Type': 'application/json'}},
-                '',
-            )
-        except HoustonException as ex:
-            cleanup.rollback_and_abort(
-                ex.message,
-                'Sighting.post failed',
-                ex.status_code,
-                ex.get_val('error', 'Error'),
-            )
-
-        cleanup.add_guid(result_data['id'], Sighting)
-
-        # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
-        # and make houston for the sighting + encounters
-
-        # encounters via self.sighting_config and edm (result_data) need to have same count!
-        if ('encounters' in self.sighting_config and 'encounters' not in result_data) or (
-            'encounters' not in self.sighting_config and 'encounters' in result_data
-        ):
-            cleanup.rollback_and_houston_exception(
-                log,
-                'Missing encounters between requested config and result',
-                'Sighting.post missing encounters in one of %r or %r'
-                % (self.sighting_config, result_data),
-            )
-        if not len(self.sighting_config['encounters']) == len(result_data['encounters']):
-            cleanup.rollback_and_houston_exception(
-                log,
-                'Imbalance in encounters between data and result',
-                'Sighting.post imbalanced encounters in %r or %r'
-                % (self.sighting_config, result_data),
-            )
-
         sighting = Sighting(
-            guid=result_data['id'],
             # asset_group_sighting=self,  -- see note below
             name=self.sighting_config.get('name', ''),
             stage=SightingStage.identification,
-            version=result_data.get('version', 2),
+            location_guid=self.sighting_config.get('locationId'),
+            verbatim_locality=self.sighting_config.get('verbatimLocality'),
+            decimal_latitude=self.sighting_config.get('decimalLatitude'),
+            decimal_longitude=self.sighting_config.get('decimalLongitude'),
+            custom_fields=self.sighting_config.get('customFields'),
         )
         try:
             sighting.set_time_from_data(self.sighting_config)
@@ -290,7 +250,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         for encounter_num in range(len(self.sighting_config['encounters'])):
             req_data = self.sighting_config['encounters'][encounter_num]
-            res_data = result_data['encounters'][encounter_num]
             try:
                 owner_guid = self.asset_group.owner_guid
                 if 'ownerEmail' in req_data:
@@ -306,12 +265,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 assert 'guid' in req_data
                 new_encounter = Encounter(
-                    guid=res_data['id'],
-                    version=res_data.get('version', 2),
                     individual=individual,
                     owner_guid=owner_guid,
                     asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,
+                    decimal_latitude=req_data.get('decimalLatitude'),
+                    decimal_longitude=req_data.get('decimalLongitude'),
+                    location_guid=req_data.get('locationId'),
+                    taxonomy_guid=req_data.get('taxonomy'),
+                    verbatim_locality=req_data.get('verbatimLocality'),
+                    sex=req_data.get('sex'),
+                    custom_fields=req_data.get('customFields', {}),
                 )
                 new_encounter.set_time_from_data(req_data)
 
@@ -364,7 +328,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         AuditLog.user_create_object(
             log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
         )
-
         return sighting
 
     def has_filename(self, filename):
@@ -471,7 +434,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         annot_schema = BaseAnnotationSchema()
         enc_json = copy.deepcopy(encounter_data)
         enc_json['createdHouston'] = self.created
-        enc_json['updatedHouston'] = self.updated
+        enc_json['created'] = self.created
+        enc_json['updated'] = self.updated
         enc_json['annotations'] = []
         if 'annotations' in encounter_data.keys():
             enc_json['annotations'] = []
@@ -1446,7 +1410,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def delete(self):
         AuditLog.delete_object(log, self)
         if self.sighting:
-            self.sighting[0].delete_from_edm_and_houston()
+            self.sighting[0].delete_cascade()
 
         with db.session.begin(subtransactions=True):
             db.session.delete(self)

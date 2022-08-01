@@ -64,15 +64,9 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     )
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    # This uses the fact that anything that is an EDM sighting path is in the
+    # This uses the fact that anything that is a sighting path is in the
     # AssetGroupSighting in the same format
-    PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES_EDM + (
-        '/idConfigs',
-        '/assetReferences',
-        '/name',
-        '/time',
-        '/timeSpecificity',
-    )
+    PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES + ('/assetReferences',)
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -213,7 +207,7 @@ class PatchAssetGroupSightingAsSightingParameters(
 ):
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    # This uses the fact that anything that is an EDM sighting path is in the
+    # This uses the fact that anything that is a sighting path is in the
     # AssetGroupSighting in the same format
     @classmethod
     def replace(cls, obj, field, value, state):
@@ -258,12 +252,8 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
 
-    PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
+    PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES + (
         '/ownerEmail',
-        '/owner',  # Needed as that is the field name in the encounter that we're pretending to be
-        '/time',
-        '/timeSpecificity',
-        '/annotations',
         '/individualUuid',
     )
 

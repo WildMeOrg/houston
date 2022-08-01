@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import NoReturn, Optional, Union
 from uuid import UUID
 
-from flask import Blueprint, Flask, current_app, request
+from flask import Blueprint, Flask
 
 from app.extensions.api import abort
 
@@ -28,6 +28,56 @@ def fail_on_missing_static_folder(
         raise RuntimeError(
             f'static folder improperly configured - could not locate a valid installation at: {folder}'
         )
+
+
+def is_valid_sex(value):
+    return value is None or value in {'male', 'female', 'unknown'}
+
+
+def is_valid_latitude(value):
+    if not isinstance(value, float):
+        return False
+    max_latitude = 90.0
+    min_latitude = -90.0
+
+    # Validate range
+    return min_latitude <= value <= max_latitude
+
+
+def is_valid_longitude(value):
+    if not isinstance(value, float):
+        return False
+    max_longitude = 180.0
+    min_longitude = -180.0
+
+    # Validate range
+    return min_longitude <= value <= max_longitude
+
+
+# this is a messy one. do we want to require timezone?  do we accept
+#   anything other than "full" ISO-8601?  for now just taking only full
+#   date + time (seconds optional) and ignoring timezone.  ymmv / caveat emptor / etc
+def is_valid_datetime_string(dtstr):
+    # the 16 char is to prevent (valid 8601) date-only strings like '2001-02-03' and force a time (at least HH:MM)
+    if not isinstance(dtstr, str) or len(dtstr) < 16:
+        return False
+    try:
+        iso8601_to_datetime_generic(dtstr)
+        return True
+    except Exception as ex:
+        log.warning(f'is_valid_datetime_string failed on {dtstr}: {str(ex)}')
+    return False
+
+
+# this makes no attempt to care about timezone, so beware!  it also will likely throw some kind of
+#   exception -- probably ValueError -- if the input is incorrect.
+#
+# NOTE: there are quite a few more datetime utilites in app/utils, so check that out too!
+#   in particular, related to this one is:  iso8601_to_datetime_with_timezone()
+def iso8601_to_datetime_generic(iso):
+    import datetime
+
+    return datetime.datetime.fromisoformat(iso)
 
 
 def is_valid_uuid_string(guid):
@@ -61,19 +111,12 @@ class Cleanup(object):
         log_message=None,
         error_fields=None,
     ):
-        from app.modules.sightings.models import Sighting
 
         if log_message is None:
             log_message = message
         log.error(
             f'Bailing on {self.name} creation: {log_message} (error_fields {error_fields})'
         )
-
-        for alloc_guid in self.allocated_guids:
-            if alloc_guid['type'] == Sighting:
-                guid = alloc_guid['guid']
-                log.warning(f'Cleanup removing Sighting {guid} from EDM ')
-                Sighting.delete_from_edm_by_guid(current_app, guid, request)
 
         for alloc_obj in self.allocated_objs:
             log.warning('Cleanup removing %r' % alloc_obj)

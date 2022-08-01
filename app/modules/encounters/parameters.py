@@ -7,6 +7,7 @@ import logging
 
 from flask_login import current_user
 
+import app.modules.utils as util
 from app.modules.users.permissions import rules
 from app.utils import HoustonException
 from flask_restx_patched import Parameters, PatchJSONParameters
@@ -24,8 +25,12 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
 class PatchEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
 
-    PATH_CHOICES_EDM = (
-        '/comments',
+    # Valid options for patching are replace '/owner'
+    PATH_CHOICES = (
+        '/owner',
+        '/annotations',
+        '/time',
+        '/timeSpecificity',
         '/customFields',
         '/decimalLatitude',
         '/decimalLongitude',
@@ -34,16 +39,6 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
         '/taxonomy',
         '/verbatimLocality',
     )
-
-    # Valid options for patching are replace '/owner'
-    PATH_CHOICES_HOUSTON = (
-        '/owner',
-        '/annotations',
-        '/time',
-        '/timeSpecificity',
-    )
-
-    PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
     OPERATION_CHOICES = (
         PatchJSONParameters.OP_REPLACE,
@@ -96,6 +91,54 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
         elif field == 'time' or field == 'timeSpecificity':
             ret_val = ComplexDateTime.patch_replace_helper(obj, field, value)
 
+        elif field == 'customFields':
+            # taken directly from edm code:
+            #   passed can take two formats:
+            #   - { "id": "cfdId", "value": "some value" }
+            #   - { "cfdId0": "value0", ..., "cfdIdN": "valueN" }
+            # possible backstory: DEX-753
+            assert isinstance(value, dict), 'customFields must be passed a json object'
+            if value.get('id'):
+                assert value.get('value'), 'customFields id/value format needs both'
+                value = {value['id']: value['value']}
+            obj.set_custom_field_values(value)  # does all the validation etc
+            ret_val = True
+        elif field == 'decimalLatitude':
+            if not util.is_valid_latitude(value):
+                raise HoustonException(
+                    log, f'decimalLatitude value passed ({value}) is invalid'
+                )
+            obj.decimal_latitude = value
+            ret_val = True
+        elif field == 'decimalLongitude':
+            if not util.is_valid_longitude(value):
+                raise HoustonException(
+                    log, f'decimalLongitude value passed ({value}) is invalid'
+                )
+            obj.decimal_longitude = value
+            ret_val = True
+        elif field == 'locationId':
+            if not util.is_valid_uuid_string(value):
+                raise HoustonException(
+                    log, f'locationId value passed ({value}) is not a guid'
+                )
+            obj.location_guid = value
+            ret_val = True
+        elif field == 'verbatimLocality':
+            obj.verbatim_locality = value
+            ret_val = True
+        elif field == 'taxonomy':
+            if not util.is_valid_uuid_string(value):
+                raise HoustonException(
+                    log, f'taxonomy value passed ({value}) is not a guid'
+                )
+            obj.taxonomy_guid = value
+            ret_val = True
+        elif field == 'sex':
+            if not util.is_valid_sex(value):
+                raise HoustonException(log, f'invalid sex value passed ({value})')
+            obj.sex = value
+            ret_val = True
         return ret_val
 
     @classmethod

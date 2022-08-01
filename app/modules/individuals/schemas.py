@@ -117,6 +117,15 @@ class DetailedIndividualSchema(NamedIndividualSchema):
     featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
     social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
     relationships = base_fields.Nested(IndividualRelationshipSchema, many=True)
+    customFields = base_fields.Function(lambda ind: ind.get_custom_fields())
+    encounters = base_fields.Nested(
+        DetailedEncounterSchema,
+        attribute='encounters',
+        many=True,
+    )
+    sex = base_fields.Function(lambda ind: ind.get_sex())
+    timeOfBirth = base_fields.DateTime(attribute='time_of_birth')
+    timeOfDeath = base_fields.DateTime(attribute='time_of_death')
 
     class Meta(NamedIndividualSchema.Meta):
         fields = NamedIndividualSchema.Meta.fields + (
@@ -125,6 +134,12 @@ class DetailedIndividualSchema(NamedIndividualSchema):
             'featuredAssetGuid',
             'social_groups',
             'relationships',
+            Individual.comments.key,
+            'customFields',
+            'timeOfBirth',
+            'timeOfDeath',
+            'sex',
+            'encounters',
         )
         dump_only = NamedIndividualSchema.Meta.dump_only + (
             Individual.created.key,
@@ -265,11 +280,11 @@ class DebugIndividualSchema(DetailedIndividualSchema):
     Debug Individual schema exposes all fields.
     """
 
-    houston_encounters = base_fields.Nested(
+    encounters = base_fields.Nested(
         DetailedEncounterSchema,
         attribute='encounters',
         many=True,
     )
 
     class Meta(DetailedIndividualSchema.Meta):
-        fields = DetailedIndividualSchema.Meta.fields + ('houston_encounters',)
+        fields = DetailedIndividualSchema.Meta.fields + ('encounters',)

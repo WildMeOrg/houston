@@ -93,7 +93,7 @@ jobs:
         if: matrix.app-context == 'codex'
         run: |
           set -ex
-          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync edm houston celery-beat celery-worker
+          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync houston celery-beat celery-worker
 
       - name: Check docker-compose status
         run: |

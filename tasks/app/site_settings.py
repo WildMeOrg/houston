@@ -32,7 +32,7 @@ def get(context, key):
 
 @app_context_task(
     help={
-        'key': 'Setting name, e.g. header_image (note also supports edm configuration keys like site.name)',
+        'key': 'Setting name, e.g. header_image (note also supports configuration keys like site.name)',
     }
 )
 def get_value(context, key, default=None):

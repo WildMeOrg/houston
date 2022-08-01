@@ -5,10 +5,8 @@ import pytest
 
 from app.modules.site_settings.models import Taxonomy
 from tests.modules.site_settings.resources import utils as setting_utils
-from tests.utils import extension_unavailable
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_taxonomy(flask_app_client, admin_user):
     conf_tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     with pytest.raises(ValueError):

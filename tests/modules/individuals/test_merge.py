@@ -17,23 +17,15 @@ from tests.utils import module_unavailable
     reason='Individuals module disabled',
 )
 def test_merge(db, flask_app_client, researcher_1, request, test_root):
+    import uuid
+
     from app.modules.individuals.models import Individual
 
     sighting_data = {
-        'encounters': [
-            {
-                'locationId': 'one',
-            },
-            {
-                'locationId': 'two',
-            },
-            {
-                'locationId': 'three',
-            },
-        ],
+        'encounters': [{}, {}, {}],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
 
     uuids = sighting_utils.create_sighting(

@@ -238,14 +238,7 @@ class MainConfiguration(Resource):
                 resp = {'key': path}
                 return resp
             else:
-                passthrough_kwargs = {'data': data}
-
-                files = request.files
-                if len(files) > 0:
-                    passthrough_kwargs['files'] = files
-                response = SiteSetting.set_edm_rest_data(path, passthrough_kwargs)
-                if 'updated' in response:
-                    ret_data['updated'] = response['updated']
+                abort(400, f'{path} not supported')
 
         except HoustonException as ex:
             abort(ex.status_code, ex.message)
@@ -349,17 +342,13 @@ class SiteInfo(Resource):
         else:
             # sage returns a non 200 response
             sage_version = repr(sage_version)
-        edm_version = current_app.edm.get_dict('version.dict', None)
-        if not isinstance(edm_version, dict):
-            # edm returns a non 200 response
-            edm_version = repr(edm_version)
+
         return {
             'houston': {
                 'version': app.version.version,
                 'git_version': app.version.git_revision,
             },
             'sage': sage_version,
-            'edm': edm_version,
         }
 
 

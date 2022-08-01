@@ -76,6 +76,8 @@ if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     coverage run --append `which invoke` codex.projects.list-all
     coverage run --append `which invoke` codex.job-control.print-all-ags-jobs
     coverage run --append `which invoke` codex.job-control.print-all-sighting-jobs
+    coverage run --append `which invoke` codex.job-control.print-unreviewed-sighting-jobs
+    coverage run --append `which invoke` codex.job-control.print-processed-sighting-jobs
 fi
 
 # test sage.*

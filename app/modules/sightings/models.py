@@ -770,12 +770,21 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             details[-1]['job_id'] = job_id
 
             if verbose:
-                details[-1]['request'] = self.build_identification_request(
-                    self.jobs[job_id].get('matching_set'),
-                    self.jobs[job_id]['annotation'],
-                    job_id,
-                    self.jobs[job_id]['algorithm'],
-                )
+                annot = None
+                annot_guid = self.jobs[job_id].get('annotation')
+                if annot_guid:
+                    from app.modules.annotations.models import Annotation
+
+                    annot = Annotation.query.get(annot_guid)
+                if not annot:
+                    details[-1]['request'] = 'No annotation in job'
+                else:
+                    details[-1]['request'] = self.build_identification_request(
+                        annot,
+                        self.jobs[job_id].get('matching_set'),
+                        job_id,
+                        self.jobs[job_id]['algorithm'],
+                    )
                 try:
                     sage_data = current_app.sage.request_passthrough_result(
                         'engine.result', 'get', {}, job_id

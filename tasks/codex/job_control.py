@@ -32,9 +32,30 @@ def print_all_ags_jobs(context, ags_guid=None, verbose=True):
 
 
 @app_context_task()
-def print_all_sighting_jobs(context, sighting_guid=None, verbose=True):
+def print_all_sighting_jobs(context, sighting_guid=None, verbose=True, debug=False):
     """Print out the job status for all the identification jobs for the sighting"""
     from app.modules.sightings.models import Sighting, SightingStage
 
+    if debug:
+        breakpoint()
+
     for sighting in _get_jobs(Sighting, SightingStage.identification, sighting_guid):
+        pprint.pprint(sighting.get_job_debug(None, verbose))
+
+
+@app_context_task()
+def print_unreviewed_sighting_jobs(
+    context, sighting_guid=None, verbose=True, debug=False
+):
+    from app.modules.sightings.models import Sighting, SightingStage
+
+    for sighting in _get_jobs(Sighting, SightingStage.un_reviewed, sighting_guid):
+        pprint.pprint(sighting.get_job_debug(None, verbose))
+
+
+@app_context_task()
+def print_processed_sighting_jobs(context, sighting_guid=None, verbose=True, debug=False):
+    from app.modules.sightings.models import Sighting, SightingStage
+
+    for sighting in _get_jobs(Sighting, SightingStage.processed, sighting_guid):
         pprint.pprint(sighting.get_job_debug(None, verbose))

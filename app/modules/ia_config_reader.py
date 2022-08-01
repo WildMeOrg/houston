@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import os.path as path
+import pathlib
 
 log = logging.getLogger(__name__)
 
@@ -27,14 +28,37 @@ def _get_species_key(genus_species):
     return key
 
 
+# recursive version of python dict.update
+def recurse_update(dict1, dict2):
+    for key, val in dict2.items():
+        if isinstance(val, dict):
+            dict1[key] = recurse_update(dict1.get(key, {}), val)
+        elif isinstance(val, list):
+            dict1[key] = dict1.get(key, []) + val
+        else:
+            dict1[key] = val
+    return dict1
+
+
 class IaConfig:
-    def __init__(self, name='zebra'):
-        self.name = name
-        self.fname = f'IA.{name}.json'
-        config_path = path.join('ia-configs', self.fname)
-        assert path.isfile(config_path), f'Could not find config at path {config_path}'
-        with open(config_path, 'r') as file:
-            self.config_dict = json.load(file)
+    def __init__(self):
+        # self.name = name
+        # self.fname = f'IA.{name}.json'
+        # config_path = path.jpytest -s tests/modules/test_ia_config.py::test_get_seal_detectors --no-elasticsearchoin('ia-configs', self.fname)
+        # assert path.isfile(config_path), f'Could not find config at path {config_path}'
+        # with open(config_path, 'r') as file:
+        #     self.config_dict = json.load(file)
+        self.config_dict = {}
+        for conf_fpath in pathlib.Path('ia-configs').glob('IA.*.json'):
+            self.validate_config_file(conf_fpath)
+            with open(conf_fpath, 'r') as file:
+                _conf_dict = json.load(file)
+                self.config_dict = recurse_update(self.config_dict, _conf_dict)
+
+    def validate_config_file(self, conf_fpath):
+        # TODO
+        assert path.isfile(conf_fpath), f'Could not find config at path {conf_fpath}'
+        return True
 
     def get(self, period_separated_keys):
         keys = period_separated_keys.split('.')
@@ -194,6 +218,6 @@ class IaConfig:
         return result
 
 
-ic = IaConfig()
+# ic = IaConfig()
 
-ic.get_detect_model_frontend_data()
+# ic.get_detect_model_frontend_data()

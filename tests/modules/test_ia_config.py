@@ -2,20 +2,25 @@
 
 from app.modules.ia_config_reader import IaConfig
 
-# note that these tests rely on the IA.zebra.json file, which if changed, might invalidate tests.
-TEST_CONFIG_NAME = 'zebra'
+# These tests validate not only the parsing code but config files themselves
+# When you add a new config file, add parsing tests here akin to seals
+
+SEAL_SPECIES = [
+    'Halichoerus grypus',
+    'Monachus monachus',
+    'Neomonachus schauinslandi',
+    'Phoca vitulina',
+    'Pusa hispida saimensis',
+]
 
 
 def test_ia_config_creation(flask_app_client):
-    config_name = TEST_CONFIG_NAME
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
-    assert ia_config_reader.name is config_name
-    assert ia_config_reader.fname.endswith('.json')
+    ia_config_reader = IaConfig()
     assert type(ia_config_reader.config_dict) is dict
 
 
 def test_at_links_detector(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     nolink_quagga_detectors = ia_config_reader.get_detectors_dict('Equus quagga')
     # grevy config links to quagga config
     linked_grevy_detectors = ia_config_reader.get_detectors_dict('Equus grevyi')
@@ -23,7 +28,7 @@ def test_at_links_detector(flask_app_client):
 
 
 def test_at_links_identifier(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     nolink_zebra_ia_class = ia_config_reader.get_identifiers_dict('Equus quagga', 'zebra')
     # below species/ia_class links to config for above with two levels of linking
     linked_grevy_ia_class = ia_config_reader.get_identifiers_dict(
@@ -33,7 +38,7 @@ def test_at_links_identifier(flask_app_client):
 
 
 def test_detector_dict_vs_link(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     species = 'Equus quagga'
     detectors_list = ia_config_reader.get_detectors_list(species)
     detectors_dict = ia_config_reader.get_detectors_dict(species)
@@ -47,7 +52,7 @@ def test_detector_dict_vs_link(flask_app_client):
 
 
 def test_identifier_dict_vs_link(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     species = 'Equus quagga'
     ia_class = 'zebra'
     identifiers_list = ia_config_reader.get_identifiers_list(species, ia_class)
@@ -62,7 +67,7 @@ def test_identifier_dict_vs_link(flask_app_client):
 
 
 def test_get_identifiers_zebras(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     species = 'Equus quagga'
     ia_class = 'zebra'
     identifiers = ia_config_reader.get_identifiers_dict(species, ia_class)
@@ -78,7 +83,7 @@ def test_get_identifiers_zebras(flask_app_client):
 
 
 def test_get_detectors_zebras(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     species = 'Equus quagga'
     detectors = ia_config_reader.get_detectors_dict(species)
 
@@ -99,7 +104,7 @@ def test_get_detectors_zebras(flask_app_client):
 
 
 def test_get_named_detector_config_african_terrestrial(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     detector_name = 'african_terrestrial'
     detector_config = ia_config_reader.get_named_detector_config(detector_name)
 
@@ -113,16 +118,108 @@ def test_get_named_detector_config_african_terrestrial(flask_app_client):
     assert detector_config == desired_config
 
 
-def test_get_configured_species(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+def test_get_zebra_species(flask_app_client):
+    ia_config_reader = IaConfig()
     species = ia_config_reader.get_configured_species()
     desired_species = ['Equus grevyi', 'Equus quagga']
-    assert species == desired_species
+    assert desired_species <= species
 
 
 def test_get_detect_model_frontend_data(flask_app_client):
-    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    ia_config_reader = IaConfig()
     desired_frontend_data = {
+        'seals_v0': {
+            'name': 'Seal detector',
+            'description': 'Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals',
+            'supported_species': [
+                {
+                    'scientific_name': 'Halichoerus grypus',
+                    'common_name': 'gray seal',
+                    'itis_id': 180653,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+                {
+                    'scientific_name': 'Monachus monachus',
+                    'common_name': 'Mediterranean monk seal',
+                    'itis_id': 180659,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+                {
+                    'scientific_name': 'Neomonachus schauinslandi',
+                    'common_name': 'Hawaiian monk seal',
+                    'itis_id': 1133135,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+                {
+                    'scientific_name': 'Phoca vitulina',
+                    'common_name': 'harbor seal',
+                    'itis_id': 180649,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+                {
+                    'scientific_name': 'Pusa hispida saimensis',
+                    'common_name': 'Saimaa seal',
+                    'itis_id': 622064,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                        'seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+            ],
+        },
         'african_terrestrial': {
             'name': 'African terrestrial mammal detector',
             'description': 'Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.',
@@ -146,28 +243,20 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     },
                 },
             ],
-        }
+        },
     }
     frontend_data = ia_config_reader.get_detect_model_frontend_data()
-    assert frontend_data == desired_frontend_data
+    assert desired_frontend_data == frontend_data
 
 
 def test_get_seal_species(flask_app_client):
-    ia_config_reader = IaConfig('seal')
+    ia_config_reader = IaConfig()
     species = ia_config_reader.get_configured_species()
-    desired_species = [
-        'Halichoerus grypus',
-        'Monachus monachus',
-        'Neomonachus schauinslandi',
-        'Phoca vitulina',
-        'Pusa hispida saimensis',
-    ]
-    assert set(species) == set(desired_species)
+    assert set(SEAL_SPECIES) <= set(species)
 
 
 def test_get_seal_detectors(flask_app_client):
-    ia_config_reader = IaConfig('seal')
-    specieses = ia_config_reader.get_configured_species()
+    ia_config_reader = IaConfig()
     desired_detector_config = {
         '_detectors.seals_v0': {
             'config_dict': {
@@ -179,17 +268,17 @@ def test_get_seal_detectors(flask_app_client):
                 'sensitivity': 0.63,
                 'use_labeler_species': True,
             },
+            'name': 'Seal detector',
             'description': 'Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals',
         }
     }
-    for species in specieses:
+    for species in SEAL_SPECIES:
         detector = ia_config_reader.get_detectors_dict(species)
         assert detector == desired_detector_config
 
 
 def test_get_seal_identifiers(flask_app_client):
-    ia_config_reader = IaConfig('seal')
-    specieses = ia_config_reader.get_configured_species()
+    ia_config_reader = IaConfig()
     desired_identifier_config = {
         'hotspotter': {
             'frontend': {'description': 'HotSpotter pattern-matcher'},
@@ -197,7 +286,7 @@ def test_get_seal_identifiers(flask_app_client):
         }
     }
     # each seal species, for each supported ia_class, should use the same hotspotter config
-    for species in specieses:
+    for species in SEAL_SPECIES:
         ia_classes = ia_config_reader.get_supported_ia_classes(species)
         for ia_class in ia_classes:
             identifiers = ia_config_reader.get_identifiers_dict(species, ia_class)

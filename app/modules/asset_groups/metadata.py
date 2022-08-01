@@ -492,12 +492,6 @@ class AssetGroupMetadata(object):
         self._validate_sightings()
         self.data_processed = AssetGroupMetadata.DataProcessed.sightings
 
-        if not self.bulk_upload and len(self.request['sightings'][0]['encounters']) != 1:
-            raise AssetGroupMetadataError(
-                log,
-                'Incorrect num encounters in form submission, there must be exactly one',
-            )
-
         from app.modules.users.models import User
 
         if current_user and not current_user.is_anonymous:

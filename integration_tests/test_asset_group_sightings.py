@@ -131,6 +131,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'customFields': sighting_custom_fields,
                         'decimalLatitude': -39.063228,
                         'decimalLongitude': 21.832598,
+                        'encounters': [ags_encounter],
+                        'locationId': 'PYTEST',
                         'locationId': ags['config']['sighting']['locationId'],
                         'encounters': [ags_encounter],
                         'time': '2000-01-01T01:01:01+00:00',
@@ -225,7 +227,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'encounterCounts': {},
         'encounters': [
             {
-                'annotations': [],
+                'annotations': encounters[0]['annotations'],
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'created': encounters[0]['created'],

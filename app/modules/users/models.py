@@ -12,7 +12,7 @@ from flask_login import current_user  # NOQA
 from sqlalchemy_utils import types as column_types
 
 import app.extensions.logging as AuditLog
-from app.extensions import FeatherModel, db
+from app.extensions import HoustonModel, db
 from app.extensions.api.parameters import _get_is_static_role_property
 from app.extensions.auth import security
 from app.extensions.email import Email
@@ -21,7 +21,7 @@ from app.modules import is_module_enabled, module_required
 log = logging.getLogger(__name__)
 
 
-class User(db.Model, FeatherModel):
+class User(db.Model, HoustonModel):
     """
     User database model.
 

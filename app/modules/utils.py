@@ -6,8 +6,6 @@ from uuid import UUID
 
 from flask import Blueprint, Flask
 
-from app.extensions.api import abort
-
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -88,65 +86,3 @@ def is_valid_uuid_string(guid):
     except ValueError:
         return False
     return True
-
-
-# Many module resources create things and then need to clean up when it fails. This helper class cleans up
-class Cleanup(object):
-    def __init__(self, name):
-        self.name = name
-        # For things where a guid has been created on EDM but not an object in Houston
-        self.allocated_guids = []
-        # Real things, that must have a delete method
-        self.allocated_objs = []
-
-    def add_guid(self, guid, obj_type):
-        self.allocated_guids.append({'guid': guid, 'type': obj_type})
-
-    def add_object(self, obj):
-        self.allocated_objs.append(obj)
-
-    def rollback(
-        self,
-        message='Unknown error',
-        log_message=None,
-        error_fields=None,
-    ):
-
-        if log_message is None:
-            log_message = message
-        log.error(
-            f'Bailing on {self.name} creation: {log_message} (error_fields {error_fields})'
-        )
-
-        for alloc_obj in self.allocated_objs:
-            log.warning('Cleanup removing %r' % alloc_obj)
-            alloc_obj.delete()
-
-    def rollback_and_abort(
-        self,
-        message='Unknown error',
-        log_message=None,
-        status_code=400,
-        error_fields=None,
-    ):
-        self.rollback(message, log_message, error_fields)
-        abort(status_code, message, errorFields=error_fields)
-
-    def rollback_and_houston_exception(
-        self,
-        log,
-        message='Unknown error',
-        log_message=None,
-        status_code=400,
-        error_fields=None,
-    ):
-        from app.utils import HoustonException
-
-        self.rollback(message, log_message, error_fields)
-        raise HoustonException(
-            log,
-            status_code=status_code,
-            message=message,
-            log_message=log_message,
-            error=error_fields,
-        )

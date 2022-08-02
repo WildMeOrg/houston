@@ -251,13 +251,13 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
         flask_app_client, admin_user, 'block'
     )
     config_def_response_researcher = conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1, '__bundle_setup'
+        flask_app_client, researcher_1, 'block'
     )
     config_response_admin = conf_utils.read_main_settings(
         flask_app_client, admin_user, 'block'
     )
     config_response_researcher = conf_utils.read_main_settings(
-        flask_app_client, researcher_1, '__bundle_setup'
+        flask_app_client, researcher_1, 'block'
     )
 
     # admin should be able to see uname & pass, researcher should not.

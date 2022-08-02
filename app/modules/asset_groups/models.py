@@ -193,7 +193,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def commit(self):
         from app.extensions.elapsed_time import ElapsedTime
-        from app.modules.utils import Cleanup
 
         timer = ElapsedTime()
 
@@ -210,7 +209,25 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'AssetGroupSighting {self.guid} has no metadata',
                 obj=self,
             )
-        cleanup = Cleanup('AssetGroup')
+
+        if 'time' not in self.sighting_config:
+            raise HoustonException(
+                log,
+                'Must have time/timeSpecificity values',
+                obj=self,
+            )
+
+        from app.modules.complex_date_time.models import ComplexDateTime
+
+        try:
+            # will raise ValueError if data no good
+            time = ComplexDateTime.from_data(self.sighting_config)
+        except ValueError as ve:
+            raise HoustonException(
+                log,
+                f'Problem with sighting time/timeSpecificity values: {str(ve)}',
+                obj=self,
+            )
 
         sighting = Sighting(
             # asset_group_sighting=self,  -- see note below
@@ -221,21 +238,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             decimal_latitude=self.sighting_config.get('decimalLatitude'),
             decimal_longitude=self.sighting_config.get('decimalLongitude'),
             custom_fields=self.sighting_config.get('customFields'),
+            time=time,
         )
-        try:
-            sighting.set_time_from_data(self.sighting_config)
-        except ValueError as ve:
-            cleanup.rollback_and_abort(
-                f'Problem with sighting time/timeSpecificity values: {str(ve)}',
-                f"invalid time ({self.sighting_config.get('time')}) or timeSpecificity ({self.sighting_config.get('timeSpecificity')}): {str(ve)}",
-                error_fields=['time'],
-            )
-        if not sighting.time:
-            cleanup.rollback_and_houston_exception(
-                log,
-                'Must have time/timeSpecificity values',
-                'Must have time/timeSpecificity values',
-            )
 
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
@@ -245,8 +249,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             asset = self.asset_group.get_asset_for_file(reference)
             assert asset
             sighting.add_asset(asset)
-
-        cleanup.add_object(sighting)
 
         for encounter_num in range(len(self.sighting_config['encounters'])):
             req_data = self.sighting_config['encounters'][encounter_num]
@@ -310,7 +312,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     db.session.add(new_encounter)
 
             except Exception as ex:
-                cleanup.rollback_and_houston_exception(
+                sighting.delete()
+                raise HoustonException(
                     log,
                     f'Problem with creating encounter [{encounter_num}]: {ex}',
                     f'{ex} on encounter {encounter_num}: enc={req_data}',

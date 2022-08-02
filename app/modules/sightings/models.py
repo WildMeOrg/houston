@@ -12,7 +12,7 @@ from http import HTTPStatus
 from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
-from app.extensions import CustomFieldMixin, FeatherModel, HoustonModel, db
+from app.extensions import CustomFieldMixin, HoustonModel, db
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
@@ -54,7 +54,7 @@ class SightingStage(str, enum.Enum):
     failed = 'failed'
 
 
-class Sighting(db.Model, FeatherModel, CustomFieldMixin):
+class Sighting(db.Model, HoustonModel, CustomFieldMixin):
     """
     Sightings database model.
     """

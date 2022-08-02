@@ -38,25 +38,6 @@ def current_user_has_merge_request_access(individuals):
     return False
 
 
-class IndividualCleanup(object):
-    def __init__(self):
-        self.individual_guid = None
-
-    def rollback_and_abort(self, message='Unknown Error', code=400):
-        if self.individual_guid is not None:
-            failed_individual = Individual.query.get(self.individual_guid)
-
-            if failed_individual is not None:
-                message = f'The Individual with guid {self.individual_guid} has been deleted from Houston'
-                AuditLog.audit_log_object_error(log, failed_individual, message)
-                log.error(message)
-
-                with db.session.begin():
-                    db.session.delete(failed_individual)
-
-        abort(code, message)
-
-
 @api.route('/')
 @api.login_required(oauth_scopes=['individuals:read'])
 class Individuals(Resource):
@@ -94,8 +75,6 @@ class Individuals(Resource):
 
         timer = ElapsedTime()
 
-        cleanup = IndividualCleanup()
-
         request_in = {}
         try:
             request_in_ = json.loads(request.data)
@@ -108,36 +87,23 @@ class Individuals(Resource):
             or not isinstance(request_in['encounters'], list)
             or len(request_in['encounters']) < 1
         ):
-            cleanup.rollback_and_abort(message='No Encounters in POST')
+            abort(400, 'No Encounters in POST')
 
         from app.modules.encounters.models import Encounter
+
+        encounters = []
 
         for enc_json in request_in['encounters']:
             if enc_json['id'] is not None:
                 encounter = Encounter.query.get(enc_json['id'])
                 if encounter is not None and encounter.individual_guid is not None:
-                    cleanup.rollback_and_abort(
-                        message='Individual POST included an encounter that already has an Individual.'
+                    abort(
+                        400,
+                        'Individual POST included an encounter that already has an Individual.',
                     )
+                encounters.append(encounter)
 
-        encounters = []
-
-        for result_encounter_json in request_in['encounters']:
-            result_encounter = Encounter.query.get(result_encounter_json['id'])
-            if result_encounter is not None:
-                encounters.append(result_encounter)
-            else:
-                missing_encounter = result_encounter_json['id']
-                log.error(
-                    f'Individual.post: at least one encounter found in request_in or result_data was not found'
-                    f' in the Houston database {missing_encounter}.  Aborting Individual creation.'
-                )
-                cleanup.rollback_and_abort(
-                    message='Encounter(s) in request or response not in Houston db.',
-                    code=500,
-                )
-
-        names = self._parse_names(request_in.get('names'), cleanup)
+        names = self._parse_names(request_in.get('names'))
 
         error_messages = []
         in_sex = request_in.get('sex')
@@ -170,10 +136,7 @@ class Individuals(Resource):
         if error_messages:  # something failed
             msg = f"problem with passed values: {'; '.join(error_messages)}"
             log.error(f'Individual.post: {msg}. Aborting Individual creation.')
-            cleanup.rollback_and_abort(
-                message=msg,
-                code=500,
-            )
+            abort(500, msg)
 
         # finally make the Individual if all encounters are found
         individual = Individual(
@@ -198,7 +161,7 @@ class Individuals(Resource):
 
         return individual
 
-    def _parse_names(self, names_data, cleanup):
+    def _parse_names(self, names_data):
         names = []
         if not names_data or not isinstance(names_data, list):
             return names
@@ -219,19 +182,17 @@ class Individuals(Resource):
                             log,
                             f'invalid user guid ({user_guid}) in preferring_users {name_json}',
                         )
-                        cleanup.rollback_and_abort(
-                            message=f'Invalid user guid ({user_guid}) in name data {name_json}',
-                            code=400,
+                        abort(
+                            400,
+                            f'Invalid user guid ({user_guid}) in name data {name_json}',
                         )
+
                     preferring_users.append(user)
             name_context = name_json.get('context')
             name_value = name_json.get('value')
             if not name_context or not name_value:
                 AuditLog.frontend_fault(log, f'invalid name data {name_json}')
-                cleanup.rollback_and_abort(
-                    message=f'Invalid name data {name_json}',
-                    code=400,
-                )
+                abort(400, f'Invalid name data {name_json}')
             new_name = Name(
                 context=name_context,
                 value=name_value,

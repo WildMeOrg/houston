@@ -163,6 +163,7 @@ def _update_logins(*args, **kwargs):
         elif users[user_guid] < created:
             users[user_guid] = created
 
+    # Number of users who last logged in within 30, 90 days etc
     now = datetime.datetime.utcnow()
     for days in [1, 7, 30, 90, 180, 365, None]:
         if days is None:

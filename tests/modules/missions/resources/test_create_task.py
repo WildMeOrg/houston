@@ -22,7 +22,7 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
     )
 
     if es.is_disabled():
-        return
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

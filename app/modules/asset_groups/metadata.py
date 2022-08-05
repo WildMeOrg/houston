@@ -125,7 +125,7 @@ class AssetGroupMetadata(object):
             id_config = id_configs[config_id]
             cls._validate_fields(id_config, id_config_fields, debug)
 
-            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+            ia_config_reader = IaConfig()
             for algorithm in id_config['algorithms']:
                 try:
                     ia_config_reader.get(f'_identifiers.{algorithm}')
@@ -431,7 +431,7 @@ class AssetGroupMetadata(object):
         else:
             from app.modules.ia_config_reader import IaConfig
 
-            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+            ia_config_reader = IaConfig()
             detectors = ia_config_reader.get('_detectors')
 
             for config in self.detection_configs:

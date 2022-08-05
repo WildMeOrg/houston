@@ -967,7 +967,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             job_guid=str(job_uuid),
             _external=True,
         )
-        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        ia_config_reader = IaConfig()
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')['sage']
         except KeyError:
@@ -1387,7 +1387,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             try:
                 from app.modules.ia_config_reader import IaConfig
 
-                ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+                ia_config_reader = IaConfig()
                 id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
                 assert id_config_dict
                 frontend_data = id_config_dict.get('frontend', '')

@@ -209,8 +209,3 @@ class IaConfig:
                 ],
             }
         return result
-
-
-# ic = IaConfig()
-
-# ic.get_detect_model_frontend_data()

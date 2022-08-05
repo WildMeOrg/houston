@@ -185,7 +185,6 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     CSRF_ENABLED = True
     PREMAILER_CACHE_MAXSIZE = 1024
-    CONFIG_MODEL = 'zebra'
 
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # Maximum size of 50MB
 

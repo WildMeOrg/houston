@@ -283,6 +283,7 @@ def test_set_and_reset_values(
     assert _set_and_reset_test(db, sight, cfd_id, 'true') == 1
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_definition_manipulation(flask_app, flask_app_client, admin_user):
     from app.modules.site_settings.helpers import SiteSettingCustomFields
     from app.modules.site_settings.models import SiteSetting

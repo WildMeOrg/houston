@@ -3,6 +3,7 @@
 
 import datetime
 import logging
+from unittest import mock
 
 import pytest
 
@@ -96,3 +97,40 @@ def test_encounter_time(db, request):
 
     again = Encounter.query.get(test_encounter.guid)
     assert cdt.isoformat_in_timezone() == again.time.isoformat_in_timezone()
+
+
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
+def test_get_taxonomy_names(db, request):
+    from app.modules.encounters.models import Encounter
+    from app.modules.site_settings.models import SiteSetting
+
+    orig_site_species = SiteSetting.get_value('site.species')
+    request.addfinalizer(
+        lambda: SiteSetting.set_key_value('site.species', orig_site_species)
+    )
+
+    quagga_guid = 'e46c8573-90a3-4992-80d6-79ad51af4cd5'
+    grevyi_guid = 'bb5d6625-0d27-4a2d-95f5-c6d8d5af5124'
+    SiteSetting.set_key_value(
+        'site.species',
+        [
+            {
+                'commonNames': ['Quagga'],
+                'scientificName': 'Equus quagga quagga',
+                'itisTsn': 926245,
+                'id': quagga_guid,
+            },
+            {
+                'commonNames': ['Grevyi'],
+                'scientificName': 'Equus grevyi',
+                'id': grevyi_guid,
+            },
+        ],
+    )
+
+    encounter = mock.Mock()
+    encounter.get_taxonomy_guid.return_value = quagga_guid
+    encounter.get_taxonomy_names.side_effect = lambda: Encounter.get_taxonomy_names(
+        encounter
+    )
+    assert encounter.get_taxonomy_names() == ['Quagga', 'Equus quagga quagga']

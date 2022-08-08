@@ -121,6 +121,12 @@ if is_extension_enabled('stripe'):
 else:
     stripe = None
 
+from . import prometheus  # NOQA
+
+
+def register_prometheus_model(*args, **kwargs):
+    return prometheus.register_prometheus_model(*args, **kwargs)
+
 
 ##########################################################################################
 
@@ -642,6 +648,7 @@ def init_app(app, force_enable=False, force_disable=None):
         'oauth2': oauth2,
         'login': login_manager,
         'marshmallow': marshmallow,
+        'prometheus': prometheus,
     }
 
     extension_names = essential_extensions.keys()

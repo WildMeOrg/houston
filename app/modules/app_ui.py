@@ -111,6 +111,8 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
     """
     This endpoint is the landing page for the logged-in user
     """
+    from app.extensions import prometheus
+
     if email is None:
         email = request.form.get('email', None)
     if password is None:
@@ -152,6 +154,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
                 )
                 flash('Logged in successfully.', 'success')
                 create_session_oauth2_token()
+                prometheus.update_logins()
 
                 if refer is not None:
                     redirect = refer

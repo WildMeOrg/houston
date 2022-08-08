@@ -4,7 +4,7 @@ Assets module
 ============
 """
 
-from app.extensions import register_elasticsearch_model
+from app.extensions import register_elasticsearch_model, register_prometheus_model
 from app.extensions.api import api_v1
 from app.modules import is_module_enabled
 
@@ -27,3 +27,4 @@ def init_app(app, **kwargs):
 
     # Register Models to use with Elasticsearch
     register_elasticsearch_model(models.Asset)
+    register_prometheus_model(models.Asset)

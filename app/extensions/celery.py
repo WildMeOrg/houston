@@ -39,6 +39,9 @@ if is_extension_enabled('tus'):
 if is_extension_enabled('sage'):
     import app.extensions.sage.tasks  # noqa
 
+if is_extension_enabled('prometheus'):
+    import app.extensions.prometheus.tasks  # noqa
+
 # Register Module-level tasks
 
 if is_module_enabled('asset_groups'):

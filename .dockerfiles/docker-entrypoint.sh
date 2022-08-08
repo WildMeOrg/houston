@@ -74,6 +74,10 @@ docker_setup_env() {
 	file_env 'SECRET_KEY'
 	file_env 'SQLALCHEMY_DATABASE_URI'
 
+	# Comment out localhost from /etc/hosts for development
+	sed 's/^\([^#].*localhost\)/# \1/' /etc/hosts >/etc/hosts.new
+	cat /etc/hosts.new >/etc/hosts
+
 	declare -g ALREADY_INITIALIZED
 	# look specifically for a dictory that marks the data as initialized
 	if [ -f "${INITIALIZED_FLAG_FILE}" ]; then

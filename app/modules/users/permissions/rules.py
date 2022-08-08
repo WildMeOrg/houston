@@ -36,6 +36,8 @@ if is_module_enabled('missions'):
         ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
         ('Notification', AccessOperation.READ): ['is_active'],
         ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
+        ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Keyword', AccessOperation.WRITE): ['is_active'],
         ('JobControl', AccessOperation.READ): ['is_active'],
         # Generally only staff can read debug information, this is the one exception
         ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
@@ -48,7 +50,6 @@ if is_module_enabled('missions'):
         ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
         ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
         ('Asset', AccessOperation.READ): [
-            'is_staff',
             'is_admin',
             'is_data_manager',
             'is_researcher',
@@ -149,7 +150,6 @@ else:
         ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
         ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
         ('Asset', AccessOperation.READ): [
-            'is_staff',
             'is_admin',
             'is_data_manager',
             'is_researcher',
@@ -172,14 +172,13 @@ else:
             'is_data_manager',
             'is_researcher',
         ],
-        ('Individual', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
+        ('Individual', AccessOperation.WRITE): ['is_data_manager'],
         ('AssetGroupSighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
         ('Encounter', AccessOperation.READ): [
-            'is_staff',
             'is_data_manager',
             'is_researcher',
         ],
-        ('Encounter', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
+        ('Encounter', AccessOperation.WRITE): ['is_data_manager'],
         ('User', AccessOperation.WRITE): [
             'is_user_manager',
             'is_admin',
@@ -195,9 +194,9 @@ else:
         ('Keyword', AccessOperation.READ): ['is_active'],
         ('Sighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
         ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
-        ('Sighting', AccessOperation.READ): ['is_staff', 'is_data_manager'],
-        ('Sighting', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
-        ('Sighting', AccessOperation.DELETE): ['is_staff', 'is_data_manager'],
+        ('Sighting', AccessOperation.READ): ['is_data_manager'],
+        ('Sighting', AccessOperation.WRITE): ['is_data_manager'],
+        ('Sighting', AccessOperation.DELETE): ['is_data_manager'],
         ('SocialGroup', AccessOperation.READ): ['is_researcher'],
         ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
         ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],

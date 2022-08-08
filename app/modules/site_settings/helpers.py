@@ -9,6 +9,7 @@ import logging
 
 from flask_login import current_user  # NOQA
 
+import app.extensions.logging as AuditLog  # NOQA
 from app.modules import is_module_enabled
 from app.utils import HoustonException
 
@@ -276,6 +277,51 @@ class SiteSettingCustomFields(object):
                 return defn
         return None
 
+    @classmethod
+    # replace=False will silently fail if already exists
+    def add_definition(cls, class_name, guid, defn, replace=False):
+        from .models import SiteSetting
+
+        # bad class_name will get raise HoustonException
+        data = SiteSetting.get_value(f'site.custom.customFields.{class_name}')
+        if not data or not isinstance(data.get('definitions'), list):
+            data = {'definitions': []}
+        found = False
+        for i in range(len(data['definitions'])):
+            if guid == data['definitions'][i].get('id'):
+                if replace:
+                    found = True
+                    data['definitions'][i] = defn
+                else:
+                    return  # exists - no update!
+        if not found:
+            data['definitions'].append(defn)
+        AuditLog.audit_log(log, f'add_definition added {guid} to {class_name}')
+        SiteSetting.set(f'site.custom.customFields.{class_name}', data=data)
+
+    # WARNING: this does no safety check (_drop_data etc), so really other code that
+    #   wraps this should be used, e.g. patch_remove()
+    @classmethod
+    def remove_definition(cls, class_name, guid):
+        from .models import SiteSetting
+
+        # bad class_name will get raise HoustonException
+        data = SiteSetting.get_value(f'site.custom.customFields.{class_name}')
+        if not data or not isinstance(data.get('definitions'), list):
+            return
+        new_list = []
+        found = False
+        for defn in data['definitions']:
+            if guid == defn.get('id'):
+                found = True
+            else:
+                new_list.append(defn)
+        if found:
+            AuditLog.audit_log(log, f'remove_definition dropped {guid} for {class_name}')
+            SiteSetting.set(
+                f'site.custom.customFields.{class_name}', data={'definitions': new_list}
+            )
+
     # expects cf_defn as from above
     # NOTE this is very very likely incomplete.  the 'type' value in definitions are quite complex.
     #    probably need to check in with FE for what is actually needed
@@ -341,6 +387,27 @@ class SiteSettingCustomFields(object):
         if not cls.is_valid_value(defn, value):
             return False
         return True
+
+    # DEX-1337 PATCH op=remove path=site.custom.customFields.CLASS/GUID must be supported
+    #   this also will be called for (currently unused) PATCH op=remove path=site.custom.customFieldCategories fwiw (see DEX-1362)
+    #   force_removal=True means go ahead and blow away all the data that exists.  ouch!
+    #
+    #   note: this *intentionally* disallows straight-up reseting entire customFields.CLASS object.  youre welcome.
+    @classmethod
+    def patch_remove(cls, key, force_removal=False):
+        import re
+
+        m = re.search(r'site.custom.customFields.(\w+)/([\w\-]+)', key)
+        assert m and len(m.groups()) == 2
+        class_name = m.group(1)
+        cf_id = m.group(2)
+        defn = cls.get_definition(class_name, cf_id)
+        if not defn:
+            raise ValueError(f'invalid guid {cf_id} for class {class_name}')
+        # FIXME _drop_data does not yet take into consideration force=True so this needs fixing
+        #       for now it will just outright fail if there is data (safest route)
+        cls._drop_data(cf_id, class_name)
+        cls.remove_definition(class_name, cf_id)
 
     # "in the future" this can be much smarter, including things like:
     # - checking valid transformations, like int -> float etc.

@@ -166,3 +166,18 @@ def test_custom_fields_on_sighting(
     assert full_sighting.json['customFields'][cfd_id] == new_cfd_test_value
     assert cfd_multi_id in full_sighting.json['customFields']
     assert full_sighting.json['customFields'][cfd_multi_id] == new_cfd_multi_value
+
+    # now since we have some values in use, lets make sure we cannot delete the definition
+    res = setting_utils.patch_main_setting(
+        flask_app_client,
+        admin_user,
+        '',
+        [
+            {
+                'path': 'site.custom.customFields.Sighting/' + cfd_id,
+                'op': 'remove',
+            }
+        ],
+        400,
+    )
+    assert 'in use by' in res.json['message']

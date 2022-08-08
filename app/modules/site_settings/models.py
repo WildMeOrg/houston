@@ -34,12 +34,20 @@ class SiteSetting(db.Model, Timestamp):
         },
         'site.private': {
             'type': bool,
-            'definition': {'schema': {'panel': True}},
+            'definition': {
+                'schema': {'panel': True},
+                'displayType': 'boolean',
+                'fieldType': 'boolean',
+            },
             'default': True,
         },
         'site.needsSetup': {
             'type': bool,
-            'definition': {'schema': {'hidden': True}},
+            'definition': {
+                'schema': {'hidden': True},
+                'displayType': 'boolean',
+                'fieldType': 'boolean',
+            },
             'default': True,
         },
         'site.species': {

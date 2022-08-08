@@ -510,6 +510,10 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def forget_key_value(cls, key):
+        # this covers direct removal of both customFields.CLASS definitions and customFieldCategories
+        if key.startswith('site.custom.customField'):
+            raise NotImplementedError('cannot forget key value for customFields')
+
         assert key in cls.HOUSTON_SETTINGS.keys()
         key_data = cls.HOUSTON_SETTINGS[key]
 

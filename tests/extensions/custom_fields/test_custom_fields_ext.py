@@ -281,3 +281,42 @@ def test_set_and_reset_values(
     assert _set_and_reset_test(db, sight, cfd_id, True) == 0
     assert _set_and_reset_test(db, sight, cfd_id, False) == 0
     assert _set_and_reset_test(db, sight, cfd_id, 'true') == 1
+
+
+def test_definition_manipulation(flask_app, flask_app_client, admin_user):
+    from app.modules.site_settings.helpers import SiteSettingCustomFields
+    from app.modules.site_settings.models import SiteSetting
+
+    guid = str(uuid.uuid4())
+    defn = {'id': guid}
+    # bunk class
+    with pytest.raises(HoustonException) as exc:
+        SiteSettingCustomFields.add_definition('fubar', guid, defn)
+    assert str(exc.value) == 'Key site.custom.customFields.fubar Not supported'
+
+    SiteSettingCustomFields.add_definition('Sighting', guid, defn)
+    defn_check = SiteSettingCustomFields.get_definition('Sighting', guid)
+    assert defn == defn_check
+
+    # diff defn but we dont force replace
+    defn_new = {'id': guid, 'new': True}
+    SiteSettingCustomFields.add_definition('Sighting', guid, defn_new)
+    defn_check = SiteSettingCustomFields.get_definition('Sighting', guid)
+    assert defn == defn_check
+
+    # but now we do replace
+    SiteSettingCustomFields.add_definition('Sighting', guid, defn_new, replace=True)
+    defn_check = SiteSettingCustomFields.get_definition('Sighting', guid)
+    assert defn_new == defn_check
+
+    data = SiteSetting.get_value('site.custom.customFields.Sighting')
+    assert 'definitions' in data
+    assert len(data['definitions']) == 1
+
+    # no data for this so should be removed without issue
+    SiteSettingCustomFields.remove_definition('Sighting', guid)
+    defn = SiteSettingCustomFields.get_definition('Sighting', guid)
+    assert not defn
+    data = SiteSetting.get_value('site.custom.customFields.Sighting')
+    assert 'definitions' in data
+    assert len(data['definitions']) == 0

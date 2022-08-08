@@ -260,13 +260,19 @@ class MainConfiguration(Resource):
         Patch SiteSetting details.
         """
         from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         timer = ElapsedTime()
         request_in_ = json.loads(request.data)
         for arg in request_in_:
             if arg['op'] == 'remove':
                 try:
-                    SiteSetting.forget_key_value(arg['path'])
+                    if arg['path'] and arg['path'].startswith('site.custom.customField'):
+                        SiteSettingCustomFields.patch_remove(
+                            arg['path'], arg.get('force', False)
+                        )
+                    else:
+                        SiteSetting.forget_key_value(arg['path'])
                 except HoustonException as ex:
                     abort(ex.status_code, ex.message)
             else:

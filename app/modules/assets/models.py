@@ -15,7 +15,7 @@ from PIL import Image
 
 import app.extensions.logging as AuditLog
 from app.extensions import HoustonModel, SageModel, db
-from app.modules import module_required
+from app.modules import is_module_enabled, module_required
 from app.modules.users.models import User
 from app.utils import HoustonException
 
@@ -216,6 +216,14 @@ class Asset(db.Model, HoustonModel, SageModel):
             jobs.extend(ags.get_jobs_debug(verbose))
 
         return jobs
+
+    # In MWS users assigned to a task can also write to the asset
+    def user_can_write(self, user):
+        if is_module_enabled('missions'):
+            for task_assoc in self.mission_task_participations:
+                if user in task_assoc.mission_task.assigned_users:
+                    return True
+        return False
 
     def get_tags(self):
         return sorted(ref.tag for ref in self.tag_refs)

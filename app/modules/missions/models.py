@@ -532,6 +532,9 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
     def user_is_owner(self, user):
         return user is not None and user == self.owner
 
+    def user_is_assigned(self, user):
+        return user is not None and user in self.get_assigned_users()
+
     def get_assigned_users(self):
         return [assignment.user for assignment in self.user_assignments]
 

@@ -320,3 +320,24 @@ def test_definition_manipulation(flask_app, flask_app_client, admin_user):
     data = SiteSetting.get_value('site.custom.customFields.Sighting')
     assert 'definitions' in data
     assert len(data['definitions']) == 0
+
+    # now lets add one and remove it via the special patch from DEX-1337
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client, admin_user, 'test2', cls='Sighting'
+    )
+    assert cfd_id is not None
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert defn
+    setting_utils.patch_main_setting(
+        flask_app_client,
+        admin_user,
+        '',
+        [
+            {
+                'path': 'site.custom.customFields.Sighting/' + cfd_id,
+                'op': 'remove',
+            }
+        ],
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert not defn

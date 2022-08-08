@@ -314,7 +314,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
     from app.modules.missions.models import Mission, MissionCollection
 
     if es.is_disabled():
-        return
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     ASSETS = 1000
     MISSION_COLLECTIONS = 2

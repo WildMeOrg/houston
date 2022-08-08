@@ -78,7 +78,7 @@ def test_elasticsearch_utilities(
     from tests.modules.users.resources.utils import read_all_users_pagination
 
     if es.is_disabled():
-        return
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     body = {}
 
@@ -726,7 +726,7 @@ def test_model_search(flask_app_client, staff_user):
     from app.modules.users.models import User
 
     if es.is_disabled():
-        return
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     # Initial search to setup the oauth user
     elasticsearch(flask_app_client, staff_user, 'users')

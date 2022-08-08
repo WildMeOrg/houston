@@ -22,7 +22,7 @@ def test_modify_mission_task_users(
     from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     if es.is_disabled():
-        return
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

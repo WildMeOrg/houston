@@ -17,152 +17,214 @@ from app.modules.users.permissions.types import AccessOperation
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
+# MWS is sufficiently different to require separate maps
+if is_module_enabled('missions'):
+    # Map of user permissions on the module. This only applies to real users, anonymous users must be handled separately
+    MODULE_USER_MAP = {
+        ('SiteSetting', AccessOperation.READ): ['is_admin'],
+        ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('Asset', AccessOperation.READ): ['is_admin', 'is_data_manager'],
+        ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('MissionCollection', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('MissionTask', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('Annotation', AccessOperation.READ): ['is_researcher'],
+        ('Annotation', AccessOperation.WRITE): ['is_researcher'],
+        ('User', AccessOperation.READ): ['is_user_manager', 'is_data_manager'],
+        ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
+        ('Notification', AccessOperation.READ): ['is_active'],
+        ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
+        ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Keyword', AccessOperation.WRITE): ['is_active'],
+        ('JobControl', AccessOperation.READ): ['is_active'],
+        # Generally only staff can read debug information, this is the one exception
+        ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
+        ('Integrity', AccessOperation.READ): ['is_admin'],
+        ('Integrity', AccessOperation.WRITE): ['is_admin'],
+    }
 
-# Map of user permissions on the module. This only applies to real users, anonymous users must be handled separately
-MODULE_USER_MAP = {
-    ('SiteSetting', AccessOperation.READ): ['is_admin'],
-    ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
-    ('Asset', AccessOperation.READ): ['is_admin', 'is_data_manager'],
-    ('AssetGroup', AccessOperation.READ): ['is_admin'],
-    ('AssetGroup', AccessOperation.WRITE): ['is_active'],
-    ('AssetGroupSighting', AccessOperation.READ): ['is_admin'],
-    ('AssetGroupSighting', AccessOperation.READ_BY_ROLE): [
-        'is_admin',
-        'is_researcher',
-    ],
-    ('Encounter', AccessOperation.READ): ['is_researcher'],
-    ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
-    ('Sighting', AccessOperation.READ): ['is_researcher'],
-    ('Sighting', AccessOperation.WRITE): ['is_active'],
-    ('Sighting', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('Mission', AccessOperation.WRITE): ['is_data_manager'],
-    ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('MissionCollection', AccessOperation.WRITE): ['is_data_manager'],
-    ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('MissionTask', AccessOperation.WRITE): ['is_data_manager'],
-    ('Individual', AccessOperation.READ): ['is_researcher'],
-    ('Individual', AccessOperation.WRITE): ['is_researcher'],
-    ('Individual', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('Annotation', AccessOperation.READ): ['is_researcher'],
-    ('Annotation', AccessOperation.WRITE): ['is_researcher'],
-    ('User', AccessOperation.READ): ['is_user_manager'],
-    ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
-    # Any user can request to collaborate with anyone
-    ('Collaboration', AccessOperation.WRITE): ['is_active'],
-    ('Collaboration', AccessOperation.READ): ['is_user_manager'],
-    ('Notification', AccessOperation.READ): ['is_active'],
-    ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
-    ('Keyword', AccessOperation.READ): ['is_active'],
-    ('Keyword', AccessOperation.WRITE): ['is_active'],
-    ('AuditLog', AccessOperation.READ): ['is_admin'],
-    ('SocialGroup', AccessOperation.READ): ['is_researcher'],
-    ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
-    ('Relationship', AccessOperation.READ): ['is_researcher'],
-    ('Relationship', AccessOperation.WRITE): ['is_researcher'],
-    ('JobControl', AccessOperation.READ): ['is_active'],
-    # Generally only staff can read debug information, this is the one exception
-    ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
-    ('Integrity', AccessOperation.READ): ['is_admin'],
-    ('Integrity', AccessOperation.WRITE): ['is_admin'],
-}
+    # Map of user permissions on the object. These permissions are not granted by collaboration
+    OBJECT_USER_MAP = {
+        ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
+        ('Asset', AccessOperation.READ): [
+            'is_admin',
+            'is_data_manager',
+            'is_researcher',
+        ],
+        ('User', AccessOperation.WRITE): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('User', AccessOperation.DELETE): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('User', AccessOperation.READ): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('Mission', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+        ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('MissionCollection', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('MissionCollection', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+        ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+        ('MissionTask', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+        ('MissionTask', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+        ('Integrity', AccessOperation.READ): ['is_admin'],
+        ('Integrity', AccessOperation.WRITE): ['is_admin'],
+    }
 
-# Map of user permissions on the object. These permissions are not granted by collaboration
-OBJECT_USER_MAP = {
-    ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
-    ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
-    ('Asset', AccessOperation.READ): [
-        'is_staff',
-        'is_admin',
-        'is_data_manager',
-        'is_researcher',
-    ],
-    ('AssetGroup', AccessOperation.READ_PRIVILEGED): ['is_staff'],
-    ('AssetGroupSighting', AccessOperation.READ): [
-        'is_admin',
-        'is_data_manager',
-    ],
-    ('AssetGroupSighting', AccessOperation.WRITE): [
-        'is_admin',
-        'is_data_manager',
-    ],
-    ('AssetGroupSighting', AccessOperation.DELETE): [
-        'is_admin',
-        'is_data_manager',
-    ],
-    ('Individual', AccessOperation.READ): [
-        'is_staff',
-        'is_data_manager',
-        'is_researcher',
-    ],
-    ('Individual', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
-    ('AssetGroupSighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
-    ('Encounter', AccessOperation.READ): ['is_staff', 'is_data_manager', 'is_researcher'],
-    ('Encounter', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
-    ('User', AccessOperation.WRITE): [
-        'is_user_manager',
-        'is_admin',
-    ],
-    ('User', AccessOperation.DELETE): [
-        'is_user_manager',
-        'is_admin',
-    ],
-    ('User', AccessOperation.READ): [
-        'is_user_manager',
-        'is_admin',
-    ],
-    ('Keyword', AccessOperation.READ): ['is_active'],
-    ('Sighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
-    ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
-    ('Sighting', AccessOperation.READ): ['is_staff', 'is_data_manager'],
-    ('Sighting', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
-    ('Sighting', AccessOperation.DELETE): ['is_staff', 'is_data_manager'],
-    ('SocialGroup', AccessOperation.READ): ['is_researcher'],
-    ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
-    ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
-    ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
-    ('Mission', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('MissionCollection', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
-    ('MissionCollection', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('MissionTask', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
-    ('MissionTask', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('Relationship', AccessOperation.READ): ['is_researcher'],
-    ('Relationship', AccessOperation.WRITE): ['is_researcher'],
-    ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
-    ('Integrity', AccessOperation.READ): ['is_admin'],
-    ('Integrity', AccessOperation.WRITE): ['is_admin'],
-}
+    # Map of methods (that are passed the current user as a param) on the object.
+    # These permissions also granted by collaboration/project/etc so must not be privileged/admin
+    OBJECT_USER_METHOD_MAP = {
+        ('Asset', AccessOperation.READ): ['user_can_access'],
+        ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
+        ('Asset', AccessOperation.WRITE): ['user_is_owner', 'user_can_write'],
+        ('Annotation', AccessOperation.READ): ['user_is_owner'],
+        ('Annotation', AccessOperation.WRITE): ['user_is_owner'],
+        ('Annotation', AccessOperation.DELETE): ['user_is_owner'],
+        ('Mission', AccessOperation.READ): ['user_is_owner'],
+        ('Mission', AccessOperation.WRITE): ['user_is_owner'],
+        ('Mission', AccessOperation.DELETE): ['user_is_owner'],
+        ('MissionCollection', AccessOperation.READ): ['user_is_owner'],
+        ('MissionCollection', AccessOperation.WRITE): ['user_is_owner'],
+        ('MissionCollection', AccessOperation.DELETE): ['user_is_owner'],
+        ('MissionTask', AccessOperation.READ): ['user_is_owner', 'user_is_assigned'],
+        ('MissionTask', AccessOperation.WRITE): ['user_is_owner', 'user_is_assigned'],
+        ('MissionTask', AccessOperation.DELETE): ['user_is_owner'],
+    }
 
-# Map of methods (that are passed the current user as a param) on the object.
-# These permissions also granted by collaboration/project/etc so must not be privileged/admin
-OBJECT_USER_METHOD_MAP = {
-    ('Sighting', AccessOperation.READ): ['user_is_owner'],
-    ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
-    ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
-    ('Asset', AccessOperation.READ): ['user_can_access'],
-    ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
-    ('Asset', AccessOperation.WRITE): ['user_is_owner'],
-    ('AssetGroupSighting', AccessOperation.READ): ['user_can_access'],
-    ('AssetGroupSighting', AccessOperation.WRITE): ['user_can_access'],
-    ('AssetGroupSighting', AccessOperation.DELETE): ['user_can_access'],
-    ('Annotation', AccessOperation.READ): ['user_is_owner'],
-    ('Annotation', AccessOperation.WRITE): ['user_is_owner'],
-    ('Annotation', AccessOperation.DELETE): ['user_is_owner'],
-    ('Collaboration', AccessOperation.READ): ['user_can_access'],
-    ('Collaboration', AccessOperation.WRITE): ['user_can_access'],
-    ('Mission', AccessOperation.READ): ['user_is_owner'],
-    ('Mission', AccessOperation.WRITE): ['user_is_owner'],
-    ('Mission', AccessOperation.DELETE): ['user_is_owner'],
-    ('MissionCollection', AccessOperation.READ): ['user_is_owner'],
-    ('MissionCollection', AccessOperation.WRITE): ['user_is_owner'],
-    ('MissionCollection', AccessOperation.DELETE): ['user_is_owner'],
-    ('MissionTask', AccessOperation.READ): ['user_is_owner'],
-    ('MissionTask', AccessOperation.WRITE): ['user_is_owner'],
-    ('MissionTask', AccessOperation.DELETE): ['user_is_owner'],
-}
+else:
+
+    # Map of user permissions on the module. This only applies to real users, anonymous users must be handled separately
+    MODULE_USER_MAP = {
+        ('SiteSetting', AccessOperation.READ): ['is_admin'],
+        ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('Asset', AccessOperation.READ): ['is_admin', 'is_data_manager'],
+        ('AssetGroup', AccessOperation.READ): ['is_admin'],
+        ('AssetGroup', AccessOperation.WRITE): ['is_active'],
+        ('AssetGroupSighting', AccessOperation.READ): ['is_admin'],
+        ('AssetGroupSighting', AccessOperation.READ_BY_ROLE): [
+            'is_admin',
+            'is_researcher',
+        ],
+        ('Encounter', AccessOperation.READ): ['is_researcher'],
+        ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
+        ('Sighting', AccessOperation.READ): ['is_researcher'],
+        ('Sighting', AccessOperation.WRITE): ['is_active'],
+        ('Sighting', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+        ('Individual', AccessOperation.READ): ['is_researcher'],
+        ('Individual', AccessOperation.WRITE): ['is_researcher'],
+        ('Individual', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+        ('Annotation', AccessOperation.READ): ['is_researcher'],
+        ('Annotation', AccessOperation.WRITE): ['is_researcher'],
+        ('User', AccessOperation.READ): ['is_user_manager'],
+        ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
+        # Any user can request to collaborate with anyone
+        ('Collaboration', AccessOperation.WRITE): ['is_active'],
+        ('Collaboration', AccessOperation.READ): ['is_user_manager'],
+        ('Notification', AccessOperation.READ): ['is_active'],
+        ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
+        ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Keyword', AccessOperation.WRITE): ['is_active'],
+        ('AuditLog', AccessOperation.READ): ['is_admin'],
+        ('SocialGroup', AccessOperation.READ): ['is_researcher'],
+        ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
+        ('Relationship', AccessOperation.READ): ['is_researcher'],
+        ('Relationship', AccessOperation.WRITE): ['is_researcher'],
+        ('JobControl', AccessOperation.READ): ['is_active'],
+        # Generally only staff can read debug information, this is the one exception
+        ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
+        ('Integrity', AccessOperation.READ): ['is_admin'],
+        ('Integrity', AccessOperation.WRITE): ['is_admin'],
+    }
+
+    # Map of user permissions on the object. These permissions are not granted by collaboration
+    OBJECT_USER_MAP = {
+        ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
+        ('Asset', AccessOperation.READ): [
+            'is_admin',
+            'is_data_manager',
+            'is_researcher',
+        ],
+        ('AssetGroup', AccessOperation.READ_PRIVILEGED): ['is_staff'],
+        ('AssetGroupSighting', AccessOperation.READ): [
+            'is_admin',
+            'is_data_manager',
+        ],
+        ('AssetGroupSighting', AccessOperation.WRITE): [
+            'is_admin',
+            'is_data_manager',
+        ],
+        ('AssetGroupSighting', AccessOperation.DELETE): [
+            'is_admin',
+            'is_data_manager',
+        ],
+        ('Individual', AccessOperation.READ): [
+            'is_staff',
+            'is_data_manager',
+            'is_researcher',
+        ],
+        ('Individual', AccessOperation.WRITE): ['is_data_manager'],
+        ('AssetGroupSighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
+        ('Encounter', AccessOperation.READ): [
+            'is_data_manager',
+            'is_researcher',
+        ],
+        ('Encounter', AccessOperation.WRITE): ['is_data_manager'],
+        ('User', AccessOperation.WRITE): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('User', AccessOperation.DELETE): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('User', AccessOperation.READ): [
+            'is_user_manager',
+            'is_admin',
+        ],
+        ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Sighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
+        ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
+        ('Sighting', AccessOperation.READ): ['is_data_manager'],
+        ('Sighting', AccessOperation.WRITE): ['is_data_manager'],
+        ('Sighting', AccessOperation.DELETE): ['is_data_manager'],
+        ('SocialGroup', AccessOperation.READ): ['is_researcher'],
+        ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
+        ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
+        ('Relationship', AccessOperation.READ): ['is_researcher'],
+        ('Relationship', AccessOperation.WRITE): ['is_researcher'],
+        ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
+        ('Integrity', AccessOperation.READ): ['is_admin'],
+        ('Integrity', AccessOperation.WRITE): ['is_admin'],
+    }
+
+    # Map of methods (that are passed the current user as a param) on the object.
+    # These permissions also granted by collaboration/project/etc so must not be privileged/admin
+    OBJECT_USER_METHOD_MAP = {
+        ('Sighting', AccessOperation.READ): ['user_is_owner'],
+        ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
+        ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
+        ('Asset', AccessOperation.READ): ['user_can_access'],
+        ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
+        ('Asset', AccessOperation.WRITE): ['user_is_owner'],
+        ('AssetGroupSighting', AccessOperation.READ): ['user_can_access'],
+        ('AssetGroupSighting', AccessOperation.WRITE): ['user_can_access'],
+        ('AssetGroupSighting', AccessOperation.DELETE): ['user_can_access'],
+        ('Annotation', AccessOperation.READ): ['user_is_owner'],
+        ('Annotation', AccessOperation.WRITE): ['user_is_owner'],
+        ('Annotation', AccessOperation.DELETE): ['user_is_owner'],
+        ('Collaboration', AccessOperation.READ): ['user_can_access'],
+        ('Collaboration', AccessOperation.WRITE): ['user_can_access'],
+    }
 
 
 class DenyAbortMixin(object):

@@ -11,10 +11,12 @@ from celery import Celery
 from flask import Flask
 from werkzeug.contrib.fixers import ProxyFix
 
+import app.version
 from app.modules import is_module_enabled
 from config import configure_app
 
 log = logging.getLogger(__name__)
+__version__ = app.version.version
 
 
 def _ensure_storage(app):
@@ -120,6 +122,7 @@ def create_app(
     _apply_hotfixes()
 
     app = Flask(__name__, **kwargs)
+    app.__version__ = __version__
 
     # Initialize app config from config.py
     configure_app(app, context=context, environment=environment)

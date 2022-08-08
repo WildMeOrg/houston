@@ -32,25 +32,30 @@ def print_all_ags_jobs(context, ags_guid=None, verbose=True):
 
 
 @app_context_task()
-def print_all_sighting_jobs(context, sighting_guid=None, verbose=True):
+def print_all_sighting_jobs(context, sighting_guid=None, verbose=True, debug=False):
     """Print out the job status for all the identification jobs for the sighting"""
     from app.modules.sightings.models import Sighting, SightingStage
+
+    if debug:
+        breakpoint()
 
     for sighting in _get_jobs(Sighting, SightingStage.identification, sighting_guid):
         pprint.pprint(sighting.get_job_debug(None, verbose))
 
 
 @app_context_task()
-def check_ags_jobs(context):
-    """AssetGroupSighting.check_jobs(), optional --debug to use pdb"""
-    from app.modules.asset_groups.models import AssetGroupSighting
+def print_unreviewed_sighting_jobs(
+    context, sighting_guid=None, verbose=True, debug=False
+):
+    from app.modules.sightings.models import Sighting, SightingStage
 
-    AssetGroupSighting.check_jobs()
+    for sighting in _get_jobs(Sighting, SightingStage.un_reviewed, sighting_guid):
+        pprint.pprint(sighting.get_job_debug(None, verbose))
 
 
 @app_context_task()
-def check_sighting_jobs(context):
-    """Sighting.check_jobs(), optional --debug to use pdb"""
-    from app.modules.sightings.models import Sighting
+def print_processed_sighting_jobs(context, sighting_guid=None, verbose=True, debug=False):
+    from app.modules.sightings.models import Sighting, SightingStage
 
-    Sighting.check_jobs()
+    for sighting in _get_jobs(Sighting, SightingStage.processed, sighting_guid):
+        pprint.pprint(sighting.get_job_debug(None, verbose))

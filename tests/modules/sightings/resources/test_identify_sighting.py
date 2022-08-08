@@ -55,6 +55,7 @@ def test_sighting_identification(
     flask_app_client,
     researcher_1,
     internal_user,
+    staff_user,
     test_root,
     db,
     request,
@@ -147,6 +148,29 @@ def test_sighting_identification(
 
     sighting = Sighting.query.get(sighting_uuid)
     assert sighting.stage == SightingStage.identification
+
+    # Check the jobs api give correct data
+    jobs_data = sighting_utils.read_sighting_path(
+        flask_app_client, staff_user, f'jobs/{sighting_uuid}'
+    ).json
+    assert len(jobs_data) == 1
+    assert (
+        set(
+            {
+                'matching_set',
+                'algorithm',
+                'annotation',
+                'active',
+                'start',
+                'type',
+                'object_guid',
+                'job_id',
+                'request',
+                'response',
+            }
+        )
+        >= jobs_data[0].keys()
+    )
 
     # Make sure the correct job is created and get ID
     job_uuids = [guid for guid in sighting.jobs.keys()]

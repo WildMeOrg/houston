@@ -10,31 +10,6 @@ log = logging.getLogger(__name__)
 # Jobs are only supported on specific classes at the moment
 class JobControl(object):
 
-    # Called by a periodic background task,
-    @classmethod
-    def check_jobs(cls):
-        last_error = None
-        if is_module_enabled('asset_groups'):
-            try:
-                from app.modules.asset_groups.models import AssetGroupSighting
-
-                AssetGroupSighting.check_jobs()
-            except Exception as e:
-                last_error = e
-                log.error('AssetGroupSighting.check_jobs() error')
-
-        if is_module_enabled('sightings'):
-            try:
-                from app.modules.sightings.models import Sighting
-
-                Sighting.check_jobs()
-            except Exception as e:
-                last_error = e
-                log.error('Sighting.check_jobs() error')
-
-        if last_error:
-            raise last_error
-
     # Central point for all "job" related things to be accessed.
     @classmethod
     def get_jobs(cls, verbose):

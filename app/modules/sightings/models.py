@@ -737,51 +737,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             status['end'] = progress.updated.isoformat() + 'Z'
         return status
 
-    @classmethod
-    def check_jobs(cls):
-        pass
-
-    #     # get scheduled celery tasks only once and use for all AGS
-    #     from app.utils import get_celery_tasks_scheduled
-
-    #     all_scheduled = get_celery_tasks_scheduled(
-    #         'app.modules.sightings.tasks.send_identification'
-    #     ) + get_celery_tasks_scheduled(
-    #         'app.modules.sightings.tasks.send_all_identification'
-    #     )
-    #     for (sighting_guid,) in Sighting.query.filter(
-    #         Sighting.stage == SightingStage.identification
-    #     ).values(Sighting.guid):
-    #         Sighting.query.get(sighting_guid).check_all_job_status(all_scheduled)
-
-    # def check_all_job_status(self, all_scheduled):
-    #     jobs = self.jobs
-
-    #     if not jobs:
-    #         # Somewhat arbitrary limit of at least 10 minutes after creation.
-    #         if (
-    #             not all_scheduled
-    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-    #             > self.created
-    #         ):
-    #             # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
-    #             # but at the moment, it's not clear how we could detect this
-    #             log.warning(
-    #                 f'{self.guid} is identifying but no identification jobs are running, '
-    #                 'assuming Celery error and starting them all again'
-    #             )
-    #         self.send_all_identification()
-    #         return
-
-    #     for job_id in jobs.keys():
-    #         job = jobs[job_id]
-    #         if job['active']:
-    #             current_app.sage.request_passthrough_result(
-    #                 'engine.result', 'get', {}, job
-    #             )
-    #             # TODO Process response DEX-335
-    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
-
     def any_jobs_active(self):
         jobs = self.jobs
         if not jobs:
@@ -815,12 +770,21 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             details[-1]['job_id'] = job_id
 
             if verbose:
-                details[-1]['request'] = self.build_identification_request(
-                    self.jobs[job_id].get('matching_set'),
-                    self.jobs[job_id]['annotation'],
-                    job_id,
-                    self.jobs[job_id]['algorithm'],
-                )
+                annot = None
+                annot_guid = self.jobs[job_id].get('annotation')
+                if annot_guid:
+                    from app.modules.annotations.models import Annotation
+
+                    annot = Annotation.query.get(annot_guid)
+                if not annot:
+                    details[-1]['request'] = 'No annotation in job'
+                else:
+                    details[-1]['request'] = self.build_identification_request(
+                        annot,
+                        self.jobs[job_id].get('matching_set'),
+                        job_id,
+                        self.jobs[job_id]['algorithm'],
+                    )
                 try:
                     sage_data = current_app.sage.request_passthrough_result(
                         'engine.result', 'get', {}, job_id

@@ -642,3 +642,40 @@ def test_create_with_public_encounters(
         flask_app_client, researcher_1, data_in=ind_data
     ).json
     individual_utils.delete_individual(flask_app_client, researcher_1, ind_resp['guid'])
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+@pytest.mark.parametrize('sex', (None, 'male'))
+def test_create_individual_sex(db, flask_app_client, request, sex):
+    temp_owner = utils.generate_user_instance(
+        email='owner@localhost',
+        is_researcher=True,
+    )
+    request.addfinalizer(lambda: db.session.delete(temp_owner))
+
+    temp_enc = utils.generate_encounter_instance(
+        user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
+    )
+    request.addfinalizer(lambda: db.session.delete(temp_enc))
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}], 'sex': sex}
+    temp_enc.owner = temp_owner
+    response = individual_utils.create_individual(
+        flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
+    )
+    individual_guid = response.json['guid']
+
+    assert individual_guid is not None
+
+    request.addfinalizer(
+        lambda: individual_utils.delete_individual(
+            flask_app_client, temp_owner, individual_guid
+        )
+    )
+
+    read_individual = individual_utils.read_individual(
+        flask_app_client, temp_owner, individual_guid
+    )
+    assert read_individual.json['sex'] == sex
+    assert read_individual is not None

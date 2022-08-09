@@ -397,10 +397,10 @@ class SiteSettingCustomFields(object):
     def patch_remove(cls, key, force_removal=False):
         import re
 
-        m = re.search(r'site.custom.customFields.(\w+)/([\w\-]+)', key)
-        assert m and len(m.groups()) == 2
-        class_name = m.group(1)
-        cf_id = m.group(2)
+        match_obj = re.search(r'site.custom.customFields.(\w+)/([\w\-]+)', key)
+        assert match_obj and len(match_obj.groups()) == 2
+        class_name = match_obj.group(1)
+        cf_id = match_obj.group(2)
         defn = cls.get_definition(class_name, cf_id)
         if not defn:
             raise ValueError(f'invalid guid {cf_id} for class {class_name}')

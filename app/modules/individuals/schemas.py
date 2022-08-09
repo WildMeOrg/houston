@@ -46,14 +46,11 @@ class CreateIndividualSchema(BaseIndividualSchema):
     Create Individual schema for just the fields needed at creation
     """
 
-    # sex = base_fields.Function(lambda ind: ind.get_sex())
-
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
             Individual.created.key,
             Individual.updated.key,
             Individual.sex.key,
-            # 'sex',
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,

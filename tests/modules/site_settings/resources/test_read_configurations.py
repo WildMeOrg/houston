@@ -83,6 +83,8 @@ def test_alter_settings(flask_app_client, admin_user):
 
 
 # TODO sort this out as part of DEX 1306
+#      note: some of this may have been picked up by test_alter_custom_field_categories() below
+#        and others by tests/extensions/custom_fields/test_custom_fields_ext.py
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
@@ -205,6 +207,87 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     def_ids = [defi['id'] for defi in definitions]
     assert first['id'] not in def_ids
     assert second['id'] not in def_ids
+
+
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
+def test_alter_custom_field_categories(flask_app_client, admin_user):
+    conf_utils.custom_field_create(
+        flask_app_client, admin_user, 'test_cfd', cls='Sighting'
+    )
+    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFieldCategories']
+    assert 'value' in categories
+    cats = categories['value']
+    assert cats[0]['label'] == 'distance'
+
+    # label change should be fine
+    cats[0]['label'] = 'constitution'
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+    )
+    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFieldCategories']
+    assert 'value' in categories
+    cats = categories['value']
+    assert cats[0]['label'] == 'constitution'
+
+    # type change should not, however (as this category is in use)
+    cats[0]['type'] = 'encounter'
+    res = conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+        400,
+    )
+    assert 'cannot modify an existing category type' in res.json['message']
+
+    # try to add a bunk type
+    cats[0]['type'] = 'sighting'
+    cats.append({'id': str(uuid.uuid4()), 'label': 'why not?', 'type': 'bunky'})
+    res = conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+        400,
+    )
+    assert 'includes invalid type' in res.json['message']
+
+    # now lets make cats[1] good so we can delete it without problem (no definitions using it)
+    cats[1]['type'] = 'encounter'
+    res = conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+    )
+    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFieldCategories']
+    assert 'value' in categories
+    cats = categories['value']
+    assert len(cats) == 2
+    cats.pop()  # remove this one, should be fine (unused)
+    res = conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+    )
+    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFieldCategories']
+    assert 'value' in categories
+    cats = categories['value']
+    assert len(cats) == 1
 
 
 @pytest.mark.skipif(

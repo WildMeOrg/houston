@@ -17,7 +17,7 @@ from . import schemas
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
+class CreateIndividualParameters(Parameters, schemas.CreateIndividualSchema):
     names = base_fields.List(
         base_fields.Raw(),
         description='List of Individual Names',
@@ -29,7 +29,7 @@ class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
         required=False,
     )
 
-    class Meta(schemas.DetailedIndividualSchema.Meta):
+    class Meta(schemas.CreateIndividualSchema.Meta):
         pass
 
 

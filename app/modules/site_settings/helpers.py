@@ -120,18 +120,66 @@ class SiteSettingModules(object):
 class SiteSettingCustomFields(object):
     @classmethod
     def validate_categories(cls, value):
+        from .models import SiteSetting
+
         if not isinstance(value, list):
             raise HoustonException(log, 'customFieldCategories needs to be a list')
+        # there is potential race conditions here, but ... well ... yknow
+        prev_list = SiteSetting.get_value('site.custom.customFieldCategories') or []
+        prev_cat = {}
+        for cat in prev_list:
+            prev_cat[cat['id']] = cat
+
+        by_cat = cls.definitions_by_category()  # cat_guid => [defns]
         category_fields = [
             ('id', str, True),
             ('label', str, True),
             ('type', str, True),
         ]
+        # starts with all, but we .remove() as they are defined
+        deleted_guids = list(prev_cat.keys())
         for cat in value:
             validate_fields(cat, category_fields, 'customFieldCategories')
-            # To be resolved by DEX-1351
-            # TODO, check the type for being 'sighting', 'encounter' or 'individual'?
-            # TODO check for existing to see if this is an attempted change
+            if cat['type'] not in ['encounter', 'sighting', 'individual']:
+                raise HoustonException(
+                    log, f'customFieldCategories item {cat} includes invalid type'
+                )
+            # we only allow type-change (enc/sight/indiv) if unused by any definitions
+            if (
+                cat['id'] in prev_cat
+                and prev_cat[cat['id']]['type'] != cat['type']
+                and cat['id'] in by_cat
+            ):
+                raise HoustonException(
+                    log,
+                    f'customFieldCategories item {cat} cannot modify an existing category type',
+                )
+            if cat['id'] in deleted_guids:
+                deleted_guids.remove(cat['id'])
+
+        # we dont care if the customField definition actually has data or not as we dont cascade
+        #   leave that to removing the definition *first*, then this will be allowed
+        if deleted_guids:
+            for guid in deleted_guids:
+                if guid in by_cat:
+                    raise HoustonException(
+                        log,
+                        f'customFieldCategories guid {guid} was removed but is still in use by {len(by_cat[guid])} customField definition(s)',
+                    )
+
+    @classmethod
+    def definitions_by_category(cls):
+        from .models import SiteSetting
+
+        by_cat = {}
+        for class_name in ['Encounter', 'Sighting', 'Individual']:
+            data = SiteSetting.get_value(f'site.custom.customFields.{class_name}') or {}
+            definitions = data.get('definitions', [])
+            for defn in definitions:
+                if defn['schema']['category'] not in by_cat:
+                    by_cat[defn['schema']['category']] = []
+                by_cat[defn['schema']['category']].append(defn)
+        return by_cat
 
     # class_name is Captitalized (Encounter, Sighting, Individual)
     @classmethod

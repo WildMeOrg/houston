@@ -40,10 +40,16 @@ def test_create_read_delete_individual(db, flask_app_client):
     temp_enc = utils.generate_encounter_instance(
         user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
     )
-    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
+    individual_json = {
+        'encounters': [{'id': str(temp_enc.guid)}],
+        'names': [{'context': 'main', 'value': 'Cuthbert'}],
+        'sex': 'male',
+        'time_of_death': '2099-01-01T00:00',
+        'time_of_birth': '1999-02-02T00:01',
+    }
     temp_enc.owner = temp_owner
     response = individual_utils.create_individual(
-        flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
+        flask_app_client, temp_owner, expected_status_code=200, data_in=individual_json
     )
     individual_guid = response.json['guid']
 

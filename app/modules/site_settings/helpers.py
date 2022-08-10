@@ -277,28 +277,6 @@ class SiteSettingCustomFields(object):
                 return defn
         return None
 
-    @classmethod
-    # replace=False will silently fail if already exists
-    def add_definition(cls, class_name, guid, defn, replace=False):
-        from .models import SiteSetting
-
-        # bad class_name will get raise HoustonException
-        data = SiteSetting.get_value(f'site.custom.customFields.{class_name}')
-        if not data or not isinstance(data.get('definitions'), list):
-            data = {'definitions': []}
-        found = False
-        for i in range(len(data['definitions'])):
-            if guid == data['definitions'][i].get('id'):
-                if replace:
-                    found = True
-                    data['definitions'][i] = defn
-                else:
-                    return  # exists - no update!
-        if not found:
-            data['definitions'].append(defn)
-        AuditLog.audit_log(log, f'add_definition added {guid} to {class_name}')
-        SiteSetting.set(f'site.custom.customFields.{class_name}', data=data)
-
     # WARNING: this does no safety check (_drop_data etc), so really other code that
     #   wraps this should be used, e.g. patch_remove()
     @classmethod

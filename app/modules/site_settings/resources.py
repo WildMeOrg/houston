@@ -275,6 +275,8 @@ class MainConfiguration(Resource):
                         SiteSetting.forget_key_value(arg['path'])
                 except HoustonException as ex:
                     abort(ex.status_code, ex.message)
+                except ValueError as ex:
+                    abort(409, str(ex))
             else:
                 abort(400, f'op {arg["op"]} not supported on {arg["path"]}')
 

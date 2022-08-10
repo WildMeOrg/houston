@@ -94,7 +94,7 @@ class SocialGroups(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.response(schemas.ListSocialGroupSchema(many=True))
     @api.paginate()
     def get(self, args):
         """
@@ -127,12 +127,17 @@ class SocialGroups(Resource):
         except HoustonException as ex:
             abort(ex.status_code, ex.message)
 
+        name = args.get('name')
+        existing = SocialGroup.query.filter(SocialGroup.name == name).all()
+        if existing:
+            abort(400, f'Social group with name {name} already exists')
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new SocialGroup'
         )
         with context:
             # members and name are definitely there as they are required parameters
-            social_group = SocialGroup(members, args.get('name'))
+            social_group = SocialGroup(members, name)
             db.session.add(social_group)
         AuditLog.user_create_object(log, social_group, duration=timer.elapsed())
         return social_group

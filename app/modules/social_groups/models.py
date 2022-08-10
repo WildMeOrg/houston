@@ -170,6 +170,10 @@ class SocialGroup(db.Model, HoustonModel):
 
         return individual_data
 
+    @property
+    def num_members(self):
+        return len(self.members)
+
     def get_member(self, individual_guid):
         found_members = [
             member

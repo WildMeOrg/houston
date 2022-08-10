@@ -300,6 +300,12 @@ def test_invalid_creation(
         flask_app_client, researcher_1, many_matriarchs, 400, error
     )
 
+    # and only one group with each name
+    error = 'Social group with name Many gits already exists'
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, many_gits, 400, error
+    )
+
     # User can have multiple_roles
     many_roles = {
         'name': 'Many roles',
@@ -330,7 +336,7 @@ def test_role_changes(
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
 
     valid_group = {
-        'name': 'Disreputable bunch of hooligans',
+        'name': 'Disreputable changing bunch of hooligans',
         'members': {
             individuals[0]['guid']: {'role_guids': [matriarch_guid]},
             individuals[1]['guid']: {'role_guids': [git_guid]},
@@ -388,7 +394,7 @@ def test_patch(
     )
 
     valid_group = {
-        'name': 'Disreputable bunch of hooligans',
+        'name': 'Disreputable patched bunch of hooligans',
         'members': {
             individuals[0]['guid']: {'role_guids': [matriarch_guid]},
             individuals[1]['guid']: {'role_guids': [git_guid]},
@@ -532,7 +538,7 @@ def test_individual_delete(
 
     # Create a social group for them
     data = {
-        'name': 'Disreputable bunch of hooligans',
+        'name': 'Disreputable bunch of hooligans for deletion',
         'members': {
             individuals[0]['guid']: {'role_guids': [matriarch_guid]},
             individuals[1]['guid']: {},

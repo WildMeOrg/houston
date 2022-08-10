@@ -59,8 +59,9 @@ class SiteSettingSpecies(object):
         for spec in value:
             validate_fields(spec, species_fields, 'site.species')
 
+    # Needs to be a separate function to generate the id for the species
     @classmethod
-    def set(cls, key, value, key_data):
+    def set(cls, key, value):
         import uuid
 
         from .models import SiteSetting
@@ -70,7 +71,7 @@ class SiteSettingSpecies(object):
             if 'id' not in spec:
                 spec['id'] = str(uuid.uuid4())
 
-        SiteSetting.set(key, data=value, public=key_data.get('public', True))
+        SiteSetting.set_after_validation(key, value)
 
 
 class SiteSettingModules(object):
@@ -344,8 +345,8 @@ class SiteSettingCustomFields(object):
                 new_list.append(defn)
         if found:
             AuditLog.audit_log(log, f'remove_definition dropped {guid} for {class_name}')
-            SiteSetting.set(
-                f'site.custom.customFields.{class_name}', data={'definitions': new_list}
+            SiteSetting.set_rest_block_data(
+                {f'site.custom.customFields.{class_name}': {'definitions': new_list}}
             )
 
     # expects cf_defn as from above

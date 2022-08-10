@@ -88,7 +88,7 @@ class SocialGroup(db.Model, HoustonModel):
     def get_role_data(cls, role_guid):
         from app.modules.site_settings.models import SiteSetting
 
-        permitted_role_data = SiteSetting.get_json('social_group_roles')
+        permitted_role_data = SiteSetting.get_value('social_group_roles')
         permitted_role_guids = [role['guid'] for role in permitted_role_data]
         if role_guid not in permitted_role_guids:
             return None
@@ -102,7 +102,7 @@ class SocialGroup(db.Model, HoustonModel):
     def site_settings_updated(cls):
         from app.modules.site_settings.models import SiteSetting
 
-        permitted_role_data = SiteSetting.get_json('social_group_roles')
+        permitted_role_data = SiteSetting.get_value('social_group_roles')
         all_groups = SocialGroup.query.all()
         for group in all_groups:
             current_roles_singular = {}

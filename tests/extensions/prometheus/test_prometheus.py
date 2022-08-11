@@ -23,9 +23,9 @@ def test_update_info(request):
     _update_info()
 
     info_dict = info.info.call_args[0][0]
-    assert re.match('[0-9a-f.]+$', info_dict['version'])
+    assert re.match('[0-9a-f.+]+$', info_dict['version'])
     assert re.match('[0-9a-f.]+$', info_dict['git_revision'])
-    assert re.match('[0-9a-f.]+$', info_dict['full_version'])
+    assert re.match('[0-9a-f.+]+$', info_dict['full_version'])
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')

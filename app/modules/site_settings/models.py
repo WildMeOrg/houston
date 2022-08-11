@@ -695,10 +695,18 @@ class SiteSetting(db.Model, Timestamp):
         return data
 
     @classmethod
-    def get_all_rest_definitions(cls):
-        definitions = {}
+    def get_all_rest_definitions(cls, add_value=True):
+        if add_value:
+            definitions = cls.get_all_rest_configuration()['response']['configuration']
+        else:
+            definitions = {}
+
         for key in cls._get_keys():
-            definitions[key] = cls._get_definition(key)
+            key_def = cls._get_definition(key)
+            if key in definitions:
+                definitions[key].update(key_def)
+            else:
+                definitions[key] = key_def
 
         # Populate site.species suggested values from the ia_config
         # TODO factor this out of here

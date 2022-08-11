@@ -132,8 +132,9 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
     assert SiteSettingCustomFields.is_valid_value(defn, -123.2)
     assert SiteSettingCustomFields.is_valid_value(defn, 0.0)
     assert SiteSettingCustomFields.is_valid_value(defn, None)
-    assert not SiteSettingCustomFields.is_valid_value(defn, 123)
-    assert not SiteSettingCustomFields.is_valid_value(defn, 0)
+    #   we now allow ints to be cast as floats.  sorrynotsorry
+    # assert not SiteSettingCustomFields.is_valid_value(defn, 123)
+    # assert not SiteSettingCustomFields.is_valid_value(defn, 0)
     assert not SiteSettingCustomFields.is_valid_value(defn, 'word')
     assert not SiteSettingCustomFields.is_valid_value(defn, '')
     assert not SiteSettingCustomFields.is_valid_value(defn, [1.0, 2.0])

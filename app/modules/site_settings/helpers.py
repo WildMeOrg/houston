@@ -5,6 +5,7 @@ This is where the knowledge is of the component specific functionality where som
 read/stored/validated
 --------------------
 """
+import datetime
 import logging
 
 from flask_login import current_user  # NOQA
@@ -119,6 +120,33 @@ class SiteSettingModules(object):
 
 
 class SiteSettingCustomFields(object):
+    # TODO clean all this up.  some cruft left until after meeting wiht FE team *************************************
+    # for each displayType there is a corresponding `type` that is what is stored; not sure FE needs this
+    # TODO investigate DEX 1351
+    # internal type is noted as comment here (if different than displayType) in case we need it
+    # this list is from a conversation with ben 1/21/2022 - not sure if this is current
+    DISPLAY_TYPES = {
+        'string': str,
+        'longstring': str,
+        'select': str,
+        'multiselect': str,
+        'integer': int,
+        'float': float,
+        'boolean': bool,
+        'json': dict,  # can json also be a list?
+        'date': datetime.datetime,
+        'geo': list,
+        # ??? 'feetmeters',  # float (stored as meters)
+        # 'daterange',  # [ date, date ]  multiple=T value len must == 2
+        # 'specifiedTime',  # json -> { time: datetime, timeSpecificity: string (ComplexDateTime.specificities }
+        # 'locationId',  # string (valid region id)
+        # not yet supported, see: DEX-1261
+        # 'file',  # FileUpload (guid)
+        # not yet supported, see: DEX-1038
+        #'latlong',  # [ float, float ]  multiple=T  value len must == 2  NOTE: this might be called 'geo'?  see ticket
+        #'individual',  # guid (valid indiv guid)
+    }
+
     @classmethod
     def validate_categories(cls, value):
         from .models import SiteSetting
@@ -205,29 +233,6 @@ class SiteSettingCustomFields(object):
             ('displayType', str, True),
             ('label', str, True),
         ]
-        # for each displayType there is a corresponding `type` that is what is stored; not sure FE needs this
-        # TODO investigate DEX 1351
-        # internal type is noted as comment here (if different than displayType) in case we need it
-        # this list is from a conversation with ben 1/21/2022 - not sure if this is current
-        valid_display_types = {
-            'string',
-            'longstring',  # str
-            'select',  # string (valid from schema.choices)
-            'multiselect',  # [strings] (valid from schema.choices)  multiple=T
-            'boolean',
-            'integer',
-            'float',
-            'date',  # datetime
-            'feetmeters',  # float (stored as meters)
-            'daterange',  # [ date, date ]  multiple=T value len must == 2
-            'specifiedTime',  # json -> { time: datetime, timeSpecificity: string (ComplexDateTime.specificities }
-            'locationId',  # string (valid region id)
-            # not yet supported, see: DEX-1261
-            'file',  # FileUpload (guid)
-            # not yet supported, see: DEX-1038
-            'latlong',  # [ float, float ]  multiple=T  value len must == 2  NOTE: this might be called 'geo'?  see ticket
-            'individual',  # guid (valid indiv guid)
-        }
         categories = SiteSetting.get_value('site.custom.customFieldCategories')
         current_data = SiteSetting.get_value(f'site.custom.{field_str}')
         existing_ids = []
@@ -261,52 +266,18 @@ class SiteSettingCustomFields(object):
                     # this will raise exception if trouble
                     cls._change_data(current_val[0], cf_def, class_name)
             display_type = cf_def['schema']['displayType']
-            if display_type not in valid_display_types:
+            if display_type not in cls.DISPLAY_TYPES:
                 raise HoustonException(
                     log,
                     f'{field_str} id {cf_cat_id}: displayType {display_type} not valid',
                 )
 
             # see DEX-1270
-            if display_type in {'select', 'multiselect'}:
-                if 'choices' not in cf_def['schema'] or not isinstance(
-                    cf_def['schema']['choices'], list
-                ):
-                    raise HoustonException(
-                        log,
-                        f'{field_str} id {cf_cat_id}: displayType {display_type} requires "choices" list in schema',
-                    )
-                    if (
-                        len(cf_def['schema']['choices']) < 1
-                    ):  # i guess we allow choices of only 1 value??
-                        raise HoustonException(
-                            log,
-                            f'{field_str} id {cf_cat_id}: displayType {display_type} requires "choices" have at least one value',
-                        )
-                    choice_values = {}
-                    for choice in cf_def['schema']['choices']:
-                        if not isinstance(choice, dict):
-                            raise HoustonException(
-                                log,
-                                f'{field_str} id {cf_cat_id}: displayType {display_type} non-dict choice: {choice}',
-                            )
-                        if 'label' not in choice:
-                            raise HoustonException(
-                                log,
-                                f'{field_str} id {cf_cat_id}: displayType {display_type} choice missing "label": {choice}',
-                            )
-                        if 'value' not in choice:
-                            raise HoustonException(
-                                log,
-                                f'{field_str} id {cf_cat_id}: displayType {display_type} choice missing "value": {choice}',
-                            )
-                        value = choice.get('value')
-                        if value in choice_values:
-                            raise HoustonException(
-                                log,
-                                f'{field_str} id {cf_cat_id}: displayType {display_type} duplicate choice value in: {choice}',
-                            )
-                        choice_values.add(value)
+            try:
+                # this will silently be ignored if not multi/select but ValueError if badness
+                cls.get_choices_from_definition(cf_def, value_only=True)
+            except ValueError as verr:
+                raise HoustonException(log, f'{field_str} id {cf_cat_id}: {str(verr)}')
 
         # after iterating thru defs, if we have anything in dropped_ids, it means it is a definition we _had_ but
         #   has not been sent, so must have been dropped.  now we deal with that.
@@ -361,10 +332,18 @@ class SiteSettingCustomFields(object):
     @classmethod
     def is_valid_value(cls, cf_defn, value):
         import copy
-        import datetime
 
-        # see note above
-        #  FIXME fix this for choices when we get to that.  :(
+        import app.modules.utils as util
+
+        try:
+            choices = cls.get_choices_from_definition(cf_defn, value_only=True)
+        except ValueError as verr:
+            # this means we need choices (multi/select) but badness happened
+            log.debug(f'needed choices for {cf_defn} but failed due to: {str(verr)}')
+            return False
+
+        # going to go with None is valid for any value, except:
+        #   if
         if value is None:
             return True
 
@@ -381,18 +360,25 @@ class SiteSettingCustomFields(object):
                     return False
             return True  # all passed
 
-        # this is just what the value must be in terms of instance
-        base_type = {
-            'string': str,
-            'integer': int,
-            'double': float,
-            'boolean': bool,
-            'json': dict,  # can json also be a list?
-            'date': datetime.datetime,
-            'geo': list,
-        }
-        # defaults to str ???
-        instance_type = base_type.get(cf_defn['type'], str)
+        # since we arent multiple, we let None be acceptable except:
+        #   1. we are required
+        #   2. we have choices (that dont include None)
+        if value is None:
+            if cf_defn.get('required', False):
+                log.debug('required=True, but value=None')
+                return False
+            if choices and None not in choices:
+                log.debug(f'value=None but None not in choices {choices}')
+                return False
+            return True
+
+        dtype = cf_defn['schema']['displayType']
+        # defaults to str if unknown displayType
+        instance_type = cls.DISPLAY_TYPES.get(dtype, str)
+
+        # hack to allow ints to pass where floats wanted
+        if instance_type == float and isinstance(value, int):
+            instance_type = int
 
         if not isinstance(value, instance_type):
             log.debug(
@@ -400,9 +386,24 @@ class SiteSettingCustomFields(object):
             )
             return False
 
-        # FIXME get more strict here, like:
-        #  * len(geo) == 2 and must be valid lat/lon
-        #  * if choices, value must be one of choices
+        if choices and value not in choices:
+            log.debug(f'value {value} not in choices {choices}')
+            return False
+
+        if dtype == 'geo':
+            if len(value) != 2:
+                log.debug(f'geo value={value} must contain exactly 2 items')
+                return False
+            if isinstance(value[0], int):
+                value[0] = float(value[0])
+            if isinstance(value[1], int):
+                value[1] = float(value[1])
+            if not util.is_valid_latitude(value[0]):
+                log.debug(f'geo latitude={value[0]} is invalid')
+                return False
+            if not util.is_valid_longitude(value[1]):
+                log.debug(f'geo latitude={value[1]} is invalid')
+                return False
 
         return True
 
@@ -414,6 +415,40 @@ class SiteSettingCustomFields(object):
         if not cls.is_valid_value(defn, value):
             return False
         return True
+
+    # will raise ValueError if should be one but something is wonky
+    #    will silently return None if there just should not be any
+    # will return array of choice objects (or just value-strings if value_only=True)
+    @classmethod
+    def get_choices_from_definition(cls, defn, value_only=False):
+        if not isinstance(defn, dict):
+            raise ValueError('definition must be dict')
+        if not isinstance(defn.get('schema'), dict):
+            raise ValueError('definition must have a schema')
+        if defn['schema'].get('displayType') not in ['select', 'multiselect']:
+            return None
+        if not isinstance(defn['schema'].get('choices'), list):
+            raise ValueError('choices is required and must be a list')
+        # i guess we allow only 1 choice?
+        if len(defn['schema']['choices']) < 1:
+            raise ValueError('choices must have at least one value')
+        choices = []
+        values = []
+        for choice in defn['schema']['choices']:
+            if not isinstance(choice, dict):
+                raise ValueError(f'choices item {choice} is not a dict')
+            if 'label' not in choice:
+                raise ValueError(f'choices item {choice} missing label')
+            if 'value' not in choice:
+                raise ValueError(f'choices item {choice} missing value')
+            value = choice['value']
+            if value in values:
+                raise ValueError(f'choices item {choice} has duplicate value')
+            choices.append(choice)
+            values.append(value)
+        if value_only:
+            return values
+        return choices
 
     # DEX-1337 PATCH op=remove path=site.custom.customFields.CLASS/GUID must be supported
     #   this also will be called for (currently unused) PATCH op=remove path=site.custom.customFieldCategories fwiw (see DEX-1362)

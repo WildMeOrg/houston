@@ -825,7 +825,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             # 'callback_detailed': True,
         }
 
-        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        ia_config_reader = IaConfig()
         detector_config = ia_config_reader.get_named_detector_config(model)
         model_config.update(detector_config)
 

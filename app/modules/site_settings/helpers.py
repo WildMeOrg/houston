@@ -139,7 +139,7 @@ class SiteSettingCustomFields(object):
         # ??? 'feetmeters',  # float (stored as meters)
         # 'daterange',  # [ date, date ]  multiple=T value len must == 2
         # 'specifiedTime',  # json -> { time: datetime, timeSpecificity: string (ComplexDateTime.specificities }
-        # 'locationId',  # string (valid region id)
+        # 'locationId',  # guid (valid region id)
         # not yet supported, see: DEX-1261
         # 'file',  # FileUpload (guid)
         # not yet supported, see: DEX-1038
@@ -390,6 +390,49 @@ class SiteSettingCustomFields(object):
             log.debug(f'value {value} not in choices {choices}')
             return False
 
+        if dtype == 'locationId':
+            from app.modules.site_settings.models import Regions
+
+            if not Regions.is_region_guid_valid(value):
+                log.debug(f'invalid Region guid {value}')
+                return False
+
+        if dtype == 'individual':
+            from app.modules.Individuals.models import Individual
+
+            # TODO should there be an ownership/stakeholder/permission restriction here?
+            if not Individual.query.get(value):
+                log.debug(f'invalid Individual guid {value}')
+                return False
+
+        if dtype == 'file':
+            from app.modules.fileuploads.models import FileUpload
+
+            # TODO should there be an ownership/permission restriction here?
+            if not FileUpload.query.get(value):
+                log.debug(f'invalid FileUpload guid {value}')
+                return False
+
+        if dtype == 'specifiedTime':
+            from app.modules.complex_date_time.models import ComplexDateTime
+
+            try:
+                ComplexDateTime.from_data(value)
+            except ValueError:
+                # from_data() logs plenty, so none here
+                return False
+
+        if dtype == 'daterange':
+            if len(value) != 2:
+                log.debug(f'daterange value={value} must contain exactly 2 items')
+                return False
+            if not isinstance(value[0], datetime.datetime):
+                log.debug(f'daterange value0={value[0]} must a datetime')
+                return False
+            if not isinstance(value[1], datetime.datetime):
+                log.debug(f'daterange value1={value[1]} must a datetime')
+                return False
+
         if dtype == 'geo':
             if len(value) != 2:
                 log.debug(f'geo value={value} must contain exactly 2 items')
@@ -402,7 +445,7 @@ class SiteSettingCustomFields(object):
                 log.debug(f'geo latitude={value[0]} is invalid')
                 return False
             if not util.is_valid_longitude(value[1]):
-                log.debug(f'geo latitude={value[1]} is invalid')
+                log.debug(f'geo longitude={value[1]} is invalid')
                 return False
 
         return True

@@ -7,6 +7,7 @@ read/stored/validated
 """
 import datetime
 import logging
+import uuid
 
 from flask_login import current_user  # NOQA
 
@@ -63,8 +64,6 @@ class SiteSettingSpecies(object):
     # Needs to be a separate function to generate the id for the species
     @classmethod
     def set(cls, key, value):
-        import uuid
-
         from .models import SiteSetting
 
         log.debug(f'updating Houston Setting key={key} value={value}')
@@ -120,31 +119,25 @@ class SiteSettingModules(object):
 
 
 class SiteSettingCustomFields(object):
-    # TODO clean all this up.  some cruft left until after meeting wiht FE team *************************************
-    # for each displayType there is a corresponding `type` that is what is stored; not sure FE needs this
-    # TODO investigate DEX 1351
-    # internal type is noted as comment here (if different than displayType) in case we need it
-    # this list is from a conversation with ben 1/21/2022 - not sure if this is current
+    # source: Custom Fields in Wildbook EDM [sic] google doc
     DISPLAY_TYPES = {
         'string': str,
         'longstring': str,
         'select': str,
-        'multiselect': str,
+        'multiselect': list,
+        'boolean': bool,
         'integer': int,
         'float': float,
-        'boolean': bool,
-        'json': dict,  # can json also be a list?
         'date': datetime.datetime,
-        'geo': list,
-        # ??? 'feetmeters',  # float (stored as meters)
-        # 'daterange',  # [ date, date ]  multiple=T value len must == 2
-        # 'specifiedTime',  # json -> { time: datetime, timeSpecificity: string (ComplexDateTime.specificities }
-        # 'locationId',  # guid (valid region id)
-        # not yet supported, see: DEX-1261
-        # 'file',  # FileUpload (guid)
-        # not yet supported, see: DEX-1038
-        #'latlong',  # [ float, float ]  multiple=T  value len must == 2  NOTE: this might be called 'geo'?  see ticket
-        #'individual',  # guid (valid indiv guid)
+        'daterange': list,  # [ datetime, datetime ]
+        'feetmeters': float,  # assumed stored as meters
+        'latlong': list,  # [ decimalLatitude, decimalLongitude ]
+        'individual': uuid.UUID,
+        # 2022-08-12 meeting established these as "maybe" so any support here is minimal/tentative
+        'specifiedTime': dict,  # { time: datetime, timeSpecificity: string (ComplexDateTime.specificities) }
+        'locationId': uuid.UUID,
+        'file': uuid.UUID,  # FileUpload guid, DEX-1261
+        # 'relationship': guid,   # DEX-1155  (not even minimal support)
     }
 
     @classmethod
@@ -342,12 +335,9 @@ class SiteSettingCustomFields(object):
             log.debug(f'needed choices for {cf_defn} but failed due to: {str(verr)}')
             return False
 
-        # going to go with None is valid for any value, except:
-        #   if
-        if value is None:
-            return True
-
         if cf_defn.get('multiple', False):
+            if value is None and not cf_defn.get('required', False):
+                return True  # seems legit?
             if not isinstance(value, list):
                 log.debug(f'multiple=T but value not list: value={value} defn={cf_defn}')
                 return False
@@ -360,6 +350,8 @@ class SiteSettingCustomFields(object):
                     return False
             return True  # all passed
 
+        dtype = cf_defn['schema']['displayType']
+
         # since we arent multiple, we let None be acceptable except:
         #   1. we are required
         #   2. we have choices (that dont include None)
@@ -367,12 +359,15 @@ class SiteSettingCustomFields(object):
             if cf_defn.get('required', False):
                 log.debug('required=True, but value=None')
                 return False
+            # kinda weird case?  i guess multiselect being None (rather than empty []) is ok if not required?
+            if dtype == 'multiselect':
+                return True
+            # this basically only applies to select
             if choices and None not in choices:
                 log.debug(f'value=None but None not in choices {choices}')
                 return False
             return True
 
-        dtype = cf_defn['schema']['displayType']
         # defaults to str if unknown displayType
         instance_type = cls.DISPLAY_TYPES.get(dtype, str)
 
@@ -380,15 +375,36 @@ class SiteSettingCustomFields(object):
         if instance_type == float and isinstance(value, int):
             instance_type = int
 
+        # try to convert str to uuid if appropriate
+        if instance_type == uuid.UUID and isinstance(value, str):
+            try:
+                value = uuid.UUID(value, version=4)
+            except Exception as ex:
+                log.debug(
+                    f'value string "{value}" could not be made into a UUID: {str(ex)}'
+                )
+                return False
+
         if not isinstance(value, instance_type):
             log.debug(
                 f'value not instance of {str(instance_type)}: value={value} defn={cf_defn}'
             )
             return False
 
-        if choices and value not in choices:
+        # must have choices
+        if dtype == 'select' and value not in choices:
             log.debug(f'value {value} not in choices {choices}')
             return False
+
+        # must have choices
+        if dtype == 'multiselect':
+            if not value and cf_defn.get('required', False):
+                log.debug('required=True, but value=[]')
+                return False
+            for mval in value:
+                if mval not in choices:
+                    log.debug(f'value {mval} not in choices {choices}')
+                    return False
 
         if dtype == 'locationId':
             from app.modules.site_settings.models import Regions
@@ -398,7 +414,7 @@ class SiteSettingCustomFields(object):
                 return False
 
         if dtype == 'individual':
-            from app.modules.Individuals.models import Individual
+            from app.modules.individuals.models import Individual
 
             # TODO should there be an ownership/stakeholder/permission restriction here?
             if not Individual.query.get(value):
@@ -432,22 +448,29 @@ class SiteSettingCustomFields(object):
             if not isinstance(value[1], datetime.datetime):
                 log.debug(f'daterange value1={value[1]} must a datetime')
                 return False
+            delta = value[1] - value[0]
+            if delta.total_seconds() < 0:
+                log.debug(
+                    f'daterange {value[0]} > {value[1]} older datetime must come first'
+                )
+                return False
 
-        if dtype == 'geo':
+        if dtype == 'latlong':
             if len(value) != 2:
-                log.debug(f'geo value={value} must contain exactly 2 items')
+                log.debug(f'latlong value={value} must contain exactly 2 items')
                 return False
             if isinstance(value[0], int):
                 value[0] = float(value[0])
             if isinstance(value[1], int):
                 value[1] = float(value[1])
             if not util.is_valid_latitude(value[0]):
-                log.debug(f'geo latitude={value[0]} is invalid')
+                log.debug(f'latlong latitude={value[0]} is invalid')
                 return False
             if not util.is_valid_longitude(value[1]):
-                log.debug(f'geo longitude={value[1]} is invalid')
+                log.debug(f'latlong longitude={value[1]} is invalid')
                 return False
 
+        # we made it!!
         return True
 
     @classmethod

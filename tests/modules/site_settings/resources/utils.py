@@ -139,16 +139,19 @@ def custom_field_create(
     user,
     name,
     cls='Sighting',
-    type='string',
+    displayType='string',
     multiple=False,
+    required=False,
     schema_mods=None,  # will overwrite default (in a good way)
+    expected_status_code=200,
+    expected_error=None,
 ):
     fieldname = 'site.custom.customFields.' + cls
     custom_fields = read_main_settings(flask_app_client, user, fieldname).json['value']
     if 'definitions' not in custom_fields:
         custom_fields['definitions'] = []
     for cust in custom_fields['definitions']:
-        if cust['type'] == type and cust['name'] == name:
+        if cust['name'] == name:
             return cust['id']
 
     categories = _get_default_custom_field_categories(flask_app_client, user, cls)
@@ -159,7 +162,7 @@ def custom_field_create(
     schema = {
         'category': cat['id'],
         'description': 'some random text',
-        'displayType': type,
+        'displayType': displayType,
         'label': 'stuff',
     }
     if isinstance(schema_mods, dict):
@@ -172,8 +175,8 @@ def custom_field_create(
     custom_fields['definitions'].append(
         {
             'id': cfd_id,
+            'required': required,
             'name': name,
-            'type': type,
             'multiple': multiple,
             'schema': schema,
         }
@@ -181,7 +184,11 @@ def custom_field_create(
 
     payload = {}
     payload[fieldname] = custom_fields
-    modify_main_settings(flask_app_client, user, payload)
+    resp = modify_main_settings(
+        flask_app_client, user, payload, expected_status_code=expected_status_code
+    )
+    if expected_status_code != 200:
+        return resp
     custom_fields = read_main_settings(flask_app_client, user, fieldname).json['value']
     cfd_list = custom_fields.get('definitions', None)
 

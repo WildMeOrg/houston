@@ -24,8 +24,8 @@ def test_get_definition(flask_app, flask_app_client, admin_user):
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert defn
     assert defn['name'] == 'test_cfd'
-    assert defn['type'] == 'string'
     assert isinstance(defn['schema'], dict)
+    assert defn['schema']['displayType'] == 'string'
 
     # bad id
     defn = SiteSettingCustomFields.get_definition('Sighting', uuid.uuid4())
@@ -42,9 +42,10 @@ def test_get_definition(flask_app, flask_app_client, admin_user):
 
 
 # this will not (nor ever?) be exhaustive... but try to hit big ones
-def test_is_valid_value(flask_app, flask_app_client, admin_user):
+def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
     import datetime
 
+    from app.modules.individuals.models import Individual
     from app.modules.site_settings.helpers import SiteSettingCustomFields
 
     # simple string
@@ -79,12 +80,108 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
     assert not SiteSettingCustomFields.is_valid_value(defn, [123])
     assert not SiteSettingCustomFields.is_valid_value(defn, {'foo': 'bar'})
 
+    # select, but missing choices
+    res = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_select',
+        displayType='select',
+        expected_status_code=400,
+    )
+    assert 'choices is required' in res.json['message']
+    # select, but missing choices not dicts
+    res = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_select',
+        displayType='select',
+        schema_mods={'choices': ['a', 'b', 'c']},
+        expected_status_code=400,
+    )
+    assert 'is not a dict' in res.json['message']
+    # select, choices invalid dicts
+    res = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_select',
+        displayType='select',
+        schema_mods={
+            'choices': [{'foo': 0, 'bar': 1}],
+        },
+        expected_status_code=400,
+    )
+    assert 'missing label' in res.json['message']
+    # select, choices has duplicate value
+    res = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_select',
+        displayType='select',
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'a'}],
+        },
+        expected_status_code=400,
+    )
+    assert 'duplicate value' in res.json['message']
+    # select, should work
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_select',
+        displayType='select',
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
+        },
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert not SiteSettingCustomFields.is_valid_value(defn, 'test')
+    assert not SiteSettingCustomFields.is_valid_value(defn, '')
+    assert not SiteSettingCustomFields.is_valid_value(defn, None)
+    assert SiteSettingCustomFields.is_valid_value(defn, 'b')
+
+    # multiselect
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_multiselect',
+        displayType='multiselect',
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
+        },
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert not SiteSettingCustomFields.is_valid_value(defn, 'test')
+    assert not SiteSettingCustomFields.is_valid_value(defn, '')
+    assert not SiteSettingCustomFields.is_valid_value(defn, ['c'])
+    assert SiteSettingCustomFields.is_valid_value(defn, ['b'])
+    assert SiteSettingCustomFields.is_valid_value(defn, None)
+    assert SiteSettingCustomFields.is_valid_value(defn, [])
+
+    # multiselect, but required
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_multiselect_required',
+        displayType='multiselect',
+        required=True,
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
+        },
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert not SiteSettingCustomFields.is_valid_value(defn, 'test')
+    assert not SiteSettingCustomFields.is_valid_value(defn, '')
+    assert not SiteSettingCustomFields.is_valid_value(defn, ['c'])
+    assert SiteSettingCustomFields.is_valid_value(defn, ['b'])
+    assert not SiteSettingCustomFields.is_valid_value(defn, None)
+    assert not SiteSettingCustomFields.is_valid_value(defn, [])
+
     # boolean
     cfd_id = setting_utils.custom_field_create(
         flask_app_client,
         admin_user,
         'test_cfd_boolean',
-        type='boolean',
+        displayType='boolean',
     )
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert SiteSettingCustomFields.is_valid_value(defn, True)
@@ -103,7 +200,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
         flask_app_client,
         admin_user,
         'test_cfd_integer',
-        type='integer',
+        displayType='integer',
     )
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert SiteSettingCustomFields.is_valid_value(defn, 123)
@@ -124,8 +221,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
         flask_app_client,
         admin_user,
         'test_cfd_double',
-        type='double',
-        schema_mods={'displayType': 'float'},
+        displayType='float',
     )
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert SiteSettingCustomFields.is_valid_value(defn, 123.1)
@@ -145,7 +241,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
         flask_app_client,
         admin_user,
         'test_cfd_date',
-        type='date',
+        displayType='date',
     )
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     dt = datetime.datetime.utcnow()
@@ -158,6 +254,65 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user):
     assert not SiteSettingCustomFields.is_valid_value(defn, [dt])
     assert not SiteSettingCustomFields.is_valid_value(defn, [1.0, 2.0])
     assert not SiteSettingCustomFields.is_valid_value(defn, {'foo': 'bar'})
+
+    # daterange
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_daterange',
+        displayType='daterange',
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    dt_old = datetime.datetime.fromtimestamp(0)
+    assert SiteSettingCustomFields.is_valid_value(defn, None)
+    assert not SiteSettingCustomFields.is_valid_value(defn, 1234)
+    assert not SiteSettingCustomFields.is_valid_value(defn, dt)
+    assert not SiteSettingCustomFields.is_valid_value(defn, [])
+    assert not SiteSettingCustomFields.is_valid_value(defn, [dt_old, dt, dt])
+    assert not SiteSettingCustomFields.is_valid_value(defn, [dt, dt_old])
+    assert SiteSettingCustomFields.is_valid_value(defn, [dt_old, dt])
+
+    # latlong
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_latlong',
+        displayType='latlong',
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert SiteSettingCustomFields.is_valid_value(defn, None)
+    assert not SiteSettingCustomFields.is_valid_value(defn, [])
+    assert not SiteSettingCustomFields.is_valid_value(defn, ['a', 'b'])
+    assert not SiteSettingCustomFields.is_valid_value(defn, [100, 80])
+    assert SiteSettingCustomFields.is_valid_value(defn, [80, 100])
+    assert SiteSettingCustomFields.is_valid_value(defn, [0.123, -0.456])
+
+    # individual
+    indiv = Individual()
+    with db.session.begin():
+        # kinda shocking this works, but okay....
+        db.session.merge(indiv)
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_indiv',
+        displayType='individual',
+    )
+    defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+    assert SiteSettingCustomFields.is_valid_value(defn, None)
+    assert not SiteSettingCustomFields.is_valid_value(defn, 'invalid-guid')
+    assert not SiteSettingCustomFields.is_valid_value(
+        defn, '00000000-dead-2170-0000-000000000000'
+    )
+    assert SiteSettingCustomFields.is_valid_value(defn, indiv.guid)
+    assert SiteSettingCustomFields.is_valid_value(defn, str(indiv.guid))
+    indiv = Individual.query.get(indiv.guid)
+    db.session.delete(indiv)
+
+    # TODO these need tests when their day comes
+    # 'specifiedTime': dict,  # { time: datetime, timeSpecificity: string (ComplexDateTime.specificities) }
+    # 'locationId': guid,
+    # 'file': guid,  # FileUpload guid, DEX-1261
 
 
 # returns ints based on type of failure (0 if success)
@@ -254,7 +409,7 @@ def test_set_and_reset_values(
         flask_app_client,
         admin_user,
         'test_integer_multiple_cfd',
-        type='integer',
+        displayType='integer',
         multiple=True,
     )
     assert _set_and_reset_test(db, sight, cfd_id, [1, 2, -3]) == 0
@@ -265,7 +420,7 @@ def test_set_and_reset_values(
         flask_app_client,
         admin_user,
         'test_date_cfd',
-        type='date',
+        displayType='date',
     )
     dt = datetime.datetime.utcnow().replace(microsecond=0)
     assert _set_and_reset_test(db, sight, cfd_id, dt) == 0
@@ -277,7 +432,7 @@ def test_set_and_reset_values(
         flask_app_client,
         admin_user,
         'test_boolean_cfd',
-        type='boolean',
+        displayType='boolean',
     )
     assert _set_and_reset_test(db, sight, cfd_id, True) == 0
     assert _set_and_reset_test(db, sight, cfd_id, False) == 0

@@ -391,6 +391,7 @@ if elasticsearch is None:
         def elasticsearch(self, *args, **kwargs):
             return []
 
+
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -409,6 +410,7 @@ if sage is None:
 
     class SageModel(object):
         pass
+
 
 else:
 
@@ -524,21 +526,26 @@ class CustomFieldMixin(object):
             raise ValueError(
                 f'value {value} not valid for customField definition id {cfd_id} (on {self})'
             )
+        defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
         cf = self.custom_fields or {}
-        cf[cfd_id] = value
+        cf[cfd_id] = SiteSettingCustomFields.serialize_value(defn, value)
 
         with db.session.begin(subtransactions=True):
             self.custom_fields = cf
             db.session.merge(self)
 
-    def get_custom_field_value(self, cfd_id):
+    # raw=True means return json-value without converting to object type
+    def get_custom_field_value(self, cfd_id, raw=False):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         # check defn exists/valid
         defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
         assert defn
         cf = self.custom_fields or {}
-        return cf.get(cfd_id)
+        raw_value = cf.get(cfd_id)
+        if raw:
+            return raw_value
+        return SiteSettingCustomFields.deserialize_value(defn, raw_value)
 
     # will set multiple via set_dict:  { cfdId0: value0, ...., cfdIdN: valueN }
     def set_custom_field_values(self, set_dict):
@@ -555,7 +562,8 @@ class CustomFieldMixin(object):
                 raise ValueError(
                     f'value {value} not valid for customField definition id {cfd_id} (on {self})'
                 )
-            cf[cfd_id] = value
+            defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
+            cf[cfd_id] = SiteSettingCustomFields.serialize_value(defn, value)
 
         with db.session.begin(subtransactions=True):
             self.custom_fields = cf

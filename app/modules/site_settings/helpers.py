@@ -482,6 +482,62 @@ class SiteSettingCustomFields(object):
             return False
         return True
 
+    # turn it into how we want it stored in json for db
+    #   note we assume everything is in order here - no validating!
+    @classmethod
+    def serialize_value(cls, defn, value):
+        if value is None:
+            return None
+
+        if defn.get('multiple', False):
+            import copy
+
+            # recursive hackery
+            defn_single = copy.deepcopy(defn)
+            defn_single['multiple'] = False
+            arr = []
+            for val in value:
+                arr.append(cls.serialize_value(defn_single, val))
+            return arr
+
+        dtype = defn['schema']['displayType']
+        if dtype == 'date':
+            return value.isoformat()
+        if dtype == 'daterange':
+            return [value[0].isoformat(), value[1].isoformat()]
+        if cls.DISPLAY_TYPES[dtype] == uuid.UUID:
+            return str(value)
+        return value
+
+    # opposite of above
+    @classmethod
+    def deserialize_value(cls, defn, raw_value):
+        if raw_value is None:
+            return None
+
+        if defn.get('multiple', False):
+            import copy
+
+            # recursive hackery
+            defn_single = copy.deepcopy(defn)
+            defn_single['multiple'] = False
+            arr = []
+            for val in raw_value:
+                arr.append(cls.deserialize_value(defn_single, val))
+            return arr
+
+        dtype = defn['schema']['displayType']
+        if dtype == 'date' and not isinstance(raw_value, datetime.datetime):
+            return datetime.datetime.fromisoformat(raw_value)
+        if dtype == 'daterange' and not isinstance(raw_value[0], datetime.datetime):
+            return [
+                datetime.datetime.fromisoformat(raw_value[0]),
+                datetime.datetime.fromisoformat(raw_value[1]),
+            ]
+        if cls.DISPLAY_TYPES[dtype] == uuid.UUID and isinstance(raw_value, str):
+            return uuid.UUID(raw_value, version=4)
+        return raw_value
+
     # will raise ValueError if should be one but something is wonky
     #    will silently return None if there just should not be any
     # will return array of choice objects (or just value-strings if value_only=True)

@@ -334,13 +334,14 @@ def _set_and_reset_test(db, obj, cfd_id, value):
     if val != value:
         return 3
 
-    # then we check this way
+    # raw id check
     if not isinstance(obj.custom_fields, dict):
         return 4
     if cfd_id not in obj.custom_fields:
         return 5
-    if obj.custom_fields[cfd_id] != value:
-        return 6
+    # we cant compare this way due to serialization :(
+    # if obj.custom_fields[cfd_id] != value:
+    # return 6
 
     # now set this way
     new_value = {cfd_id: value}
@@ -383,6 +384,7 @@ def test_set_and_reset_values(
     import datetime
 
     from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
     from app.modules.sightings.models import Sighting
 
     uuids = sighting_utils.create_sighting(
@@ -427,6 +429,20 @@ def test_set_and_reset_values(
     assert _set_and_reset_test(db, sight, cfd_id, None) == 0
     assert _set_and_reset_test(db, sight, cfd_id, 1234567) == 1
 
+    # date, multiple
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_date_cfd_multiple',
+        displayType='date',
+        multiple=True,
+    )
+    dt_old = datetime.datetime.fromtimestamp(0)
+    assert _set_and_reset_test(db, sight, cfd_id, [dt]) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, None) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, [dt, dt_old, dt, dt_old]) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, [dt, 1234]) == 1
+
     # boolean
     cfd_id = setting_utils.custom_field_create(
         flask_app_client,
@@ -437,6 +453,39 @@ def test_set_and_reset_values(
     assert _set_and_reset_test(db, sight, cfd_id, True) == 0
     assert _set_and_reset_test(db, sight, cfd_id, False) == 0
     assert _set_and_reset_test(db, sight, cfd_id, 'true') == 1
+
+    # daterange
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_daterange',
+        displayType='daterange',
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, [dt_old, dt]) == 0
+
+    # latlong
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_latlong',
+        displayType='latlong',
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, [0.001, 120]) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, [333, 444]) == 1
+
+    # individual
+    indiv = Individual()
+    with db.session.begin():
+        db.session.merge(indiv)
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_cfd_indiv',
+        displayType='individual',
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, indiv.guid) == 0
+    indiv = Individual.query.get(indiv.guid)
+    db.session.delete(indiv)
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')

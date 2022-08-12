@@ -470,10 +470,13 @@ class SiteSetting(db.Model, Timestamp):
         else:
             # Catch if anyone adds a new 'type' to the houston settings
             assert False, f'Site setting type {val_type} not supported'
-        log.debug(f'About to update Houston Setting key={key}')
-        existing = cls.query.get(key)
-        if existing:
-            log.debug(f'currently this is {existing}')
+
+        # useful debug for strange issues debugging but commented out as too verbose for mainline code
+        # log.debug(f'About to update Houston Setting key={key}')
+        # existing = cls.query.get(key)
+        # if existing:
+        #     log.debug(f'currently this is {existing}')
+
         kwargs = {
             'key': key,
             'file_upload_guid': file_upload_guid,

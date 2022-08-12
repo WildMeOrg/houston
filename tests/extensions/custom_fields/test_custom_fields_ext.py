@@ -14,6 +14,7 @@ from tests.utils import module_unavailable
 log = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_get_definition(flask_app, flask_app_client, admin_user):
     from app.modules.site_settings.helpers import SiteSettingCustomFields
 
@@ -42,6 +43,7 @@ def test_get_definition(flask_app, flask_app_client, admin_user):
 
 
 # this will not (nor ever?) be exhaustive... but try to hit big ones
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
     import datetime
 
@@ -316,6 +318,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
 
 
 # returns ints based on type of failure (0 if success)
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def _set_and_reset_test(db, obj, cfd_id, value):
     try:
         obj.set_custom_field_value(cfd_id, value)

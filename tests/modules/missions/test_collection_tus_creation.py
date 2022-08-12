@@ -32,7 +32,7 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
     )
     if (transaction_dir).exists():
         shutil.rmtree(transaction_dir)
-    with pytest.raises(OSError):
+    with pytest.raises(HoustonException):
         sub, _ = MissionCollection.create_from_tus(
             'PYTEST', data_manager_1, tid, mission=temp_mission
         )

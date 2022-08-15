@@ -39,9 +39,9 @@ BUNDLE_PATH = 'block'
 def test_bundle_read(flask_app_client, request, admin_user, researcher_1, keys, user_var):
     from app.modules.site_settings.models import SiteSetting
 
-    SiteSetting.set('recaptchaPublicKey', string='recaptcha-key')
+    SiteSetting.set_key_value('recaptchaPublicKey', 'recaptcha-key')
     request.addfinalizer(lambda: SiteSetting.forget_key_value('recaptchaPublicKey'))
-    SiteSetting.set('flatfileKey', string='flatfile-key')
+    SiteSetting.set_key_value('flatfileKey', 'flatfile-key')
     request.addfinalizer(lambda: SiteSetting.forget_key_value('flatfileKey'))
 
     response = conf_utils.read_main_settings(flask_app_client, eval(user_var))

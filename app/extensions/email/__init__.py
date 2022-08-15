@@ -50,8 +50,8 @@ email_dispatched.connect(status)
 def get_default_sender():
     from app.modules.site_settings.models import SiteSetting
 
-    sender_name = SiteSetting.get_string('email_default_sender_name')
-    sender_email = SiteSetting.get_string('email_default_sender_email')
+    sender_name = SiteSetting.get_value('email_default_sender_name')
+    sender_email = SiteSetting.get_value('email_default_sender_email')
 
     return (sender_name, sender_email)
 
@@ -59,14 +59,14 @@ def get_default_sender():
 def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
 
-    email_service = SiteSetting.get_string('email_service')
+    email_service = SiteSetting.get_value('email_service')
     valid = False
     current_app.config['MAIL_SERVER'] = None
 
     if email_service == 'mailchimp':
         # https://mailchimp.com/developer/transactional/docs/smtp-integration/
-        username = SiteSetting.get_string('email_service_username')
-        password = SiteSetting.get_string('email_service_password')
+        username = SiteSetting.get_value('email_service_username')
+        password = SiteSetting.get_value('email_service_password')
         if not username or not password:
             log.error(
                 'email_service=mailchimp needs both email_service_username and email_service_password set'
@@ -198,7 +198,8 @@ class Email(Message):
         langs = []
         if self.language:
             langs.append(self.language)
-        site_lang = SiteSetting.get_string('preferred_language', 'en_us')
+        # TODO make user specific
+        site_lang = SiteSetting.get_value('preferred_language')
         if not self.language == site_lang:
             langs.append(site_lang)
         for lang in langs:
@@ -291,16 +292,16 @@ class Email(Message):
     # note: in order to not get complex and have to break one Email up into multiple, we just use the first language
     #   we find on a recipient; TODO develop a potential MultiLanguageEmail which is acually a (potential) list of Emails
     def set_language(self):
+        from app.modules.site_settings.models import SiteSetting
+
         if self.language or not self.recipients:
             return
-
-        from app.modules.site_settings.models import SiteSetting
 
         for recip in self.users:
             self.language = recip.get_preferred_langauge()
             if self.language:
                 return
-        self.language = SiteSetting.get_string('preferred_language', 'en_us')
+        self.language = SiteSetting.get_value('preferred_language')
 
     def _resolve_recipients(self, recipients):
         from app.modules.users.models import User

@@ -16,14 +16,15 @@ def test_create_header_image(db, flask_app, test_root):
         db.session.add(fup)
         db.session.add(fup2)
     prev_site_settings = SiteSetting.query.count()
-    header_image = SiteSetting.set(key='header_image', file_upload_guid=fup.guid)
+    header_image = SiteSetting.set_key_value('logo', fup.guid)
+
     try:
         assert (
             repr(header_image)
-            == f"<SiteSetting(key='header_image' file_upload_guid='{fup.guid}' public=True)>"
+            == f"<SiteSetting(key='logo' file_upload_guid='{fup.guid}' public=True)>"
         )
         # Set header image again
-        SiteSetting.set(key='header_image', file_upload_guid=fup2.guid)
+        SiteSetting.set_key_value('logo', fup2.guid)
         assert SiteSetting.query.count() == prev_site_settings + 1
     finally:
         db.session.delete(header_image)
@@ -36,11 +37,10 @@ def test_create_header_image(db, flask_app, test_root):
 
 
 def test_create_string(db):
-    new_setting = SiteSetting.set(key='email_title_greeting', string='Hello')
+    key = 'email_title_greeting'
+    new_setting = SiteSetting.set_key_value(key, 'Hello')
     try:
-        read_value = SiteSetting.query.get('email_title_greeting')
-        assert read_value.string == 'Hello'
-
+        assert new_setting.string == 'Hello'
     finally:
         db.session.delete(new_setting)
 
@@ -52,28 +52,23 @@ def test_create_string(db):
 def test_boolean(db):
     bkey = 'intelligent_agent_twitterbot_enabled'
     old_value = SiteSetting.get_value(bkey)
-    new_setting = SiteSetting.set(key=bkey, boolean=False)
+    SiteSetting.set_key_value(bkey, False)
+    new_setting = SiteSetting.query.get(bkey)
     try:
         read_value = SiteSetting.query.get(bkey)
         assert read_value.boolean is False
         read_value = SiteSetting.get_value(bkey)
         assert read_value is False
 
-        SiteSetting.set(key=bkey, boolean=True)
+        SiteSetting.set_key_value(bkey, True)
         read_value = SiteSetting.query.get(bkey)
         assert read_value.boolean is True
         read_value = SiteSetting.get_value(bkey)
         assert read_value is True
 
-        SiteSetting.set(key=bkey, boolean=None)
-        read_value = SiteSetting.query.get(bkey)
-        assert read_value.boolean is None
-        read_value = SiteSetting.get_value(bkey)
-        assert read_value is None
-
     finally:
         if old_value:
-            SiteSetting.set(key=bkey, boolean=old_value)
+            SiteSetting.set_key_value(bkey, old_value)
         else:
             db.session.delete(new_setting)
 
@@ -82,8 +77,6 @@ def test_get_value(db, flask_app):
     guid = SiteSetting.get_system_guid()
     uuid.UUID(guid, version=4)  # will throw ValueError if not a uuid
     assert guid == SiteSetting.get_value('system_guid')
-    # just for kicks lets test this too
-    assert guid == SiteSetting.get_string('system_guid')
     guid_setting = SiteSetting.query.get('system_guid')
     assert guid_setting is not None
     db.session.delete(guid_setting)

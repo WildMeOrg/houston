@@ -389,7 +389,7 @@ def tus_filepaths_from(
     )
 
     if not os.path.exists(upload_dir):
-        raise OSError('Upload_dir = {!r} is missing'.format(upload_dir))
+        raise HoustonException(log, 'Upload_dir = {!r} is missing'.format(upload_dir))
 
     log.debug(f'_tus_filepaths_from passed paths: {paths}')
     filepaths = []

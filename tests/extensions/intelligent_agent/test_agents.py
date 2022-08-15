@@ -37,9 +37,9 @@ def get_fake_tweet():
 def set_keys():
     from app.extensions.intelligent_agent.models import TwitterBot
 
-    SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
+    SiteSetting.set_key_value(TwitterBot.site_setting_id('enabled'), True)
     for req in req_keys:
-        SiteSetting.set(TwitterBot.site_setting_id(req), string='TEST_VALUE')
+        SiteSetting.set_key_value(TwitterBot.site_setting_id(req), 'TEST_VALUE')
 
 
 @pytest.mark.skipif(
@@ -50,7 +50,7 @@ def test_twitter_basics(flask_app):
     from app.extensions.intelligent_agent.models import IntelligentAgent, TwitterBot
 
     assert not TwitterBot.is_enabled()
-    SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
+    SiteSetting.set_key_value(TwitterBot.site_setting_id('enabled'), True)
     assert TwitterBot.is_enabled()
     assert not TwitterBot.is_ready()
 
@@ -88,12 +88,12 @@ def test_twitter_connectivity(flask_app_client):
     me_value.data.name = 'B'
 
     with patch.object(tweepy.Client, 'get_me', return_value=me_value):
-        SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=False)
+        SiteSetting.set_key_value(TwitterBot.site_setting_id('enabled'), False)
         assert not tb.is_ready()
         res = tb.test_setup()
         assert not res.get('success')
         assert res.get('message') == 'Not enabled.'
-        SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
+        SiteSetting.set_key_value(TwitterBot.site_setting_id('enabled'), True)
         res = tb.test_setup()
         assert res.get('success')
         assert res.get('username') == 'A'

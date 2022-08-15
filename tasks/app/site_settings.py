@@ -8,16 +8,16 @@ from tasks.utils import app_context_task
 
 @app_context_task(
     help={
-        'key': 'Setting name, e.g. header_image',
+        'key': 'Setting name, e.g. logo',
         'filepath': '/path/to/local/file.foo',
     }
 )
-def set(context, key, filepath, public=True):
+def set(context, key, filepath):
     fup = FileUpload.create_fileupload_from_path(filepath, copy=True)
 
     with db.session.begin():
         db.session.add(fup)
-        setting = SiteSetting.set(key, fup.guid, public=public)
+        setting = SiteSetting.set_key_value(key, fup.guid)
     print(repr(setting))
 
 

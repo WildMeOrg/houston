@@ -4,6 +4,7 @@ Site Settings database models
 --------------------
 """
 import logging
+import uuid
 
 from flask import current_app
 from flask_login import current_user  # NOQA
@@ -204,6 +205,10 @@ class SiteSetting(db.Model, Timestamp):
             },
             'validate_function': SiteSettingCustomFields.validate_individuals,
         },
+        'preferred_language': {
+            'type': str,
+            'default': 'en_us',
+        },
         'email_service': {
             'type': str,
             'public': False,
@@ -358,6 +363,10 @@ class SiteSetting(db.Model, Timestamp):
             'public': False,
             'default': lambda: current_app.config.get('RECAPTCHA_SECRET_KEY'),
         },
+        'logo': {'type': 'file', 'public': True},
+        'splashImage': {'type': 'file', 'public': True},
+        'splashVideo': {'type': 'file', 'public': True},
+        'customCardImage': {'type': 'file', 'public': True},
     }
 
     if is_extension_enabled('intelligent_agent'):
@@ -402,46 +411,18 @@ class SiteSetting(db.Model, Timestamp):
         return query
 
     @classmethod
-    def set(
-        cls,
-        key,
-        file_upload_guid=None,
-        string=None,
-        public=None,
-        data=None,
-        boolean=None,
-        override_readonly=False,
-    ):
-        if not file_upload_guid and not cls.is_houston_setting(key):
-            # Can set any file you wish but value settings must be in the approved list
-            raise ValueError(f'forbidden to directly set key {key}')
-        key_conf = cls._get_houston_setting_conf(key)
-        if key_conf.get('read_only', False) and not override_readonly:
-            raise ValueError(f'read-only key {key}')
-
-        kwargs = {
-            'key': key,
-            'file_upload_guid': file_upload_guid,
-            'string': string,
-            'data': data,
-            'boolean': boolean,
-        }
-        if public is not None:
-            kwargs['public'] = public
-        setting = cls(**kwargs)
-        with db.session.begin(subtransactions=True):
-            return db.session.merge(setting)
-
-    @classmethod
-    def get_setting_keys(cls):
+    def _get_keys(cls):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
-    def is_houston_setting(cls, key):
-        return key in cls.HOUSTON_SETTINGS.keys()
+    def is_houston_setting(cls, key, include_files=False):
+        if include_files:
+            return key in cls._get_keys()
+        else:
+            return key in cls._get_keys() and cls.HOUSTON_SETTINGS[key]['type'] != 'file'
 
     @classmethod
-    def _get_houston_setting_conf(cls, key):
+    def _get_setting_conf(cls, key):
         if cls.is_houston_setting(key):
             return cls.HOUSTON_SETTINGS[key]
         else:
@@ -466,9 +447,61 @@ class SiteSetting(db.Model, Timestamp):
         return def_val
 
     @classmethod
-    def set_key_value(cls, key, value):
+    def set_after_validation(cls, key, value):
         assert key in cls.HOUSTON_SETTINGS.keys()
         key_data = cls.HOUSTON_SETTINGS[key]
+
+        file_upload_guid = None
+        string = None
+        data = None
+        boolean = None
+        val_type = key_data['type']
+        is_public = key_data.get('public', True)
+        if val_type == dict or val_type == list:
+            data = value
+        elif val_type == bool:
+            assert isinstance(value, bool)
+            boolean = value
+        elif val_type == str:
+            assert isinstance(value, str)
+            string = value
+        elif val_type == 'file':
+            file_upload_guid = value
+        else:
+            # Catch if anyone adds a new 'type' to the houston settings
+            assert False, f'Site setting type {val_type} not supported'
+
+        # useful debug for strange issues debugging but commented out as too verbose for mainline code
+        # log.debug(f'About to update Houston Setting key={key}')
+        # existing = cls.query.get(key)
+        # if existing:
+        #     log.debug(f'currently this is {existing}')
+
+        kwargs = {
+            'key': key,
+            'file_upload_guid': file_upload_guid,
+            'string': string,
+            'data': data,
+            'boolean': boolean,
+            'public': is_public,
+        }
+        setting = cls(**kwargs)
+        with db.session.begin(subtransactions=True):
+            if not cls.query.get(key):
+                db.session.add(setting)
+            else:
+                db.session.merge(setting)
+        if is_public:
+            log.debug(f'updating Houston Setting key={key} value={value}')
+        else:
+            log.debug(f'updating Houston Setting key={key}')
+        return setting
+
+    @classmethod
+    def set_key_value(cls, key, value, override_readonly=False):
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        key_data = cls.HOUSTON_SETTINGS[key]
+        assert 'type' in key_data.keys()
 
         if 'sub_field' in key_data:
             # some fields are passed at a sub field level, for no readily apparent reason
@@ -478,7 +511,12 @@ class SiteSetting(db.Model, Timestamp):
                 )
             value = value[key_data['sub_field']]
 
-        if not isinstance(value, key_data['type']):
+        if key_data['type'] == 'file':
+            if not isinstance(value, uuid.UUID):
+                msg = f'Houston Setting key={key}, value incorrect type value={value},'
+                msg += 'needs to be uuid'
+                raise HoustonException(log, msg)
+        elif not isinstance(value, key_data['type']):
             msg = f'Houston Setting key={key}, value incorrect type value={value},'
             msg += f'needs to be {key_data["type"]}'
             raise HoustonException(log, msg)
@@ -486,27 +524,18 @@ class SiteSetting(db.Model, Timestamp):
         if 'validate_function' in key_data:
             key_data['validate_function'](value)
 
-        is_public = key_data.get('public', True)
+        if key_data.get('read_only', False) and not override_readonly:
+            raise ValueError(f'read-only key {key}')
         if 'set_function' in key_data:
-            key_data['set_function'](key, value, key_data)
-        elif isinstance(value, str):
-            if is_public:
-                log.debug(f'updating Houston Setting key={key} value={value}')
-            else:
-                log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, string=value, public=is_public)
-        elif isinstance(value, dict) or isinstance(value, list):
-            log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, data=value, public=key_data.get('public', True))
-        elif isinstance(value, bool):
-            log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, boolean=value, public=key_data.get('public', True))
+            key_data['set_function'](key, value)
+            setting = cls.query.get(key)
         else:
-            msg = f'Houston Setting key={key}, value is not string, list or dict; value={value}'
-            raise HoustonException(log, msg)
+            setting = cls.set_after_validation(key, value)
 
         if 'update_function' in key_data:
             key_data['update_function'](value)
+
+        return setting
 
     @classmethod
     def forget_key_value(cls, key):
@@ -524,27 +553,6 @@ class SiteSetting(db.Model, Timestamp):
 
             if 'update_function' in key_data:
                 key_data['update_function']()
-
-    @classmethod
-    def get_string(cls, key, default=None):
-        setting = cls.query.get(key)
-        if not setting and default is None:
-            return cls._get_default_value(key)
-        return setting.string if setting else default
-
-    @classmethod
-    def get_json(cls, key, default=None):
-        setting = cls.query.get(key)
-        if not setting and default is None:
-            return cls._get_default_value(key)
-        return setting.data if setting else default
-
-    @classmethod
-    def get_boolean(cls, key, default=None):
-        setting = cls.query.get(key)
-        if not setting and default is None:
-            return cls._get_default_value(key)
-        return setting.boolean if setting else default
 
     @classmethod
     def get_value(cls, key, default=None, **kwargs):
@@ -580,28 +588,33 @@ class SiteSetting(db.Model, Timestamp):
         return key == 'block'
 
     @classmethod
-    def _set_houston_rest_data(cls, data):
-        assert isinstance(data, dict)
+    def set_rest_block_data(cls, data):
+        ret_data = {}
+
         success_keys = []
         # All keys must be valid
         for key in data.keys():
-            if key not in cls.get_setting_keys():
+            if key not in cls._get_keys():
                 raise HoustonException(log, f'{key} not supported')
         for key in data.keys():
-            if key in cls.get_setting_keys():
+            if key in cls._get_keys():
                 if data[key] is not None:
                     cls.set_key_value(key, data[key])
                 else:
                     cls.forget_key_value(key)
                 success_keys.append(key)
 
-        return success_keys
+        ret_data['updated'] = success_keys
+        for key in success_keys:
+            del data[key]
+        if not data:  # All keys processed
+            return ret_data
 
-    # All houston rest value getting needs common logic so factored out into separate function
+    # All rest value getting needs common logic so factored out into separate function
     @classmethod
-    def get_houston_rest_value(cls, key):
+    def get_rest_value(cls, key):
         init_value = cls.get_value(key)
-        key_conf = cls._get_houston_setting_conf(key)
+        key_conf = cls._get_setting_conf(key)
 
         # Only admin can read private data
         if not key_conf.get('public', True):
@@ -617,42 +630,35 @@ class SiteSetting(db.Model, Timestamp):
 
         from app.modules.users.models import User
 
-        houston_data = {'site.adminUserInitialized': User.admin_user_initialized()}
+        config_data = {'site.adminUserInitialized': User.admin_user_initialized()}
 
         # Create the site.images
-        houston_settings = cls.query.filter_by(public=True).order_by('key')
+        settings = cls.query.filter_by(public=True).order_by('key')
         site_images = {}
-        for setting in houston_settings:
+        for setting in settings:
             if setting.file_upload is not None:
                 site_images[setting.key] = url_for(
                     'api.fileuploads_file_upload_src_u_by_id_2',
                     fileupload_guid=str(setting.file_upload.guid),
                     _external=False,
                 )
-        houston_data['site.images'] = site_images
+        config_data['site.images'] = site_images
 
-        # Populate all the houston values that are accessible to the current user
+        # Populate all the values that are accessible to the current user
         is_admin = getattr(current_user, 'is_admin', False)
         for key, type_def in cls.HOUSTON_SETTINGS.items():
+            is_file = type_def.get('type') == 'file'
             permission = type_def.get('permission', lambda: True)()
-            if is_admin or type_def.get('public', True) and permission:
-                houston_data[key] = {'value': cls.get_houston_rest_value(key)}
-                if key == 'site.custom.customFields.Sighting':
-                    houston_data['site.custom.customFields.Occurrence'] = {
-                        'value': cls.get_houston_rest_value(key)
-                    }
-                if key == 'site.custom.customFields.Individual':
-                    houston_data['site.custom.customFields.MarkedIndividual'] = {
-                        'value': cls.get_houston_rest_value(key)
-                    }
+            if (is_admin or type_def.get('public', True) and permission) and not is_file:
+                config_data[key] = {'value': cls.get_rest_value(key)}
 
-        return {'response': {'configuration': houston_data}}
+        return {'response': {'configuration': config_data}}
 
     ###############################################
     # Definitions based code. Currently, only support getting all the definitions as a block, not individually
     @classmethod
-    def _get_houston_definition(cls, key):
-        key_conf = cls._get_houston_setting_conf(key)
+    def _get_definition(cls, key):
+        key_conf = cls._get_setting_conf(key)
         is_public = key_conf.get('public', True)
         field_type = 'string'
         display_type = 'string'
@@ -690,13 +696,13 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def get_all_rest_definitions(cls):
-        houston_definitions = {}
-        for key in cls.get_setting_keys():
-            houston_definitions[key] = cls._get_houston_definition(key)
+        definitions = {}
+        for key in cls._get_keys():
+            definitions[key] = cls._get_definition(key)
 
         # Populate site.species suggested values from the ia_config
         # TODO factor this out of here
-        species_json = houston_definitions['site.species']
+        species_json = definitions['site.species']
         from app.modules.ia_config_reader import IaConfig
 
         ia_config_reader = IaConfig()
@@ -722,33 +728,21 @@ class SiteSetting(db.Model, Timestamp):
                     },
                 )
 
-        return {'response': {'configuration': houston_definitions}}
+        return {'response': {'configuration': definitions}}
 
     #####################################
     # Other APIs
-
-    @classmethod
-    def set_rest_block_data(cls, data, files):
-        ret_data = {}
-        success_keys = cls._set_houston_rest_data(data)
-        ret_data['updated'] = success_keys
-        for key in success_keys:
-            del data[key]
-        if not data:  # All keys processed
-            return ret_data
-
-        return ret_data
 
     # the idea here is to have a unique uuid for each installation
     #   this should be used to read this value, as it will create it if it does not exist
     @classmethod
     def get_system_guid(cls):
-        val = cls.get_string('system_guid')
+        val = cls.get_value('system_guid')
         if not val:
             import uuid
 
             val = str(uuid.uuid4())
-            cls.set('system_guid', string=val, public=True, override_readonly=True)
+            cls.set_key_value('system_guid', val, override_readonly=True)
         return val
 
 

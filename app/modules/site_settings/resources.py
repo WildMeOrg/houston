@@ -73,15 +73,21 @@ class SiteSettingFile(Resource):
         """
         from app.modules.fileuploads.models import FileUpload
 
+        key = args.get('key')
+        file_upload_guid = None
         if args.get('transactionId'):
             transaction_id = args.pop('transactionId')
             if args.get('transactionPath'):
                 paths = [args.pop('transactionPath')]
             else:
                 paths = None
-            fups = (
-                FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
-            )
+            try:
+                fups = (
+                    FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths)
+                    or []
+                )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
             if len(fups) != 1:
                 # Delete the files in the filesystem
                 # Can't use .delete() because fups are not persisted
@@ -94,13 +100,17 @@ class SiteSettingFile(Resource):
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     message=f'Transaction {transaction_id} has {len(fups)} files, need exactly 1.',
                 )
-            with db.session.begin():
-                db.session.add(fups[0])
-            args['file_upload_guid'] = fups[0].guid
-        elif not args.get('file_upload_guid'):
-            abort(400, 'The File API should only be used for manipulating files')
 
-        site_setting = SiteSetting.set(**args)
+            with db.session.begin(subtransactions=True):
+                db.session.add(fups[0])
+            file_upload_guid = fups[0].guid
+        else:
+            abort(
+                400,
+                'The File API should only be used for manipulating files via a transactionId',
+            )
+
+        site_setting = SiteSetting.set_key_value(key, file_upload_guid)
         message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
         AuditLog.audit_log(log, message)
         return site_setting
@@ -192,7 +202,7 @@ class MainConfiguration(Resource):
         if SiteSetting.is_rest_block_key(path):
             return SiteSetting.get_all_rest_configuration()
         elif SiteSetting.is_houston_setting(path):
-            value = SiteSetting.get_houston_rest_value(path)
+            value = SiteSetting.get_rest_value(path)
             # Pass it back to FE in old edm style and a new simpler style
             cfg_data = {'configuration': {path: {'value': value}}}
             return {
@@ -226,7 +236,7 @@ class MainConfiguration(Resource):
         ret_data = {}
         try:
             if path == '':  # posting a bundle (no path)
-                ret_data = SiteSetting.set_rest_block_data(data, request.files)
+                ret_data = SiteSetting.set_rest_block_data(data)
 
             elif SiteSetting.is_houston_setting(path):
                 if '_value' not in data.keys():

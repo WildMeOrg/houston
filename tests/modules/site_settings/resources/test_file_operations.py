@@ -22,59 +22,21 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
     with db.session.begin():
         db.session.add(fup)
     request.addfinalizer(lambda: fup.delete())
-    header_image = SiteSetting.set('header_image', fup.guid)
-    request.addfinalizer(lambda: db.session.delete(header_image))
+    logo_image = SiteSetting.set_key_value('logo', fup.guid)
+    request.addfinalizer(lambda: db.session.delete(logo_image))
 
     # Get site setting without logging in
-    resp = flask_app_client.get('/api/v1/site-settings/file/header_image')
+    resp = flask_app_client.get('/api/v1/site-settings/file/logo')
     assert resp.status_code == 302
     resp = flask_app_client.get(resp.location)
     assert resp.status_code == 200
     assert resp.content_type == 'image/jpeg'
     resp.close()
-
-    # Get non public setting without logging in
-    SiteSetting.set('not_public', fup.guid, public=False)
-    resp = flask_app_client.get('/api/v1/site-settings/file/not_public')
-    assert resp.status_code == 403
-
+    filename = 'splashImage'
     with flask_app_client.login(
         admin_user, auth_scopes=('site-settings:read', 'site-settings:write')
     ):
-        # Create site setting
-        resp = flask_app_client.post(
-            '/api/v1/site-settings/file',
-            data={
-                'key': 'footer_image',
-                'file_upload_guid': str(fup.guid),
-            },
-        )
-        assert resp.status_code == 200
-        site_setting = resp.json
-        assert site_setting['key'] == 'footer_image'
-
-        # List File site settings
-        resp = flask_app_client.get('/api/v1/site-settings/file')
-        assert resp.status_code == 200
-        assert resp.json == [
-            {'key': 'footer_image', 'file_upload_guid': str(fup.guid), 'public': True},
-            {'key': 'header_image', 'file_upload_guid': str(fup.guid), 'public': True},
-            {'key': 'not_public', 'file_upload_guid': str(fup.guid), 'public': False},
-        ]
-
-        # Edit site setting
-        resp = flask_app_client.post(
-            '/api/v1/site-settings/file',
-            data={
-                'key': 'header_image',
-                'file_upload_guid': str(fup.guid),
-            },
-        )
-        assert resp.status_code == 200
-        site_setting = resp.json
-        assert site_setting['key'] == 'header_image'
-
-        # Edit site setting using transactionId
+        # Create site setting using transactionId
         upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
         with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
@@ -83,13 +45,24 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={
-                    'key': 'header_image',
+                    'key': filename,
                     'transactionId': transaction_id,
                 },
             )
             assert resp.status_code == 200, resp.data
-            assert resp.json['key'] == 'header_image'
+            assert resp.json['key'] == filename
             assert resp.json['file_upload_guid'] != str(fup.guid)
+
+            resp = flask_app_client.get('/api/v1/site-settings/file')
+            assert resp.status_code == 200
+            assert resp.json == [
+                {'key': 'logo', 'file_upload_guid': str(fup.guid), 'public': True},
+                {
+                    'key': filename,
+                    'file_upload_guid': resp.json[1]['file_upload_guid'],
+                    'public': True,
+                },
+            ]
 
         # Edit site setting using transactionId with 2 files
         with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
@@ -99,7 +72,7 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={
-                    'key': 'header_image',
+                    'key': 'logo',
                     'transactionId': transaction_id,
                 },
             )
@@ -117,18 +90,18 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={
-                    'key': 'header_image',
+                    'key': 'logo',
                     'transactionId': transaction_id,
                     'transactionPath': 'a.txt',
                 },
             )
             assert resp.status_code == 200
-            assert resp.json['key'] == 'header_image'
+            assert resp.json['key'] == 'logo'
 
         # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/file/header_image')
+        resp = flask_app_client.delete('/api/v1/site-settings/file/logo')
         assert resp.status_code == 204
-        resp = flask_app_client.delete('/api/v1/site-settings/file/footer_image')
+        resp = flask_app_client.delete(f'/api/v1/site-settings/file/{filename}')
         assert resp.status_code == 204
 
         # List site settings
@@ -145,7 +118,7 @@ def test_site_settings_permissions(
     with db.session.begin():
         db.session.add(fup)
     request.addfinalizer(lambda: fup.delete())
-    header_image = SiteSetting.set('header_image', fup.guid)
+    header_image = SiteSetting.set_key_value('logo', fup.guid)
     request.addfinalizer(lambda: db.session.delete(header_image))
 
     with flask_app_client.login(
@@ -155,7 +128,7 @@ def test_site_settings_permissions(
         resp = flask_app_client.post(
             '/api/v1/site-settings/file',
             data={
-                'key': 'footer_image',
+                'key': 'splashImage',
                 'file_upload_guid': str(fup.guid),
             },
         )
@@ -165,7 +138,7 @@ def test_site_settings_permissions(
         resp = flask_app_client.post(
             '/api/v1/site-settings/file',
             data={
-                'key': 'header_image',
+                'key': 'logo',
                 'file_upload_guid': str(fup.guid),
             },
         )
@@ -176,5 +149,5 @@ def test_site_settings_permissions(
         assert resp.status_code == 403
 
         # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/file/header_image')
+        resp = flask_app_client.delete('/api/v1/site-settings/file/logo')
         assert resp.status_code == 403

@@ -200,9 +200,9 @@ def email_setup(flask_app):
     flask_app.config['MAIL_OVERRIDE_RECIPIENTS'] = None
 
     # this mocks using mailchimp, but wont send since we are in TESTING
-    SiteSetting.set('email_service', string='mailchimp')
-    SiteSetting.set('email_service_username', string='testing_' + str(uuid.uuid4()))
-    SiteSetting.set('email_service_password', string='testing_' + str(uuid.uuid4()))
+    SiteSetting.set_key_value('email_service', 'mailchimp')
+    SiteSetting.set_key_value('email_service_username', 'testing_' + str(uuid.uuid4()))
+    SiteSetting.set_key_value('email_service_password', 'testing_' + str(uuid.uuid4()))
 
     yield
 

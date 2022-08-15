@@ -24,11 +24,11 @@ def send(
     # app.config['DEBUG'] = True
     app.config['MAIL_OVERRIDE_RECIPIENTS'] = None
 
-    SiteSetting.set('email_service', string='mailchimp')
+    SiteSetting.set_key_value('email_service', 'mailchimp')
     if username:
-        SiteSetting.set('email_service_username', string=username)
+        SiteSetting.set_key_value('email_service_username', username)
     if password:
-        SiteSetting.set('email_service_password', string=password)
+        SiteSetting.set_key_value('email_service_password', password)
 
     msg = Email(subject=subject, recipients=[recipient])
     msg.body = body

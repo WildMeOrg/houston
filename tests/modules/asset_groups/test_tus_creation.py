@@ -25,7 +25,7 @@ def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
     )
     if (transaction_dir).exists():
         shutil.rmtree(transaction_dir)
-    with pytest.raises(OSError):
+    with pytest.raises(HoustonException):
         sub, _ = AssetGroup.create_from_tus('PYTEST', researcher_1, tid)
 
     # now with a file dir+files but ask for wrong one

@@ -176,7 +176,7 @@ def recaptcha_required(func):
     def inner(*args, **kwargs):
         from app.modules.site_settings.models import SiteSetting
 
-        if not SiteSetting.get_string('recaptchaPublicKey'):
+        if not SiteSetting.get_value('recaptchaPublicKey'):
             log.debug('Recaptcha skipped (recaptchaPublicKey not set)')
             return func(*args, **kwargs)
 
@@ -191,7 +191,7 @@ def recaptcha_required(func):
                 response = requests.post(
                     current_app.config.get('RECAPTCHA_SITE_VERIFY_API'),
                     data={
-                        'secret': SiteSetting.get_string('recaptchaSecretKey'),
+                        'secret': SiteSetting.get_value('recaptchaSecretKey'),
                         'response': token,
                     },
                 ).json()

@@ -526,9 +526,10 @@ class CustomFieldMixin(object):
             raise ValueError(
                 f'value {value} not valid for customField definition id {cfd_id} (on {self})'
             )
-        defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
         cf = self.custom_fields or {}
-        cf[cfd_id] = SiteSettingCustomFields.serialize_value(defn, value)
+        cf[cfd_id] = SiteSettingCustomFields.serialize_value(
+            self.__class__.__name__, cfd_id, value
+        )
 
         with db.session.begin(subtransactions=True):
             self.custom_fields = cf
@@ -562,8 +563,9 @@ class CustomFieldMixin(object):
                 raise ValueError(
                     f'value {value} not valid for customField definition id {cfd_id} (on {self})'
                 )
-            defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
-            cf[cfd_id] = SiteSettingCustomFields.serialize_value(defn, value)
+            cf[cfd_id] = SiteSettingCustomFields.serialize_value(
+                self.__class__.__name__, cfd_id, value
+            )
 
         with db.session.begin(subtransactions=True):
             self.custom_fields = cf

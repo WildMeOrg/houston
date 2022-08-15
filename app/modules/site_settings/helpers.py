@@ -485,7 +485,13 @@ class SiteSettingCustomFields(object):
     # turn it into how we want it stored in json for db
     #   note we assume everything is in order here - no validating!
     @classmethod
-    def serialize_value(cls, defn, value):
+    def serialize_value(cls, class_name, cfd_id, value):
+        defn = cls.get_definition(class_name, cfd_id)
+        assert defn
+        return cls._serialize_value_using_definition(defn, value)
+
+    @classmethod
+    def _serialize_value_using_definition(cls, defn, value):
         if value is None:
             return None
 
@@ -497,7 +503,7 @@ class SiteSettingCustomFields(object):
             defn_single['multiple'] = False
             arr = []
             for val in value:
-                arr.append(cls.serialize_value(defn_single, val))
+                arr.append(cls._serialize_value_using_definition(defn_single, val))
             return arr
 
         dtype = defn['schema']['displayType']

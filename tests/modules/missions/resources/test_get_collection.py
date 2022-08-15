@@ -14,12 +14,12 @@ def test_get_mission_collection_not_found(flask_app_client):
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test_root):
+def test_get_mission_collection_by_search(flask_app_client, admin_user, test_root):
     from app.modules.missions.models import Mission, MissionCollection
 
     response = mission_utils.create_mission(
         flask_app_client,
-        data_manager_1,
+        admin_user,
         mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
@@ -27,7 +27,7 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
     assert len(temp_mission.collections) == 0
 
     previous_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1
+        flask_app_client, admin_user
     )
 
     transaction_ids = []
@@ -40,7 +40,7 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
         nonce, description = mission_utils.make_name('mission collection')
         response = mission_utils.create_mission_collection_with_tus(
             flask_app_client,
-            data_manager_1,
+            admin_user,
             description,
             transaction_id,
             temp_mission.guid,
@@ -51,7 +51,7 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
         new_mission_collections.append((nonce, temp_mission_collection))
 
     current_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1
+        flask_app_client, admin_user
     )
     assert len(previous_list.json) + len(new_mission_collections) == len(
         current_list.json
@@ -63,14 +63,14 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
 
     # Check that the API for a mission's collections agrees
     response = mission_utils.read_mission_collections_for_mission(
-        flask_app_client, data_manager_1, temp_mission.guid
+        flask_app_client, admin_user, temp_mission.guid
     )
     assert len(response.json) == 3
 
     # Search mission collections by description segment
     nonce, new_mission_collection = new_mission_collections[0]
     current_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=nonce
+        flask_app_client, admin_user, search=nonce
     )
     assert len(current_list.json) == 1
     response = current_list.json[0]
@@ -81,7 +81,7 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
     guid_str = str(new_mission_collection.guid)
     guid_segment = guid_str.split('-')[-1]
     current_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=guid_segment
+        flask_app_client, admin_user, search=guid_segment
     )
     assert len(current_list.json) == 1
     response = current_list.json[0]
@@ -89,11 +89,11 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
 
     # Search mission collections by owner GUID segment
     nonce, new_mission_collection = new_mission_collections[2]
-    assert new_mission_collection.owner == data_manager_1
+    assert new_mission_collection.owner == admin_user
     guid_str = str(new_mission_collection.owner_guid)
     guid_segment = guid_str.split('-')[-1]
     current_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=guid_segment
+        flask_app_client, admin_user, search=guid_segment
     )
     assert len(current_list.json) == len(new_mission_collections)
 
@@ -103,30 +103,30 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
     guid_str = str(new_mission_collection.mission_guid)
     guid_segment = guid_str.split('-')[-1]
     current_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=guid_segment
+        flask_app_client, admin_user, search=guid_segment
     )
     assert len(current_list.json) == len(new_mission_collections)
 
     # Limit responses
     limited_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=guid_segment, limit=2
+        flask_app_client, admin_user, search=guid_segment, limit=2
     )
     assert len(current_list.json[:2]) == len(limited_list.json)
 
     # Limit responses (with offset)
     limited_list = mission_utils.read_all_mission_collections(
-        flask_app_client, data_manager_1, search=guid_segment, offset=1, limit=2
+        flask_app_client, admin_user, search=guid_segment, offset=1, limit=2
     )
     assert len(current_list.json[1:3]) == len(limited_list.json)
 
     # Delete mission collections
     for nonce, new_mission_collection in new_mission_collections:
         mission_utils.delete_mission_collection(
-            flask_app_client, data_manager_1, new_mission_collection.guid
+            flask_app_client, admin_user, new_mission_collection.guid
         )
 
     # Delete mission
-    mission_utils.delete_mission(flask_app_client, data_manager_1, temp_mission.guid)
+    mission_utils.delete_mission(flask_app_client, admin_user, temp_mission.guid)
 
     for transaction_id in transaction_ids:
         tus_utils.cleanup_tus_dir(transaction_id)

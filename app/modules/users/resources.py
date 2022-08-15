@@ -309,7 +309,6 @@ class AdminUserInitialized(Resource):
                 is_researcher=True,
                 is_contributor=True,
                 is_user_manager=True,
-                is_data_manager=True,
                 is_exporter=True,
                 is_active=True,
                 in_beta=True,

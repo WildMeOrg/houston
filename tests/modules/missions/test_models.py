@@ -11,7 +11,7 @@ from tests.utils import module_unavailable
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_add_members(
-    db, temp_user, data_manager_1, data_manager_2
+    db, temp_user, admin_user, admin_user_2
 ):  # pylint: disable=unused-argument
     from app.modules.missions.models import Mission, MissionUserAssignment
 
@@ -60,10 +60,10 @@ def test_mission_add_members(
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
 
-    temp_mission.add_user_in_context(data_manager_1)
+    temp_mission.add_user_in_context(admin_user)
     # try removing a user that's not in the mission
-    temp_mission.remove_user_in_context(data_manager_2)
-    temp_mission.remove_user_in_context(data_manager_1)
+    temp_mission.remove_user_in_context(admin_user_2)
+    temp_mission.remove_user_in_context(admin_user)
 
     with db.session.begin():
         db.session.delete(temp_mission)
@@ -72,7 +72,7 @@ def test_mission_add_members(
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_task_add_members(
-    db, temp_user, data_manager_1, data_manager_2
+    db, temp_user, admin_user, admin_user_2
 ):  # pylint: disable=unused-argument
     from app.modules.missions.models import (
         Mission,
@@ -131,10 +131,10 @@ def test_mission_task_add_members(
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
 
-    temp_mission_task.add_user_in_context(data_manager_1)
+    temp_mission_task.add_user_in_context(admin_user)
     # try removing a user that's not in the task
-    temp_mission_task.remove_user_in_context(data_manager_2)
-    temp_mission_task.remove_user_in_context(data_manager_1)
+    temp_mission_task.remove_user_in_context(admin_user_2)
+    temp_mission_task.remove_user_in_context(admin_user)
 
     with db.session.begin():
         db.session.delete(temp_assignment)

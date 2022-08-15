@@ -235,7 +235,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         )
 
     valid_roles = (
-        'is_interpreter, is_data_manager, is_user_manager, '
+        'is_interpreter, is_user_manager, '
         'is_contributor, is_researcher, is_exporter, is_admin, is_active, in_alpha, in_beta'
     )
     assert response.status_code == 422
@@ -288,7 +288,6 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'is_researcher': True,
         'is_staff': False,
         'is_user_manager': False,
-        'is_data_manager': False,
         'is_email_confirmed': False,
         'location': '',
         'profile_fileupload': None,

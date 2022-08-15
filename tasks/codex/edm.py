@@ -226,9 +226,9 @@ class UserDataSync(EDMDataSync):
             log.info('researcher role found, setting is_researcher')
             self.is_researcher = True
         if 'manager' in roles:
-            log.info('manager role found, setting is_user_manager, is_data_manager')
+            log.info('manager role found, setting is_user_manager, is_admin')
             self.is_user_manager = True
-            self.is_data_manager = True
+            self.is_admin = True
         if 'admin' in roles:
             log.info('admin role found, setting is_user_manager, is_admin')
             self.is_user_manager = True

@@ -18,7 +18,7 @@ def test_User_auth(user_instance):
 
 
 @pytest.mark.parametrize(
-    'init_static_roles,is_internal,is_admin,is_staff,is_active,is_data_manager,is_interpreter',
+    'init_static_roles,is_internal,is_admin,is_staff,is_active,is_user_manager,is_interpreter',
     [
         (
             _init_static_roles,
@@ -26,7 +26,7 @@ def test_User_auth(user_instance):
             _is_admin,
             _is_staff,
             _is_active,
-            _is_data_manager,
+            _is_user_manager,
             _is_interpreter,
         )
         for _init_static_roles in (
@@ -36,14 +36,14 @@ def test_User_auth(user_instance):
                 | models.User.StaticRoles.ADMIN.mask
                 | models.User.StaticRoles.STAFF.mask
                 | models.User.StaticRoles.ACTIVE.mask
-                | models.User.StaticRoles.DATA_MANAGER.mask
+                | models.User.StaticRoles.USER_MANAGER.mask
             ),
         )
         for _is_internal in (False, True)
         for _is_admin in (False, True)
         for _is_staff in (False, True)
         for _is_active in (False, True)
-        for _is_data_manager in (False, True)
+        for _is_user_manager in (False, True)
         for _is_interpreter in (False, True)
     ],
 )
@@ -53,7 +53,7 @@ def test_User_static_roles_setting(
     is_admin,
     is_staff,
     is_active,
-    is_data_manager,
+    is_user_manager,
     is_interpreter,
     user_instance,
 ):
@@ -85,10 +85,10 @@ def test_User_static_roles_setting(
     else:
         user_instance.unset_static_role(user_instance.StaticRoles.ACTIVE)
 
-    if is_data_manager:
-        user_instance.set_static_role(user_instance.StaticRoles.DATA_MANAGER)
+    if is_user_manager:
+        user_instance.set_static_role(user_instance.StaticRoles.USER_MANAGER)
     else:
-        user_instance.unset_static_role(user_instance.StaticRoles.DATA_MANAGER)
+        user_instance.unset_static_role(user_instance.StaticRoles.USER_MANAGER)
 
     if is_interpreter:
         user_instance.set_static_role(user_instance.StaticRoles.INTERPRETER)
@@ -102,8 +102,8 @@ def test_User_static_roles_setting(
     assert user_instance.has_static_role(user_instance.StaticRoles.STAFF) is is_staff
     assert user_instance.has_static_role(user_instance.StaticRoles.ACTIVE) is is_active
     assert (
-        user_instance.has_static_role(user_instance.StaticRoles.DATA_MANAGER)
-        is is_data_manager
+        user_instance.has_static_role(user_instance.StaticRoles.USER_MANAGER)
+        is is_user_manager
     )
     assert (
         user_instance.has_static_role(user_instance.StaticRoles.INTERPRETER)
@@ -114,7 +114,6 @@ def test_User_static_roles_setting(
     assert user_instance.is_admin is is_admin
     assert user_instance.is_staff is is_staff
     assert user_instance.is_active is is_active
-    assert user_instance.is_data_manager is is_data_manager
     assert user_instance.is_interpreter is is_interpreter
 
     if (
@@ -122,7 +121,7 @@ def test_User_static_roles_setting(
         and not is_staff
         and not is_admin
         and not is_internal
-        and not is_data_manager
+        and not is_user_manager
         and not is_interpreter
     ):
         assert user_instance.static_roles == 0
@@ -173,20 +172,20 @@ def test_User_must_have_password():
 def test_edm_migration_roles(user_instance):
     assert not user_instance.is_researcher
     assert not user_instance.is_user_manager
-    assert not user_instance.is_data_manager
+    assert not user_instance.is_admin
     user_instance._process_edm_user_roles(None)
     assert not user_instance.is_researcher
     assert not user_instance.is_user_manager
-    assert not user_instance.is_data_manager
+    assert not user_instance.is_admin
     user_instance._process_edm_user_roles(['fubar'])
     assert not user_instance.is_researcher
     assert not user_instance.is_user_manager
-    assert not user_instance.is_data_manager
+    assert not user_instance.is_admin
     user_instance._process_edm_user_roles(['researcher'])
     assert user_instance.is_researcher
     assert not user_instance.is_user_manager
-    assert not user_instance.is_data_manager
+    assert not user_instance.is_admin
     user_instance._process_edm_user_roles(['manager'])
     assert user_instance.is_researcher
     assert user_instance.is_user_manager
-    assert user_instance.is_data_manager
+    assert user_instance.is_admin

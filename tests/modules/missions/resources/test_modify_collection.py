@@ -14,7 +14,7 @@ from tests.utils import module_unavailable
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_create_patch_mission_collection(
-    flask_app, flask_app_client, data_manager_1, readonly_user, test_root, db
+    flask_app, flask_app_client, admin_user, readonly_user, test_root, db
 ):
     from app.modules.missions.models import Mission, MissionCollection
 
@@ -26,7 +26,7 @@ def test_create_patch_mission_collection(
     try:
         temp_mission = Mission(
             title='Temp Mission',
-            owner=data_manager_1,
+            owner=admin_user,
         )
         with db.session.begin():
             db.session.add(temp_mission)
@@ -47,7 +47,7 @@ def test_create_patch_mission_collection(
         transaction_ids.append(tid)
         temp_mission_collection, _ = MissionCollection.create_from_tus(
             'PYTEST',
-            data_manager_1,
+            admin_user,
             tid,
             mission=temp_mission,
             paths={valid_file},
@@ -70,7 +70,7 @@ def test_create_patch_mission_collection(
 
         # Should pass as owner
         patch_response = mission_utils.patch_mission_collection(
-            flask_app_client, data_manager_1, mission_collection_guid, patch_data
+            flask_app_client, admin_user, mission_collection_guid, patch_data
         )
 
         assert patch_response.json['description'] == patch_data[0]['value']
@@ -85,7 +85,7 @@ def test_create_patch_mission_collection(
 
         # researcher should
         mission_utils.delete_mission_collection(
-            flask_app_client, data_manager_1, mission_collection_guid
+            flask_app_client, admin_user, mission_collection_guid
         )
         # temp_mission_collection should be already deleted on gitlab
         assert not MissionCollection.is_on_remote(str(temp_mission_collection.guid))

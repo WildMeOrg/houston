@@ -286,7 +286,7 @@ def test_ObjectAccessPermission_admin_user(
 
     obj.is_public = lambda: True
     validate_can_read_object(obj)
-    validate_cannot_write_object(obj)
+    validate_can_write_object(obj)
     validate_cannot_delete_object(obj)
 
     validate_can_read_object(temp_user)
@@ -294,11 +294,10 @@ def test_ObjectAccessPermission_admin_user(
     validate_can_delete_object(temp_user)
 
     validate_can_read_object(public_encounter)
-    validate_cannot_write_object(public_encounter)
+    validate_can_write_object(public_encounter)
     validate_cannot_delete_object(public_encounter)
-
-    validate_cannot_read_object(owned_encounter)
-    validate_cannot_write_object(owned_encounter)
+    validate_can_read_object(owned_encounter)
+    validate_can_write_object(owned_encounter)
     validate_cannot_delete_object(owned_encounter)
 
     owned_encounter.delete()
@@ -553,15 +552,15 @@ def test_ObjectAccessPermission_user_manager_user(
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_data_manager_and_staff_access(
-    db, flask_app_client, researcher_1, data_manager_1, staff_user, request, test_root
+def test_admin_user_and_staff_access(
+    db, flask_app_client, researcher_1, admin_user, staff_user, request, test_root
 ):
     import tests.modules.encounters.resources.utils as encounter_utils
     import tests.modules.individuals.resources.utils as individual_utils
     import tests.modules.sightings.resources.utils as sighting_utils
     import tests.modules.site_settings.resources.utils as site_setting_utils
 
-    # testing that staff and data_managers can edit and read these three objects
+    # testing that staff and admins can edit and read these three objects
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -582,7 +581,7 @@ def test_data_manager_and_staff_access(
         ),
     ]
     individual_utils.patch_individual(
-        flask_app_client, data_manager_1, individual_id, ind_patch_data
+        flask_app_client, admin_user, individual_id, ind_patch_data
     )
     indiv_resp = individual_utils.read_individual(
         flask_app_client, staff_user, individual_id
@@ -602,7 +601,7 @@ def test_data_manager_and_staff_access(
         sight_patch_data,
     )
     sight_resp = sighting_utils.read_sighting(
-        flask_app_client, data_manager_1, sighting_id
+        flask_app_client, admin_user, sighting_id
     ).json
     assert sight_resp['time'] == test_dt
     assert sight_resp['timeSpecificity'] == 'month'
@@ -611,7 +610,7 @@ def test_data_manager_and_staff_access(
     encounter_id = sight_resp['encounters'][0]['guid']
     patch_data = [test_utils.patch_replace_op('locationId', region1_id)]
     encounter_utils.patch_encounter(
-        flask_app_client, encounter_id, data_manager_1, patch_data
+        flask_app_client, encounter_id, admin_user, patch_data
     )
     enc_resp = encounter_utils.read_encounter(
         flask_app_client, staff_user, encounter_id

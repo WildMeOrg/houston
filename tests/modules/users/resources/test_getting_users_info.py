@@ -85,7 +85,6 @@ def test_getting_list_of_users_by_authorized_user(
         'is_staff': False,
         'is_researcher': False,
         'is_user_manager': True,
-        'is_data_manager': False,
         'is_admin': False,
         'indexed': f'{user_manager_user.indexed.isoformat()}+00:00',
         'in_alpha': True,

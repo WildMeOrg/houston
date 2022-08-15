@@ -11,27 +11,27 @@ from tests.utils import module_unavailable, random_guid, wait_for_elasticsearch_
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_create_and_delete_mission(flask_app_client, data_manager_1):
+def test_create_and_delete_mission(flask_app_client, admin_user):
     # pylint: disable=invalid-name
     from app.modules.missions.models import Mission, MissionUserAssignment
 
     nonce, title = mission_utils.make_name('mission')
     response = mission_utils.create_mission(
         flask_app_client,
-        data_manager_1,
+        admin_user,
         title,
     )
 
     mission_guid = response.json['guid']
     read_mission = Mission.query.get(response.json['guid'])
     assert read_mission.title == title
-    assert read_mission.owner == data_manager_1
+    assert read_mission.owner == admin_user
 
     # Try reading it back
-    mission_utils.read_mission(flask_app_client, data_manager_1, mission_guid)
+    mission_utils.read_mission(flask_app_client, admin_user, mission_guid)
 
     # And deleting it
-    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+    mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
 
     read_mission = Mission.query.get(mission_guid)
     assert read_mission is None
@@ -42,14 +42,14 @@ def test_create_and_delete_mission(flask_app_client, data_manager_1):
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_permission(
-    flask_app_client, admin_user, staff_user, regular_user, data_manager_1, data_manager_2
+    flask_app_client, admin_user, staff_user, regular_user, admin_user_2
 ):
     # Before we create any Missions, find out how many are there already
     previous_list = mission_utils.read_all_missions(flask_app_client, staff_user)
 
     response = mission_utils.create_mission(
         flask_app_client,
-        data_manager_1,
+        admin_user,
         mission_utils.make_name('mission')[1],
     )
 
@@ -64,8 +64,8 @@ def test_mission_permission(
     mission_utils.read_all_missions(flask_app_client, admin_user)
 
     # user that created mission can read it back plus the list
-    mission_utils.read_mission(flask_app_client, data_manager_1, mission_guid)
-    list_response = mission_utils.read_all_missions(flask_app_client, data_manager_1)
+    mission_utils.read_mission(flask_app_client, admin_user, mission_guid)
+    list_response = mission_utils.read_all_missions(flask_app_client, admin_user)
 
     # due to the way the tests are run, there may be missions left lying about,
     # don't rely on there only being one
@@ -78,19 +78,19 @@ def test_mission_permission(
     assert mission_present
 
     # a different data manager should also be able to read the mission
-    mission_utils.read_mission(flask_app_client, data_manager_2, mission_guid)
-    mission_utils.read_all_missions(flask_app_client, data_manager_2)
+    mission_utils.read_mission(flask_app_client, admin_user_2, mission_guid)
+    mission_utils.read_all_missions(flask_app_client, admin_user_2)
 
     # but a regular user should not be able to read the list or the mission
     mission_utils.read_mission(flask_app_client, regular_user, mission_guid, 403)
     mission_utils.read_all_missions(flask_app_client, regular_user, 403)
 
     # delete it
-    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+    mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
+def test_delete_mission_cleanup(flask_app_client, admin_user, test_root):
     from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
@@ -101,14 +101,14 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
     try:
         response = mission_utils.create_mission(
             flask_app_client,
-            data_manager_1,
+            admin_user,
             mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
 
         previous_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
 
         new_mission_collections = []
@@ -120,7 +120,7 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
             nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
-                data_manager_1,
+                admin_user,
                 description,
                 transaction_id,
                 temp_mission.guid,
@@ -131,15 +131,13 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
             new_mission_collections.append((nonce, temp_mission_collection))
 
         current_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
         assert len(previous_list.json) + len(new_mission_collections) == len(
             current_list.json
         )
 
-        previous_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        previous_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
 
         nonce, new_mission_collection1 = new_mission_collections[0]
         nonce, new_mission_collection2 = new_mission_collections[1]
@@ -152,21 +150,19 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
         ]
 
         # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+        wait_for_elasticsearch_status(flask_app_client, admin_user)
 
         new_mission_tasks = []
         for index in range(3):
             response = mission_utils.create_mission_task(
-                flask_app_client, data_manager_1, mission_guid, data
+                flask_app_client, admin_user, mission_guid, data
             )
             mission_task_guid = response.json['guid']
             temp_mission_task = MissionTask.query.get(mission_task_guid)
 
             new_mission_tasks.append(temp_mission_task)
 
-        current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        current_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
         assert len(previous_list.json) + len(new_mission_tasks) == len(current_list.json)
 
         # Check if the mission is showing the correct number of tasks
@@ -174,7 +170,7 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
 
         # Check that the API for a mission's tasks agrees
         response = mission_utils.read_mission_tasks_for_mission(
-            flask_app_client, data_manager_1, temp_mission.guid
+            flask_app_client, admin_user, temp_mission.guid
         )
         assert len(response.json) == 3
 
@@ -187,7 +183,7 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
     finally:
         missions = Mission.query.all()
         for mission in missions:
-            mission_utils.delete_mission(flask_app_client, data_manager_1, mission.guid)
+            mission_utils.delete_mission(flask_app_client, admin_user, mission.guid)
         for transaction_id in transaction_ids:
             tus_utils.cleanup_tus_dir(transaction_id)
 
@@ -200,7 +196,7 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_mission_scalability(flask_app_client, data_manager_1, test_root):
+def test_mission_scalability(flask_app_client, admin_user, test_root):
     from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     ASSETS = 1000
@@ -215,14 +211,14 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
     try:
         response = mission_utils.create_mission(
             flask_app_client,
-            data_manager_1,
+            admin_user,
             mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
 
         previous_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
 
         new_mission_collections = []
@@ -234,7 +230,7 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
             nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
-                data_manager_1,
+                admin_user,
                 description,
                 transaction_id,
                 temp_mission.guid,
@@ -245,15 +241,13 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
             new_mission_collections.append((nonce, temp_mission_collection))
 
         current_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
         assert len(previous_list.json) + len(new_mission_collections) == len(
             current_list.json
         )
 
-        previous_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        previous_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
 
         nonce, new_mission_collection1 = new_mission_collections[0]
         nonce, new_mission_collection2 = new_mission_collections[1]
@@ -262,21 +256,19 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
         ]
 
         # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+        wait_for_elasticsearch_status(flask_app_client, admin_user)
 
         new_mission_tasks = []
         for index in tqdm.tqdm(list(range(MISSION_TASKS))):
             response = mission_utils.create_mission_task(
-                flask_app_client, data_manager_1, mission_guid, data
+                flask_app_client, admin_user, mission_guid, data
             )
             mission_task_guid = response.json['guid']
             temp_mission_task = MissionTask.query.get(mission_task_guid)
 
             new_mission_tasks.append(temp_mission_task)
 
-        current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        current_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
         assert len(previous_list.json) + len(new_mission_tasks) == len(current_list.json)
 
         # Check if the mission is showing the correct number of tasks
@@ -284,7 +276,7 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
 
         # Check that the API for a mission's tasks agrees
         response = mission_utils.read_mission_tasks_for_mission(
-            flask_app_client, data_manager_1, temp_mission.guid
+            flask_app_client, admin_user, temp_mission.guid
         )
         assert len(response.json) == MISSION_TASKS
 
@@ -296,7 +288,7 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
         assert len(mission_tasks) == MISSION_TASKS
     finally:
         if mission_guid:
-            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+            mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
         for transaction_id in transaction_ids:
             tus_utils.cleanup_tus_dir(transaction_id)
 
@@ -309,7 +301,7 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
+def test_get_mission_assets(flask_app_client, admin_user, test_root):
     from app.extensions import elasticsearch as es
     from app.modules.missions.models import Mission, MissionCollection
 
@@ -328,14 +320,14 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
     try:
         response = mission_utils.create_mission(
             flask_app_client,
-            data_manager_1,
+            admin_user,
             mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
 
         previous_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
 
         new_mission_collections = []
@@ -347,7 +339,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
             nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
-                data_manager_1,
+                admin_user,
                 description,
                 transaction_id,
                 temp_mission.guid,
@@ -358,19 +350,19 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
             new_mission_collections.append((nonce, temp_mission_collection))
 
         current_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
         assert len(previous_list.json) + len(new_mission_collections) == len(
             current_list.json
         )
 
         # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+        wait_for_elasticsearch_status(flask_app_client, admin_user)
 
         search = {}
         # Check that the API for a mission's collections agrees
         response = mission_utils.elasticsearch_mission_assets(
-            flask_app_client, data_manager_1, temp_mission.guid, search
+            flask_app_client, admin_user, temp_mission.guid, search
         )
         assets = temp_mission.get_assets()
         assert len(assets) == ASSETS * MISSION_COLLECTIONS
@@ -391,7 +383,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
 
         # Check that the API for a mission's collections agrees
         response = mission_utils.elasticsearch_mission_assets(
-            flask_app_client, data_manager_1, temp_mission.guid, search
+            flask_app_client, admin_user, temp_mission.guid, search
         )
         assert len(response.json) == min(100, total)
 
@@ -401,7 +393,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
         assert len(mission_collections) == MISSION_COLLECTIONS
     finally:
         if mission_guid:
-            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+            mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
         for transaction_id in transaction_ids:
             tus_utils.cleanup_tus_dir(transaction_id)
 

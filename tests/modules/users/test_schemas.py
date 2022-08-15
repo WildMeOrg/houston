@@ -51,7 +51,6 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'is_staff',
         'is_researcher',
         'is_user_manager',
-        'is_data_manager',
         'is_admin',
         'indexed',
         'in_alpha',

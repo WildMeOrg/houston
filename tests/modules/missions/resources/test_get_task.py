@@ -15,7 +15,7 @@ def test_get_mission_task_not_found(flask_app_client):
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root):
+def test_get_mission_task_by_search(flask_app_client, admin_user, test_root):
     from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
@@ -25,18 +25,16 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
 
     try:
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, mission_utils.make_name('mission')[1]
+            flask_app_client, admin_user, mission_utils.make_name('mission')[1]
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
 
         previous_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
 
-        previous_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        previous_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
 
         new_mission_collections = []
         for index in range(3):
@@ -47,7 +45,7 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
             nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
-                data_manager_1,
+                admin_user,
                 description,
                 transaction_id,
                 temp_mission.guid,
@@ -58,7 +56,7 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
             new_mission_collections.append((nonce, temp_mission_collection))
 
         current_list = mission_utils.read_all_mission_collections(
-            flask_app_client, data_manager_1
+            flask_app_client, admin_user
         )
         assert len(previous_list.json) + len(new_mission_collections) == len(
             current_list.json
@@ -75,21 +73,19 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
         ]
 
         # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+        wait_for_elasticsearch_status(flask_app_client, admin_user)
 
         new_mission_tasks = []
         for index in range(3):
             response = mission_utils.create_mission_task(
-                flask_app_client, data_manager_1, mission_guid, data
+                flask_app_client, admin_user, mission_guid, data
             )
             mission_task_guid = response.json['guid']
             temp_mission_task = MissionTask.query.get(mission_task_guid)
 
             new_mission_tasks.append(temp_mission_task)
 
-        current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1
-        )
+        current_list = mission_utils.read_all_mission_tasks(flask_app_client, admin_user)
         assert len(previous_list.json) + len(new_mission_tasks) == len(current_list.json)
 
         # Check if the mission is showing the correct number of tasks
@@ -97,7 +93,7 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
 
         # Check that the API for a mission's tasks agrees
         response = mission_utils.read_mission_tasks_for_mission(
-            flask_app_client, data_manager_1, temp_mission.guid
+            flask_app_client, admin_user, temp_mission.guid
         )
         assert len(response.json) == 3
 
@@ -106,7 +102,7 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
         guid_str = str(new_mission_task.guid)
         guid_segment = guid_str.split('-')[-1]
         current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1, search=guid_segment
+            flask_app_client, admin_user, search=guid_segment
         )
         assert len(current_list.json) == 1
         response = current_list.json[0]
@@ -114,11 +110,11 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
 
         # Search mission tasks by owner GUID segment
         new_mission_task = new_mission_tasks[2]
-        assert new_mission_task.owner == data_manager_1
+        assert new_mission_task.owner == admin_user
         guid_str = str(new_mission_task.owner_guid)
         guid_segment = guid_str.split('-')[-1]
         current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1, search=guid_segment
+            flask_app_client, admin_user, search=guid_segment
         )
         assert len(current_list.json) == len(new_mission_tasks)
 
@@ -128,30 +124,30 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
         guid_str = str(new_mission_task.mission_guid)
         guid_segment = guid_str.split('-')[-1]
         current_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1, search=guid_segment
+            flask_app_client, admin_user, search=guid_segment
         )
         assert len(current_list.json) == len(new_mission_tasks)
 
         # Limit responses
         limited_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1, search=guid_segment, limit=2
+            flask_app_client, admin_user, search=guid_segment, limit=2
         )
         assert len(current_list.json[:2]) == len(limited_list.json)
 
         # Limit responses (with offset)
         limited_list = mission_utils.read_all_mission_tasks(
-            flask_app_client, data_manager_1, search=guid_segment, offset=1, limit=2
+            flask_app_client, admin_user, search=guid_segment, offset=1, limit=2
         )
         assert len(current_list.json[1:3]) == len(limited_list.json)
 
         # Delete mission tasks
         for new_mission_task in new_mission_tasks:
             mission_utils.delete_mission_task(
-                flask_app_client, data_manager_1, new_mission_task.guid
+                flask_app_client, admin_user, new_mission_task.guid
             )
     finally:
         if mission_guid:
-            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+            mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
 
         for transaction_id in transaction_ids:
             tus_utils.cleanup_tus_dir(transaction_id)

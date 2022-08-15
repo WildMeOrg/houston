@@ -53,7 +53,6 @@ class UserListSchema(BaseUserSchema):
             User.is_staff.fget.__name__,
             User.is_researcher.fget.__name__,
             User.is_user_manager.fget.__name__,
-            User.is_data_manager.fget.__name__,
             User.is_admin.fget.__name__,
             User.in_alpha.fget.__name__,
             User.in_beta.fget.__name__,

@@ -171,13 +171,12 @@ def test_custom_fields_on_sighting(
     res = setting_utils.patch_main_setting(
         flask_app_client,
         admin_user,
-        '',
         [
             {
                 'path': 'site.custom.customFields.Sighting/' + cfd_id,
                 'op': 'remove',
             }
         ],
-        400,
+        expected_status_code=400,
     )
     assert 'in use by' in res.json['message']

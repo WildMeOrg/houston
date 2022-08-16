@@ -53,3 +53,21 @@ class RelationshipTypeSchema(ExtraValidationSchema):
     guid = base_fields.UUID(required=True)
     label = base_fields.String(required=True)
     roles = base_fields.Nested(RelationshipTypeRolesSchema, required=True, many=True)
+
+
+class BaseSiteSettingSchema(ModelSchema):
+    """
+    Base SiteSetting schema exposes only the most general fields.
+    """
+
+    value = base_fields.Function(lambda s: s.get_val())
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = SiteSetting
+        fields = (
+            SiteSetting.key.key,
+            SiteSetting.public.key,
+            'value',
+        )
+        dump_only = ()

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from pathlib import Path
 
 import pytest
@@ -43,26 +44,25 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
 
             resp = flask_app_client.post(
-                '/api/v1/site-settings/file',
-                data={
-                    'key': filename,
-                    'transactionId': transaction_id,
-                },
+                f'/api/v1/site-settings/data/{filename}',
+                data=json.dumps(
+                    {
+                        'value': {
+                            'transactionId': transaction_id,
+                        }
+                    }
+                ),
             )
             assert resp.status_code == 200, resp.data
             assert resp.json['key'] == filename
-            assert resp.json['file_upload_guid'] != str(fup.guid)
-
-            resp = flask_app_client.get('/api/v1/site-settings/file')
+            assert resp.json['value'] != str(fup.guid)
+            filename_guid = resp.json['value']
+            resp = flask_app_client.get(f'/api/v1/site-settings/data/{filename}')
             assert resp.status_code == 200
-            assert resp.json == [
-                {'key': 'logo', 'file_upload_guid': str(fup.guid), 'public': True},
-                {
-                    'key': filename,
-                    'file_upload_guid': resp.json[1]['file_upload_guid'],
-                    'public': True,
-                },
-            ]
+            assert resp.json == {
+                'key': filename,
+                'value': filename_guid,
+            }
 
         # Edit site setting using transactionId with 2 files
         with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
@@ -70,11 +70,14 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             write_uploaded_file('a.txt', Path(td), '1234')
             write_uploaded_file('b.txt', Path(td), '5678')
             resp = flask_app_client.post(
-                '/api/v1/site-settings/file',
-                data={
-                    'key': 'logo',
-                    'transactionId': transaction_id,
-                },
+                '/api/v1/site-settings/data/logo',
+                data=json.dumps(
+                    {
+                        'value': {
+                            'transactionId': transaction_id,
+                        }
+                    }
+                ),
             )
             assert resp.status_code == 422
             assert (
@@ -88,20 +91,23 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             write_uploaded_file('a.txt', Path(td), '1234')
 
             resp = flask_app_client.post(
-                '/api/v1/site-settings/file',
-                data={
-                    'key': 'logo',
-                    'transactionId': transaction_id,
-                    'transactionPath': 'a.txt',
-                },
+                '/api/v1/site-settings/data/logo',
+                data=json.dumps(
+                    {
+                        'value': {
+                            'transactionId': transaction_id,
+                            'transactionPath': 'a.txt',
+                        }
+                    }
+                ),
             )
             assert resp.status_code == 200
             assert resp.json['key'] == 'logo'
 
         # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/file/logo')
+        resp = flask_app_client.delete('/api/v1/site-settings/data/logo')
         assert resp.status_code == 204
-        resp = flask_app_client.delete(f'/api/v1/site-settings/file/{filename}')
+        resp = flask_app_client.delete(f'/api/v1/site-settings/data/{filename}')
         assert resp.status_code == 204
 
         # List site settings

@@ -415,11 +415,15 @@ class SiteSetting(db.Model, Timestamp):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
-    def is_houston_setting(cls, key, include_files=False):
-        if include_files:
-            return key in cls._get_keys()
+    def is_houston_setting(cls, key):
+        return key in cls._get_keys()
+
+    @classmethod
+    def get_key_type(cls, key):
+        if key in cls._get_keys():
+            return cls.HOUSTON_SETTINGS[key]['type']
         else:
-            return key in cls._get_keys() and cls.HOUSTON_SETTINGS[key]['type'] != 'file'
+            return None
 
     @classmethod
     def _get_setting_conf(cls, key):
@@ -569,13 +573,16 @@ class SiteSetting(db.Model, Timestamp):
                     setting_default = setting_default()
                 return setting_default
             return default
-        if setting.file_upload_guid:
-            return setting.file_upload
-        elif setting.data:
-            return setting.data
-        elif setting.boolean is not None:
-            return setting.boolean
-        return setting.string
+        return setting.get_val()
+
+    def get_val(self):
+        if self.file_upload_guid:
+            return self.file_upload_guid
+        elif self.data:
+            return self.data
+        elif self.boolean is not None:
+            return self.boolean
+        return self.string
 
     ##########################################################################################################
     # All the functions below are for handling the REST API functions. These need detailed access to the Site
@@ -649,8 +656,15 @@ class SiteSetting(db.Model, Timestamp):
         for key, type_def in cls.HOUSTON_SETTINGS.items():
             is_file = type_def.get('type') == 'file'
             permission = type_def.get('permission', lambda: True)()
-            if (is_admin or type_def.get('public', True) and permission) and not is_file:
-                config_data[key] = {'value': cls.get_rest_value(key)}
+            if not is_file:
+
+                if is_admin or type_def.get('public', True) and permission:
+                    config_data[key] = {
+                        'value': cls.get_rest_value(key),
+                        'canView': True,
+                    }
+                else:
+                    config_data[key] = {'canView': False}
 
         return {'response': {'configuration': config_data}}
 

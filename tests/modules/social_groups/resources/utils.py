@@ -105,7 +105,7 @@ def set_roles(
     return setting_utils.modify_main_settings(
         flask_app_client,
         user,
-        {'_value': data},
+        data,
         'social_group_roles',
         expected_status_code,
         expected_error,
@@ -127,8 +127,8 @@ def set_basic_roles(flask_app_client, user, request):
 
 def get_roles(flask_app_client, user, expected_status_code=200):
     block_config = setting_utils.read_main_settings(
-        flask_app_client, user, 'block', expected_status_code
-    ).json['response']['configuration']
+        flask_app_client, user, None, expected_status_code
+    ).json
     return block_config['social_group_roles']['value']
 
 

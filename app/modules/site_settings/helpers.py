@@ -265,6 +265,12 @@ class SiteSettingCustomFields(object):
                     f'{field_str} id {cf_cat_id}: displayType {display_type} not valid',
                 )
 
+            if display_type == 'multiselect' and not cf_def.get('multiple', False):
+                raise HoustonException(
+                    log,
+                    f'{field_str} id {cf_cat_id}: multiselect must have multiple=true',
+                )
+
             # see DEX-1270
             try:
                 # this will silently be ignored if not multi/select but ValueError if badness
@@ -328,6 +334,8 @@ class SiteSettingCustomFields(object):
 
         import app.modules.utils as util
 
+        dtype = cf_defn['schema']['displayType']
+
         try:
             choices = cls.get_choices_from_definition(cf_defn, value_only=True)
         except ValueError as verr:
@@ -341,16 +349,21 @@ class SiteSettingCustomFields(object):
             if not isinstance(value, list):
                 log.debug(f'multiple=T but value not list: value={value} defn={cf_defn}')
                 return False
+            if len(value) == 0 and cf_defn.get('required', False):
+                log.debug(
+                    f'multiple=T and required=T but empty list: value={value} defn={cf_defn}'
+                )
+                return False
             # a little hackery / slight-of-hand
             cf_defn_single = copy.deepcopy(cf_defn)
             cf_defn_single['multiple'] = False
+            if dtype == 'multiselect':  # bonus hackery
+                cf_defn_single['schema']['displayType'] = 'select'
             for val in value:
                 val_ok = cls.is_valid_value(cf_defn_single, val)
                 if not val_ok:
                     return False
             return True  # all passed
-
-        dtype = cf_defn['schema']['displayType']
 
         # since we arent multiple, we let None be acceptable except:
         #   1. we are required

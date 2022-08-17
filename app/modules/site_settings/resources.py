@@ -208,7 +208,13 @@ class MainDataBlock(Resource):
         except Exception:
             pass
         try:
-            SiteSetting.set_rest_block_data(data)
+            # Transitory, allow old and new (value) data format
+            if 'value' in data.keys():
+                log.debug('Site settings by value')
+                SiteSetting.set_rest_block_data(data['value'])
+            else:
+                log.debug('Site settings without value')
+                SiteSetting.set_rest_block_data(data)
 
         except HoustonException as ex:
             abort(ex.status_code, ex.message)

@@ -147,6 +147,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
         admin_user,
         'test_cfd_multiselect',
         displayType='multiselect',
+        multiple=True,
         schema_mods={
             'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
         },
@@ -166,6 +167,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
         'test_cfd_multiselect_required',
         displayType='multiselect',
         required=True,
+        multiple=True,
         schema_mods={
             'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
         },

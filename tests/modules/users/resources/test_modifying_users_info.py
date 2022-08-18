@@ -109,6 +109,7 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
                         {'op': 'replace', 'path': '/is_researcher', 'value': True},
                         {'op': 'replace', 'path': '/is_user_manager', 'value': True},
                         {'op': 'replace', 'path': '/is_exporter', 'value': True},
+                        {'op': 'replace', 'path': '/password', 'value': 'NEW_PASSWORD'},
                     ]
                 ),
             )
@@ -133,6 +134,7 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         assert temp_user.is_admin
         assert not temp_user.is_internal
         assert temp_user.is_exporter
+        assert temp_user.password == 'NEW_PASSWORD'
     finally:
         # Restore original state
         regular_user.full_name = saved_full_name
@@ -142,6 +144,7 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         regular_user.is_researcher = False
         regular_user.is_contributor = False
         regular_user.is_user_manager = False
+        regular_user.password = regular_user.password_secret
         with db.session.begin():
             db.session.merge(regular_user)
 
@@ -171,6 +174,73 @@ def test_invalid_modifying_user_info_by_admin(
     ]
 
     user_utils.patch_user(flask_app_client, admin_user, regular_user, data, 422, error)
+
+
+def test_modifying_password(flask_app_client, regular_user, user_manager_user, db):
+    # pylint: disable=invalid-name
+    test_password = 'TEST_NEW_PASSWORD'
+    try:
+        # should fail: regular user changing password of manager user
+        with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+            response = flask_app_client.patch(
+                '/api/v1/users/%s' % user_manager_user.guid,
+                content_type='application/json',
+                data=json.dumps(
+                    [
+                        {
+                            'op': 'test',
+                            'path': '/current_password',
+                            'value': regular_user.password_secret,
+                        },
+                        {
+                            'op': 'replace',
+                            'path': '/password',
+                            'value': test_password,
+                        },
+                    ]
+                ),
+            )
+
+        assert response.status_code == 403
+        assert response.content_type == 'application/json'
+        assert isinstance(response.json, dict)
+        assert set(response.json.keys()) >= {'status', 'message'}
+        temp_user = User.query.get(user_manager_user.guid)
+        assert not temp_user.password == test_password
+    finally:
+        user_manager_user.password = user_manager_user.password_secret
+        with db.session.begin():
+            db.session.merge(user_manager_user)
+
+    try:
+        # should succeed: manager user changing user password
+        with flask_app_client.login(user_manager_user, auth_scopes=('users:write',)):
+            response = flask_app_client.patch(
+                '/api/v1/users/%s' % regular_user.guid,
+                content_type='application/json',
+                data=json.dumps(
+                    [
+                        {
+                            'op': 'test',
+                            'path': '/current_password',
+                            'value': user_manager_user.password_secret,
+                        },
+                        {
+                            'op': 'replace',
+                            'path': '/password',
+                            'value': test_password,
+                        },
+                    ]
+                ),
+            )
+
+        assert response.status_code == 200
+        temp_user = User.query.get(regular_user.guid)
+        assert temp_user.password == test_password
+    finally:
+        regular_user.password = regular_user.password_secret
+        with db.session.begin():
+            db.session.merge(regular_user)
 
 
 def test_modifying_user_info_admin_fields_by_not_admin(

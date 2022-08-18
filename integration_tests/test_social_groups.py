@@ -140,9 +140,12 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == [
         {
             'name': 'Family',
+            'created': social_group['created'],
+            'updated': response.json()[0]['updated'],
             'guid': social_group_id,
             'elasticsearchable': response.json()[0]['elasticsearchable'],
             'indexed': response.json()[0]['indexed'],
+            'num_members': 3,
         }
     ]
 

@@ -42,6 +42,26 @@ class BaseSocialGroupSchema(ModelSchema):
         dump_only = (SocialGroup.guid.key,)
 
 
+class ListSocialGroupSchema(BaseSocialGroupSchema):
+    """
+    SocialGroup schema exposes all fields required for the list.
+    """
+
+    num_members = base_fields.Function(lambda sg: sg.num_members)
+
+    class Meta(BaseSocialGroupSchema.Meta):
+        fields = BaseSocialGroupSchema.Meta.fields + (
+            SocialGroup.created.key,
+            SocialGroup.updated.key,
+            'num_members',
+        )
+        dump_only = BaseSocialGroupSchema.Meta.dump_only + (
+            SocialGroup.created.key,
+            SocialGroup.updated.key,
+            'num_members',
+        )
+
+
 class DetailedSocialGroupSchema(BaseSocialGroupSchema):
     """
     Detailed SocialGroup schema exposes all useful fields.

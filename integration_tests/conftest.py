@@ -67,7 +67,6 @@ def delete_site(pytestconfig):
         services = [
             'sage',
             'houston',
-            'edm',
             'celery_worker',
             'celery_beat',
         ]

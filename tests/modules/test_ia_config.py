@@ -11,6 +11,7 @@ SEAL_SPECIES = [
     'Neomonachus schauinslandi',
     'Phoca vitulina',
     'Pusa hispida saimensis',
+    'Pusa hispida',
 ]
 
 
@@ -144,6 +145,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
+                        'ringed_seal',
                     ],
                     'id_algos': {
                         'hotspotter': {'description': 'HotSpotter pattern-matcher'}
@@ -161,6 +163,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
+                        'ringed_seal',
                     ],
                     'id_algos': {
                         'hotspotter': {'description': 'HotSpotter pattern-matcher'}
@@ -178,6 +181,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
+                        'ringed_seal',
                     ],
                     'id_algos': {
                         'hotspotter': {'description': 'HotSpotter pattern-matcher'}
@@ -195,6 +199,25 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
+                        'ringed_seal',
+                    ],
+                    'id_algos': {
+                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                    },
+                },
+                {
+                    'scientific_name': 'Pusa hispida',
+                    'common_name': 'ringed seal',
+                    'itis_id': 622018,
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                        'ringed_seal',
                     ],
                     'id_algos': {
                         'hotspotter': {'description': 'HotSpotter pattern-matcher'}
@@ -212,7 +235,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'seal',
+                        'ringed_seal',
                     ],
                     'id_algos': {
                         'hotspotter': {'description': 'HotSpotter pattern-matcher'}
@@ -247,6 +270,25 @@ def test_get_detect_model_frontend_data(flask_app_client):
     }
     frontend_data = ia_config_reader.get_detect_model_frontend_data()
     assert desired_frontend_data == frontend_data
+
+
+def test_get_seal_ia_classes(flask_app_client):
+    ia_config_reader = IaConfig()
+    frontend_data = ia_config_reader.get_detect_model_frontend_data()
+    desired_ia_classes = {
+        'grey_seal_femaleyoung',
+        'grey_seal_male',
+        'grey_seal_pup',
+        'grey_seal_unknown',
+        'harbour_seal',
+        'hawaiian_monk_seal',
+        'mediterranean_monk_seal',
+        'ringed_seal',
+    }
+    ia_classes = set()
+    for species in frontend_data['seals_v0']['supported_species']:
+        ia_classes = ia_classes | set(species['ia_classes'])
+    assert ia_classes == desired_ia_classes
 
 
 def test_get_seal_species(flask_app_client):

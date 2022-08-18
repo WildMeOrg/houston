@@ -18,7 +18,8 @@
       },
       "harbour_seal": "@Halichoerus.grypus.grey_seal_unknown",
       "hawaiian_monk_seal": "@Halichoerus.grypus.grey_seal_unknown",
-      "mediterranean_monk_seal": "@Halichoerus.grypus.grey_seal_unknown"
+      "mediterranean_monk_seal": "@Halichoerus.grypus.grey_seal_unknown",
+      "ringed_seal": "@Halichoerus.grypus.grey_seal_unknown"
     }
   },
   "Monachus": {
@@ -39,7 +40,8 @@
         "_identifiers": [
           "@_identifiers.hotspotter"
         ]
-      }
+      },
+      "ringed_seal": "@Monachus.monachus.mediterranean_monk_seal"
     }
   },
   "Neomonachus": {
@@ -60,7 +62,8 @@
           "@_identifiers.hotspotter"
         ]
       },
-      "mediterranean_monk_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal"
+      "mediterranean_monk_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "ringed_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal"
     }
   },
   "Phoca": {
@@ -81,25 +84,46 @@
         ]
       },
       "hawaiian_monk_seal": "@Phoca.vitulina.harbour_seal",
-      "mediterranean_monk_seal": "@Phoca.vitulina.harbour_seal"
+      "mediterranean_monk_seal": "@Phoca.vitulina.harbour_seal",
+      "ringed_seal": "@Phoca.vitulina.harbour_seal"
     }
   },
   "Pusa": {
+    "hispida": {
+      "_common_name": "ringed seal",
+      "_default": "@Pusa.hispida.ringed_seal",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 622018,
+      "grey_seal_femaleyoung": "@Pusa.hispida.ringed_seal",
+      "grey_seal_male": "@Pusa.hispida.ringed_seal",
+      "grey_seal_pup": "@Pusa.hispida.ringed_seal",
+      "grey_seal_unknown": "@Pusa.hispida.ringed_seal",
+      "harbour_seal": "@Pusa.hispida.ringed_seal",
+      "hawaiian_monk_seal": "@Pusa.hispida.ringed_seal",
+      "mediterranean_monk_seal": "@Pusa.hispida.ringed_seal",
+      "ringed_seal": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      }
+    },
     "hispida saimensis": {
       "_common_name": "Saimaa seal",
-      "_default": "@Pusa.hispida saimensis.seal",
+      "_default": "@Pusa.hispida saimensis.ringed_seal",
       "_detectors": [
         "@_detectors.seals_v0"
       ],
       "_itis_id": 622064,
-      "grey_seal_femaleyoung": "@Pusa.hispida saimensis.seal",
-      "grey_seal_male": "@Pusa.hispida saimensis.seal",
-      "grey_seal_pup": "@Pusa.hispida saimensis.seal",
-      "grey_seal_unknown": "@Pusa.hispida saimensis.seal",
-      "harbour_seal": "@Pusa.hispida saimensis.seal",
-      "hawaiian_monk_seal": "@Pusa.hispida saimensis.seal",
-      "mediterranean_monk_seal": "@Pusa.hispida saimensis.seal",
-      "seal": {
+      "grey_seal_femaleyoung": "@Pusa.hispida saimensis.ringed_seal",
+      "grey_seal_male": "@Pusa.hispida saimensis.ringed_seal",
+      "grey_seal_pup": "@Pusa.hispida saimensis.ringed_seal",
+      "grey_seal_unknown": "@Pusa.hispida saimensis.ringed_seal",
+      "harbour_seal": "@Pusa.hispida saimensis.ringed_seal",
+      "hawaiian_monk_seal": "@Pusa.hispida saimensis.ringed_seal",
+      "mediterranean_monk_seal": "@Pusa.hispida saimensis.ringed_seal",
+      "ringed_seal": {
         "_identifiers": [
           "@_identifiers.hotspotter"
         ]
@@ -117,8 +141,8 @@
         "sensitivity": 0.63,
         "use_labeler_species": true
       },
-      "name": "Seal detector",
-      "description": "Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals"
+      "description": "Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals",
+      "name": "Seal detector"
     }
   },
   "_identifiers": {

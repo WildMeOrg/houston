@@ -86,8 +86,8 @@ class SiteSetting(db.Model, Timestamp):
         'site.general.donationButtonUrl': {
             'type': str,
             'definition': {
-                'displayType': 'longstring',
-                'fieldType': 'string',  # TODO so why is this not url?
+                'displayType': 'string',
+                'fieldType': 'url',
             },
         },
         'site.general.helpDescription': {
@@ -109,8 +109,8 @@ class SiteSetting(db.Model, Timestamp):
         'site.general.customCardButtonUrl': {
             'type': str,
             'definition': {
-                'displayType': 'longstring',
-                'fieldType': 'string',  # TODO why is this not a url? DEX 1352
+                'displayType': 'string',
+                'fieldType': 'url',
             },
             'default': 'Take action',
         },
@@ -133,8 +133,8 @@ class SiteSetting(db.Model, Timestamp):
         'site.general.photoGuidelinesUrl': {
             'type': str,
             'definition': {
-                'displayType': 'longstring',
-                'fieldType': 'string',  # TODO why is this not a url DEX 1352
+                'displayType': 'string',
+                'fieldType': 'url',
             },
         },
         'site.look.themeColor': {

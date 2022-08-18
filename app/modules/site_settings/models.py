@@ -110,7 +110,7 @@ class SiteSetting(db.Model, Timestamp):
             'type': str,
             'definition': {
                 'displayType': 'string',
-                'fieldType': 'url',  # TODO why is this not a url? DEX 1352
+                'fieldType': 'url',
             },
             'default': 'Take action',
         },
@@ -134,7 +134,7 @@ class SiteSetting(db.Model, Timestamp):
             'type': str,
             'definition': {
                 'displayType': 'string',
-                'fieldType': 'url',  # TODO why is this not a url DEX 1352
+                'fieldType': 'url',
             },
         },
         'site.look.themeColor': {

@@ -162,3 +162,27 @@ def list_all(context):
     users = User.query.all()
     for user in users:
         print('User : {} '.format(user))
+
+
+@app_context_task(help={'email': 'temp@localhost'})
+def set_password(
+    context,
+    email,
+):
+    """
+    Set password for an existing user.
+    """
+    from app.extensions import db
+    from app.modules.users.models import User
+
+    user = User.find(email=email)
+
+    if user is None:
+        raise Exception("User with email '%s' does not exist." % email)
+
+    password = input('Enter new password: ')
+    user.password = password
+
+    with db.session.begin():
+        db.session.merge(user)
+    db.session.refresh(user)

@@ -87,7 +87,7 @@ class SiteSetting(db.Model, Timestamp):
             'type': str,
             'definition': {
                 'displayType': 'string',
-                'fieldType': 'url',  # TODO so why is this not url?
+                'fieldType': 'url',
             },
         },
         'site.general.helpDescription': {

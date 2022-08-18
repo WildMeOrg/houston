@@ -415,22 +415,16 @@ class SiteSetting(db.Model, Timestamp):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
-    def is_houston_setting(cls, key):
+    def is_valid_setting(cls, key):
         return key in cls._get_keys()
 
     @classmethod
     def get_key_type(cls, key):
-        if key in cls._get_keys():
-            return cls.HOUSTON_SETTINGS[key]['type']
-        else:
-            return None
+        return cls.HOUSTON_SETTINGS[key]['type'] if cls.is_valid_setting(key) else None
 
     @classmethod
     def _get_setting_conf(cls, key):
-        if cls.is_houston_setting(key):
-            return cls.HOUSTON_SETTINGS[key]
-        else:
-            return {}
+        return cls.HOUSTON_SETTINGS[key] if cls.is_valid_setting(key) else {}
 
     @classmethod
     def _get_default_value(cls, key):
@@ -604,7 +598,7 @@ class SiteSetting(db.Model, Timestamp):
     def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if not cls.is_houston_setting(key):
+        if not cls.is_valid_setting(key):
             raise HoustonException(log, f'Key {key} Not supported')
 
         setting = cls.query.get(key)
@@ -630,17 +624,8 @@ class SiteSetting(db.Model, Timestamp):
     # All the functions below are for handling the REST API functions. These need detailed access to the Site
     # Settings internals but need to understand the format of the incoming and outgoing REST messages.
 
-    # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's
-    # accessing a block of data or a single value, so have one place that does this check
-    @classmethod
-    def is_rest_block_key(cls, key):
-        return key == 'block'
-
     @classmethod
     def set_rest_block_data(cls, data):
-        ret_data = {}
-
-        success_keys = []
         # All keys must be valid
         for key in data.keys():
             if key not in cls._get_keys():
@@ -654,13 +639,6 @@ class SiteSetting(db.Model, Timestamp):
                         cls.set_key_value(key, data[key])
                 else:
                     cls.forget_key_value(key)
-                success_keys.append(key)
-
-        ret_data['updated'] = success_keys
-        for key in success_keys:
-            del data[key]
-        if not data:  # All keys processed
-            return ret_data
 
     # All rest value getting needs common logic so factored out into separate function
     @classmethod
@@ -676,45 +654,6 @@ class SiteSetting(db.Model, Timestamp):
         new_value = init_value if not value_not_set else cls._get_default_value(key)
         return new_value
 
-    @classmethod
-    def get_all_rest_configuration(cls):
-        from flask import url_for
-
-        from app.modules.users.models import User
-
-        config_data = {'site.adminUserInitialized': User.admin_user_initialized()}
-
-        # Create the site.images
-        settings = cls.query.filter_by(public=True).order_by('key')
-        site_images = {}
-        for setting in settings:
-            if setting.file_upload is not None:
-                site_images[setting.key] = url_for(
-                    'api.fileuploads_file_upload_src_u_by_id_2',
-                    fileupload_guid=str(setting.file_upload.guid),
-                    _external=False,
-                )
-        config_data['site.images'] = site_images
-
-        # Populate all the values that are accessible to the current user
-        is_admin = getattr(current_user, 'is_admin', False)
-        for key, type_def in cls.HOUSTON_SETTINGS.items():
-            is_file = type_def.get('type') == 'file'
-            permission = type_def.get('permission', lambda: True)()
-            if not is_file:
-
-                if is_admin or type_def.get('public', True) and permission:
-                    config_data[key] = {
-                        'value': cls.get_rest_value(key),
-                        'canView': True,
-                    }
-                else:
-                    config_data[key] = {'canView': False}
-
-        return {'response': {'configuration': config_data}}
-
-    ###############################################
-    # Definitions based code. Currently, only support getting all the definitions as a block, not individually
     @classmethod
     def _get_definition(cls, key):
         key_conf = cls._get_setting_conf(key)
@@ -741,7 +680,6 @@ class SiteSetting(db.Model, Timestamp):
             'descriptionId': f'CONFIGURATION_{id_key}_DESCRIPTION',
             'labelId': f'CONFIGURATION_{id_key}_LABEL',
             'defaultValue': default,
-            # 'isPrivate': not is_public,
             'required': True,
             'fieldType': field_type,
             'displayType': display_type,
@@ -754,11 +692,39 @@ class SiteSetting(db.Model, Timestamp):
         return data
 
     @classmethod
-    def get_all_rest_definitions(cls, add_value=True):
-        if add_value:
-            definitions = cls.get_all_rest_configuration()['response']['configuration']
-        else:
-            definitions = {}
+    def get_all_rest_definitions(cls):
+        from flask import url_for
+
+        from app.modules.users.models import User
+
+        definitions = {'site.adminUserInitialized': User.admin_user_initialized()}
+
+        # Create the site.images
+        settings = cls.query.filter_by(public=True).order_by('key')
+        site_images = {}
+        for setting in settings:
+            if setting.file_upload is not None:
+                site_images[setting.key] = url_for(
+                    'api.fileuploads_file_upload_src_u_by_id_2',
+                    fileupload_guid=str(setting.file_upload.guid),
+                    _external=False,
+                )
+        definitions['site.images'] = site_images
+
+        # Populate all the values that are accessible to the current user
+        is_admin = getattr(current_user, 'is_admin', False)
+        for key, type_def in cls.HOUSTON_SETTINGS.items():
+            is_file = type_def.get('type') == 'file'
+            permission = type_def.get('permission', lambda: True)()
+            if not is_file:
+
+                if is_admin or type_def.get('public', True) and permission:
+                    definitions[key] = {
+                        'value': cls.get_rest_value(key),
+                        'canView': True,
+                    }
+                else:
+                    definitions[key] = {'canView': False}
 
         for key in cls._get_keys():
             key_def = cls._get_definition(key)
@@ -768,7 +734,6 @@ class SiteSetting(db.Model, Timestamp):
                 definitions[key] = key_def
 
         # Populate site.species suggested values from the ia_config
-        # TODO factor this out of here
         species_json = definitions['site.species']
         from app.modules.ia_config_reader import IaConfig
 
@@ -795,10 +760,7 @@ class SiteSetting(db.Model, Timestamp):
                     },
                 )
 
-        return {'response': {'configuration': definitions}}
-
-    #####################################
-    # Other APIs
+        return definitions
 
     # the idea here is to have a unique uuid for each installation
     #   this should be used to read this value, as it will create it if it does not exist

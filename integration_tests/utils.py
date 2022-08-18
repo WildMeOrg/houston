@@ -124,27 +124,27 @@ def wait_for(
 
 
 def add_site_species(session, codex_url, data):
-    block_url = codex_url('/api/v1/site-settings/main/block')
-    site_species_url = codex_url('/api/v1/site-settings/main/site.species')
+    block_url = codex_url('/api/v1/site-settings/data/')
+    site_species_url = codex_url('/api/v1/site-settings/data/site.species')
     response = session.get(block_url).json()
-    site_species = response['response']['configuration']['site.species']['value']
+    site_species = response['site.species']['value']
 
     for v in site_species:
         if all(v.get(k) == data[k] for k in data):
             break
     else:
         site_species.append(data)
-        response = session.post(site_species_url, json={'_value': site_species})
+        response = session.post(site_species_url, json={'value': site_species})
         assert response.status_code == 200, response.json()
         session.get(block_url).json()
     response = session.get(block_url).json()
-    site_species = response['response']['configuration']['site.species']['value']
+    site_species = response['site.species']['value']
     return site_species
 
 
 def _ensure_default_custom_field_categories(session, codex_url, cls):
     cf_cats_url = codex_url(
-        '/api/v1/site-settings/main/site.custom.customFieldCategories'
+        '/api/v1/site-settings/data/site.custom.customFieldCategories'
     )
     categories = session.get(cf_cats_url).json()['value']
     type = None
@@ -166,7 +166,7 @@ def _ensure_default_custom_field_categories(session, codex_url, cls):
             break
     else:
         categories.append({'id': str(uuid.uuid4()), 'label': label, 'type': type})
-        message = {'_value': categories}
+        message = {'value': categories}
         response = session.post(cf_cats_url, json=message)
         assert response.status_code == 200
 
@@ -177,7 +177,7 @@ def _ensure_default_custom_field_categories(session, codex_url, cls):
 
 
 def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
-    cf_url = codex_url(f'/api/v1/site-settings/main/site.custom.customFields.{cls}')
+    cf_url = codex_url(f'/api/v1/site-settings/data/site.custom.customFields.{cls}')
     custom_fields = session.get(cf_url).json()['value']
     if 'definitions' not in custom_fields:
         custom_fields['definitions'] = []
@@ -205,7 +205,7 @@ def create_custom_field(session, codex_url, cls, name, type='string', multiple=F
             },
         }
     )
-    response = session.post(cf_url, json={'_value': custom_fields})
+    response = session.post(cf_url, json={'value': custom_fields})
     assert response.status_code == 200
     custom_fields = session.get(cf_url).json()['value']
 
@@ -217,7 +217,7 @@ def create_custom_field(session, codex_url, cls, name, type='string', multiple=F
 
 
 def ensure_default_test_regions(session, codex_url):
-    regions_url = codex_url('/api/v1/site-settings/main/site.custom.regions')
+    regions_url = codex_url('/api/v1/site-settings/data/site.custom.regions')
     current_regions = session.get(regions_url).json()['value']
 
     names = []
@@ -241,7 +241,7 @@ def ensure_default_test_regions(session, codex_url):
         response = session.post(
             regions_url,
             json={
-                '_value': {'locationID': regions},
+                'value': {'locationID': regions},
             },
         )
         assert response.status_code == 200

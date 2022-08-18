@@ -23,6 +23,7 @@ if is_module_enabled('missions'):
     MODULE_USER_MAP = {
         ('SiteSetting', AccessOperation.READ): ['is_admin'],
         ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
         ('Asset', AccessOperation.READ): ['is_admin'],
         ('Mission', AccessOperation.READ): ['is_admin'],
         ('Mission', AccessOperation.WRITE): ['is_admin'],
@@ -109,6 +110,7 @@ else:
     MODULE_USER_MAP = {
         ('SiteSetting', AccessOperation.READ): ['is_admin'],
         ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
+        ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
         ('Asset', AccessOperation.READ): ['is_admin'],
         ('AssetGroup', AccessOperation.READ): ['is_admin'],
         ('AssetGroup', AccessOperation.WRITE): ['is_active'],

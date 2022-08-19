@@ -522,7 +522,6 @@ def test_definition_manipulation(flask_app, flask_app_client, admin_user):
     setting_utils.patch_main_setting(
         flask_app_client,
         admin_user,
-        '',
         [
             {
                 'path': 'site.custom.customFields.Sighting/' + cfd_id,

@@ -22,22 +22,19 @@ def test_relationship_type_roles(flask_app_client, admin_user):
     utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': relationship_type_roles},
+        relationship_type_roles,
         conf_key='relationship_type_roles',
     )
     # Get all settings
     response = utils.read_main_settings(flask_app_client, admin_user)
-    assert (
-        response.json['response']['configuration']['relationship_type_roles']['value']
-        == relationship_type_roles
-    )
+    assert response.json['relationship_type_roles']['value'] == relationship_type_roles
 
     # Check relationship_type_roles validation
     error = "Houston Setting key=relationship_type_roles, value incorrect type value=['rod', 'jane', 'freddy'],needs to be <class 'dict'>"
     utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': ['rod', 'jane', 'freddy']},
+        ['rod', 'jane', 'freddy'],
         conf_key='relationship_type_roles',
         expected_status_code=400,
         expected_error=error,
@@ -47,14 +44,12 @@ def test_relationship_type_roles(flask_app_client, admin_user):
         flask_app_client,
         admin_user,
         {
-            '_value': {
-                '49e85f81-c11a-42be-9097-d22c61345ed8': {
-                    'guid': '49e85f81-c11a-42be-9097-d22c61345ed8',
-                    'label': 'Family',
-                    'roles': [
-                        {'label': 'Mother'},
-                    ],
-                },
+            '49e85f81-c11a-42be-9097-d22c61345ed8': {
+                'guid': '49e85f81-c11a-42be-9097-d22c61345ed8',
+                'label': 'Family',
+                'roles': [
+                    {'label': 'Mother'},
+                ],
             },
         },
         conf_key='relationship_type_roles',
@@ -66,17 +61,15 @@ def test_relationship_type_roles(flask_app_client, admin_user):
         flask_app_client,
         admin_user,
         {
-            '_value': {
-                '49e85f81-c11a-42be-9097-d22c61345ed8': {
-                    'guid': '49e85f81-c11a-42be-9097-d22c61345ed8',
-                    'label': 'Family',
-                    'roles': [
-                        {
-                            'guid': '1b62eb1a',
-                            'label': 'Mother',
-                        },
-                    ],
-                },
+            '49e85f81-c11a-42be-9097-d22c61345ed8': {
+                'guid': '49e85f81-c11a-42be-9097-d22c61345ed8',
+                'label': 'Family',
+                'roles': [
+                    {
+                        'guid': '1b62eb1a',
+                        'label': 'Mother',
+                    },
+                ],
             },
         },
         conf_key='relationship_type_roles',

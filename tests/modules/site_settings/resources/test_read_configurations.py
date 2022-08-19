@@ -18,10 +18,6 @@ def test_read_sentry_dsn(flask_app_client, researcher_1):
         flask_app_client, researcher_1, 'sentryDsn'
     ).json
     assert 'value' in sentry_dsn_val
-    assert 'response' in sentry_dsn_val
-    assert 'configuration' in sentry_dsn_val['response']
-    assert 'sentryDsn' in sentry_dsn_val['response']['configuration']
-    assert 'value' in sentry_dsn_val['response']['configuration']['sentryDsn']
 
 
 @pytest.mark.skipif(
@@ -30,20 +26,13 @@ def test_read_sentry_dsn(flask_app_client, researcher_1):
 def test_read_site_settings(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
     conf_utils.read_main_settings(flask_app_client, researcher_1, 'site.name')
-    conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1, 'site.name', 400
-    )
 
     from app.modules.ia_config_reader import IaConfig
 
     ia_config_reader = IaConfig()
     species = ia_config_reader.get_configured_species()
-    config_def_response = conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1
-    )
-    suggested_vals = config_def_response.json['response']['configuration'][
-        'site.species'
-    ]['suggestedValues']
+    config_response = conf_utils.read_main_settings(flask_app_client, researcher_1)
+    suggested_vals = config_response.json['site.species']['suggestedValues']
     assert len(suggested_vals) >= len(species)
     for i in range(len(species)):
         assert suggested_vals[i]['scientificName'] == species[len(species) - i - 1]
@@ -54,30 +43,25 @@ def test_read_site_settings(flask_app_client, researcher_1):
 )
 def test_alter_settings(flask_app_client, admin_user):
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
-    assert 'value' in response.json['response']['configuration']['site.species']
-    vals = response.json['response']['configuration']['site.species']['value']
+    assert 'value' in response.json['site.species']
+    vals = response.json['site.species']['value']
     vals.append({'commonNames': ['Test data'], 'scientificName': 'Testus datum'})
     response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': vals},
+        vals,
         'site.species',
     )
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
-    assert 'value' in response.json['response']['configuration']['site.species']
+    assert 'value' in response.json['site.species']
 
-    assert (
-        response.json['response']['configuration']['site.species']['value'][-1][
-            'scientificName'
-        ]
-        == 'Testus datum'
-    )
+    assert response.json['site.species']['value'][-1]['scientificName'] == 'Testus datum'
     # restore original list
     vals.pop()
     response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': vals},
+        vals,
         'site.species',
     )
 
@@ -88,9 +72,10 @@ def test_alter_settings(flask_app_client, admin_user):
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
-    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFieldCategories']
+    categories = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFieldCategories']
     assert 'value' in categories
     cats = categories['value']
     cats.append(
@@ -105,13 +90,13 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
     )
 
     occ_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user).json[
-        'response'
-    ]['configuration']['site.custom.customFields.Occurrence']
+        'site.custom.customFields.Sighting'
+    ]
 
     assert 'value' in occ_cf_rsp
     occ_cfs = occ_cf_rsp['value']
@@ -122,7 +107,6 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
     occ_cfs['definitions'].append(
         {
-            'className': 'org.ecocean.Occurrence',
             'default': 'woo',
             'id': str(uuid.uuid4()),
             'multiple': False,
@@ -140,7 +124,6 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     )
     occ_cfs['definitions'].append(
         {
-            'className': 'org.ecocean.Occurrence',
             'default': 'wobble',
             'id': str(uuid.uuid4()),
             'multiple': False,
@@ -160,12 +143,13 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': occ_cfs},
+        occ_cfs,
         'site.custom.customFields.Sighting',
     )
-    occ_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFields.Occurrence']
+    occ_cf_rsp = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFields.Sighting']
     defaults = [
         definit['default']
         for definit in occ_cf_rsp['value']['definitions']
@@ -177,7 +161,7 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
     )
     first = occ_cf_rsp['value']['definitions'].pop(0)
@@ -196,13 +180,14 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
     conf_utils.patch_main_setting(
         flask_app_client,
         admin_user,
-        'block',
         patch_data,
     )
     # check if they're gone
-    sight_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFields.Sighting']
+    sight_cf_rsp = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFields.Sighting']
+
     definitions = sight_cf_rsp['value']['definitions']
     def_ids = [defi['id'] for defi in definitions]
     assert first['id'] not in def_ids
@@ -216,9 +201,10 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     conf_utils.custom_field_create(
         flask_app_client, admin_user, 'test_cfd', cls='Sighting'
     )
-    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFieldCategories']
+    categories = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFieldCategories']
     assert 'value' in categories
     cats = categories['value']
     assert cats[0]['label'] == 'distance'
@@ -228,12 +214,13 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
     )
-    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFieldCategories']
+    categories = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFieldCategories']
     assert 'value' in categories
     cats = categories['value']
     assert cats[0]['label'] == 'constitution'
@@ -243,7 +230,7 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     res = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
         400,
     )
@@ -255,7 +242,7 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     res = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
         400,
     )
@@ -266,12 +253,13 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     res = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
     )
-    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFieldCategories']
+    categories = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFieldCategories']
     assert 'value' in categories
     cats = categories['value']
     assert len(cats) == 2
@@ -279,12 +267,13 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
     res = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': cats},
+        cats,
         'site.custom.customFieldCategories',
     )
-    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
-        'response'
-    ]['configuration']['site.custom.customFieldCategories']
+    categories = conf_utils.read_main_settings(
+        flask_app_client,
+        admin_user,
+    ).json['site.custom.customFieldCategories']
     assert 'value' in categories
     cats = categories['value']
     assert len(cats) == 1
@@ -303,7 +292,7 @@ def test_dict_write(flask_app_client, admin_user):
     ]
 
     resp = conf_utils.modify_main_settings(
-        flask_app_client, admin_user, {'_value': data}, 'social_group_roles'
+        flask_app_client, admin_user, data, 'social_group_roles'
     )
 
     assert resp.json['key'] == 'social_group_roles'
@@ -321,57 +310,47 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': username},
+        username,
         'email_service_username',
     )
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': password},
+        password,
         'email_service_password',
     )
-    config_def_response_admin = conf_utils.read_main_settings_definition(
-        flask_app_client, admin_user, 'block'
-    )
-    config_def_response_researcher = conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1, 'block'
-    )
-    config_response_admin = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'block'
-    )
-    config_response_researcher = conf_utils.read_main_settings(
-        flask_app_client, researcher_1, 'block'
-    )
+    admin_configuration = conf_utils.read_main_settings(flask_app_client, admin_user).json
+    researcher_configuration = conf_utils.read_main_settings(
+        flask_app_client, researcher_1
+    ).json
 
     # admin should be able to see uname & pass, researcher should not.
-    admin_configuration = config_response_admin.json['response']['configuration']
-    config_def_response_admin.json['response']['configuration']
-    researcher_configuration = config_response_researcher.json['response'][
-        'configuration'
-    ]
-    config_def_response_researcher.json['response']['configuration']
-
+    assert admin_configuration['email_service_username']['canView']
     assert admin_configuration['email_service_username']['value'] == username
+    assert admin_configuration['email_service_password']['canView']
     assert admin_configuration['email_service_password']['value'] == password
-    assert 'email_service_username' not in researcher_configuration
-    assert 'email_service_password' not in researcher_configuration
+
+    assert 'email_service_username' in researcher_configuration
+    assert not researcher_configuration['email_service_username']['canView']
+    assert 'value' not in researcher_configuration['email_service_username'].keys()
+    assert 'email_service_password' in researcher_configuration
+    assert not researcher_configuration['email_service_password']['canView']
+    assert 'value' not in researcher_configuration['email_service_password'].keys()
 
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': None},
+        None,
         'email_service_username',
     )
     conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': None},
+        None,
         'email_service_password',
     )
-    config_response_admin = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'block'
-    )
-    admin_configuration = config_response_admin.json['response']['configuration']
+    config_response_admin = conf_utils.read_main_settings(flask_app_client, admin_user)
+    admin_configuration = config_response_admin.json
 
     assert admin_configuration['email_service_username']['value'] is None
     assert admin_configuration['email_service_password']['value'] is None

@@ -41,7 +41,7 @@ def test_create_read_delete_relationship(
     site_settings_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': relationship_type_roles},
+        relationship_type_roles,
         conf_key='relationship_type_roles',
     )
 

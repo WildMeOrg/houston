@@ -176,6 +176,194 @@ class SiteSettingFileByKey(Resource):
         return None
 
 
+@api.route('/data')
+class MainDataBlock(Resource):
+    """
+    Site Setting Full block of data manipulations
+    """
+
+    def get(self):
+        old_format = SiteSetting.get_all_rest_definitions(add_value=True)
+        return old_format['response']['configuration']
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    def post(self):
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
+        data = {}
+        data.update(request.args)
+        data.update(request.form)
+        try:
+            data_ = json.loads(request.data)
+            data.update(data_)
+        except Exception:
+            pass
+        try:
+            # Transitory, allow old and new (value) data format
+            if 'value' in data.keys():
+                log.debug('Site settings by value')
+                SiteSetting.set_rest_block_data(data['value'])
+            else:
+                log.debug('Site settings without value')
+                SiteSetting.set_rest_block_data(data)
+
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
+
+        message = f'Setting block data to {data}'
+        AuditLog.audit_log(log, message, duration=timer.elapsed())
+        return {}
+
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    def patch(self, **kwargs):
+        """
+        Patch SiteSetting details.
+        """
+        from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        timer = ElapsedTime()
+        request_in_ = json.loads(request.data)
+        for arg in request_in_:
+            if arg['op'] == 'remove':
+                try:
+                    if arg['path'] and arg['path'].startswith('site.custom.customField'):
+                        SiteSettingCustomFields.patch_remove(
+                            arg['path'], arg.get('force', False)
+                        )
+                    else:
+                        SiteSetting.forget_key_value(arg['path'])
+                except HoustonException as ex:
+                    abort(ex.status_code, ex.message)
+                except ValueError as ex:
+                    abort(409, str(ex))
+            else:
+                abort(400, f'op {arg["op"]} not supported on {arg["path"]}')
+
+        message = f'Patching path: {request_in_}'
+        AuditLog.audit_log(log, message, duration=timer.elapsed())
+        return {}
+
+
+@api.route('/data/<path:path>')
+class MainDataByPath(Resource):
+    """
+    Site Setting single item of data manipulations
+    """
+
+    # No permissions check as anonymous users need to be able to read sentryDsn
+    def get(self, path):
+        try:
+            return {'key': path, 'value': SiteSetting.get_rest_value(path)}
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
+
+    def upload_file(self, key, data):
+        from app.modules.fileuploads.models import FileUpload
+
+        if data.get('transactionId'):
+            transaction_id = data.pop('transactionId')
+            if data.get('transactionPath'):
+                paths = [data.pop('transactionPath')]
+            else:
+                paths = None
+            try:
+                fups = (
+                    FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths)
+                    or []
+                )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
+            if len(fups) != 1:
+                # Delete the files in the filesystem
+                # Can't use .delete() because fups are not persisted
+                for fup in fups:
+                    path = Path(fup.get_absolute_path())
+                    if path.exists():
+                        path.unlink()
+
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message=f'Transaction {transaction_id} has {len(fups)} files, need exactly 1.',
+                )
+
+            with db.session.begin(subtransactions=True):
+                db.session.add(fups[0])
+            file_upload_guid = fups[0].guid
+        else:
+            abort(
+                400,
+                'The File API should only be used for manipulating files via a transactionId',
+            )
+
+        site_setting = SiteSetting.set_key_value(key, file_upload_guid)
+        message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
+        AuditLog.audit_log(log, message)
+        return site_setting
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    @api.response(schemas.BaseSiteSettingSchema())
+    def post(self, path):
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
+        data = {}
+        data.update(request.args)
+        data.update(request.form)
+        try:
+            data_ = json.loads(request.data)
+            data.update(data_)
+        except Exception:
+            pass
+        try:
+            if SiteSetting.is_houston_setting(path):
+                if 'value' not in data.keys():
+                    abort(400, 'Need value as the key in the data setting')
+                elif data['value'] is not None:
+                    if SiteSetting.get_key_type(path) == 'file':
+                        site_setting = self.upload_file(path, data['value'])
+                    else:
+                        site_setting = SiteSetting.set_key_value(path, data['value'])
+                    message = f'Setting path:{path} to {data}'
+                    AuditLog.audit_log(log, message, duration=timer.elapsed())
+                    return site_setting
+                else:
+                    SiteSetting.forget_key_value(path)
+                    return {'key': path}
+            else:
+                abort(400, f'{path} not supported')
+
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
+
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    @api.response(code=HTTPStatus.NO_CONTENT)
+    def delete(self, path):
+        AuditLog.audit_log(log, f'Deleting {path}')
+        try:
+            SiteSetting.forget_key_value(path)
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
+        return None
+
+
 @api.route('/definition/main/<path:path>')
 class MainConfigurationDefinition(Resource):
     """

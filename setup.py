@@ -10,7 +10,7 @@ from setuptools import setup
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
-def git_version():
+def git_cmd(cmd):
     """
     Return the sha1 of local git HEAD as a string.
     """
@@ -30,11 +30,31 @@ def git_version():
         return out
 
     try:
-        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
-        git_revision = out.strip().decode('ascii')
+        out = _minimal_ext_cmd(cmd)
+        return out.strip().decode('ascii')
     except OSError:
-        git_revision = 'unknown-git'
-    return git_revision
+        pass
+
+
+def git_revision():
+    version = git_cmd(['git', 'rev-parse', 'HEAD'])
+    if not version:
+        version = 'unknown-git'
+    return version
+
+
+def git_version():
+    version = git_cmd(['git', 'describe', '--tag'])
+    exact = True
+    # Remove leading v in tag name
+    if version.startswith('v'):
+        version = version[1:]
+    if '-' in version:
+        version = version.split('-', 1)[0]
+        exact = False
+    if not version:
+        version = '0.0.0'
+    return (version, exact)
 
 
 CLASSIFIERS = """
@@ -62,13 +82,10 @@ LICENSE = 'Apache License 2.0'
 AUTHOR = MAINTAINER
 AUTHOR_EMAIL = MAINTAINER_EMAIL
 PLATFORMS = ['Linux', 'Mac OS-X', 'Unix']
-MAJOR = 1
-MINOR = 0
-MICRO = 2
-REVISION = git_version()
+REVISION = git_revision()
 SUFFIX = REVISION[:8]
-VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
-if SUFFIX:
+VERSION, exact = git_version()
+if not exact:
     VERSION = '{}+{}'.format(VERSION, SUFFIX)
 PACKAGES = ['.']
 
@@ -78,10 +95,6 @@ def write_version_py(filename=os.path.join(PROJECT_ROOT, 'app', 'version.py')):
 # THIS FILE IS GENERATED FROM SETUP.PY
 version = '%(version)s'
 git_revision = '%(git_revision)s'
-full_version = '%%(version)s.%%(git_revision)s' %% {
-    'version': version,
-    'git_revision': git_revision,
-}
 """
     FULL_VERSION = VERSION
     if os.path.isdir('.git'):

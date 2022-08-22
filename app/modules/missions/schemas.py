@@ -149,6 +149,7 @@ class BaseMissionTaskSchema(ModelSchema):
             MissionTask.guid.key,
             MissionTask.title.key,
             'mission',
+            'asset_count',
             'elasticsearchable',
             MissionTask.indexed.key,
         )

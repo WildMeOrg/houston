@@ -502,17 +502,21 @@ class SiteInfo(Resource):
 
         sage_version = current_app.sage.get_dict('version.dict', None)
         if isinstance(sage_version, dict):
-            sage_version = sage_version['response']
+            sage_version = sage_version['response']['version']
         else:
             # sage returns a non 200 response
             sage_version = repr(sage_version)
-
+        sage_uris = current_app.config.get('SAGE_URIS')
+        default_sage_uri = sage_uris.get('default')
         return {
             'houston': {
                 'version': app.version.version,
                 'git_version': app.version.git_revision,
             },
-            'sage': sage_version,
+            'sage': {
+                'version': sage_version,
+                'uri': default_sage_uri,
+            },
         }
 
 

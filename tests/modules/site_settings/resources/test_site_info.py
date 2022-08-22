@@ -32,6 +32,7 @@ def test_site_info(flask_app_client):
         },
         'sage': {
             'version': '3.5.1.dev23',
+            'uri': 'http://sage:5000/',
         },
     }
 
@@ -52,7 +53,10 @@ def test_site_info_api_error(flask_app_client):
             'version': app.version.version,
             'git_version': app.version.git_revision,
         },
-        'sage': '<Response [404]>',
+        'sage': {
+            'version': '<Response [404]>',
+            'uri': 'http://sage:5000/',
+        },
     }
 
 

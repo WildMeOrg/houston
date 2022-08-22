@@ -38,6 +38,23 @@ def test_getting_list_of_users_by_unauthorized_user_must_fail(
     assert set(response.json.keys()) >= {'status', 'message'}
 
 
+def get_and_validate_user_list(
+    flask_app_client, auth_scopes, requesting_user, user_manager_email, desired_user_data
+):
+    # pylint: disable=invalid-name
+    with flask_app_client.login(requesting_user, auth_scopes=auth_scopes):
+        response = flask_app_client.get('/api/v1/users/')
+
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+    assert isinstance(response.json, list)
+    user = [u for u in response.json if u['email'] == user_manager_email]
+    assert len(user) == 1
+    desired_user_data['created'] = user[0]['created']
+
+    assert user[0] == desired_user_data
+
+
 @pytest.mark.parametrize(
     'auth_scopes',
     (
@@ -49,7 +66,14 @@ def test_getting_list_of_users_by_unauthorized_user_must_fail(
     ),
 )
 def test_getting_list_of_users_by_authorized_user(
-    flask_app_client, user_manager_user, auth_scopes, db, test_root, request
+    flask_app_client,
+    user_manager_user,
+    admin_user,
+    researcher_1,
+    auth_scopes,
+    db,
+    test_root,
+    request,
 ):
     # Add a profile image to user_manager_user
     from app.modules.fileuploads.models import FileUpload
@@ -62,16 +86,6 @@ def test_getting_list_of_users_by_authorized_user(
     request.addfinalizer(lambda: db.session.delete(fup))
     request.addfinalizer(lambda: db.session.merge(user_manager_user))
     request.addfinalizer(lambda: setattr(user_manager_user, 'profile_fileupload', None))
-
-    # pylint: disable=invalid-name
-    with flask_app_client.login(user_manager_user, auth_scopes=auth_scopes):
-        response = flask_app_client.get('/api/v1/users/')
-
-    assert response.status_code == 200
-    assert response.content_type == 'application/json'
-    assert isinstance(response.json, list)
-    user = [u for u in response.json if u['email'] == user_manager_user.email]
-    assert len(user) == 1
 
     desired_user_data = {
         'guid': str(user_manager_user.guid),
@@ -107,7 +121,28 @@ def test_getting_list_of_users_by_authorized_user(
         desired_user_data['assigned_missions'] = []
         desired_user_data['assigned_mission_tasks'] = []
 
-    assert user[0] == desired_user_data
+    # Check for all required user roles
+    get_and_validate_user_list(
+        flask_app_client,
+        auth_scopes,
+        user_manager_user,
+        user_manager_user.email,
+        desired_user_data,
+    )
+    get_and_validate_user_list(
+        flask_app_client,
+        auth_scopes,
+        admin_user,
+        user_manager_user.email,
+        desired_user_data,
+    )
+    get_and_validate_user_list(
+        flask_app_client,
+        auth_scopes,
+        researcher_1,
+        user_manager_user.email,
+        desired_user_data,
+    )
 
 
 def test_getting_user_info_by_unauthorized_user(

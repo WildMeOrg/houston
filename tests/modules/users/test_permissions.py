@@ -363,8 +363,8 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # Has virtually no access to users other than creation
-    validate_cannot_read_module(User)
+    # can read and create users but not delete
+    validate_can_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
@@ -407,8 +407,8 @@ def test_ObjectAccessPermission_researcher_user(
     # pylint: disable=unused-argument
     from app.modules.users.models import User
 
-    # Can't access other users
-    validate_cannot_read_module(User)
+    # Can access other users
+    validate_can_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 

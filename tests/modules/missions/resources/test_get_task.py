@@ -22,6 +22,7 @@ def test_get_mission_task_by_search(flask_app_client, admin_user, test_root):
     transaction_ids = []
     transaction_ids.append(transaction_id)
     mission_guid = None
+    filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
     try:
         response = mission_utils.create_mission(
@@ -39,7 +40,7 @@ def test_get_mission_task_by_search(flask_app_client, admin_user, test_root):
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')

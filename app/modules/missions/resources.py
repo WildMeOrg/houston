@@ -235,8 +235,24 @@ class MissionTusCollect(Resource):
         """
         Alias of [POST] /api/v1/missions/<uuid:mission_guid>/collections/
         """
+        from app.extensions.tus import tus_filepaths_from  # NOQA
+
         args['owner'] = current_user
         args['mission'] = mission
+        filepaths, metadatas = tus_filepaths_from(
+            transaction_id=args.get('transaction_id'),
+            paths=args.get('paths'),
+        )
+        uploaded_filenames = [md.get('filename') for md in metadatas]
+        dups = []
+        for asset in mission.get_assets():
+            if asset.get_original_filename() in uploaded_filenames:
+                dups.append(asset.get_original_filename())
+        if dups:
+            abort(
+                HTTPStatus.CONFLICT,
+                f"This Mission already contains files with these names: {', '.join(dups)}",
+            )
         mission_collection, input_filenames = MissionCollection.create_from_tus(**args)
         db.session.refresh(mission_collection)
 

@@ -32,7 +32,11 @@ if is_module_enabled('missions'):
         ('MissionTask', AccessOperation.WRITE): ['is_admin'],
         ('Annotation', AccessOperation.READ): ['is_researcher'],
         ('Annotation', AccessOperation.WRITE): ['is_researcher'],
-        ('User', AccessOperation.READ): ['is_user_manager', 'is_admin'],
+        ('User', AccessOperation.READ): [
+            'is_admin',
+            'is_researcher',
+            'is_user_manager',
+        ],
         ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
         ('Notification', AccessOperation.READ): ['is_active'],
         ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
@@ -123,7 +127,7 @@ else:
         ('Individual', AccessOperation.DELETE): ['is_admin'],
         ('Annotation', AccessOperation.READ): ['is_researcher'],
         ('Annotation', AccessOperation.WRITE): ['is_researcher'],
-        ('User', AccessOperation.READ): ['is_user_manager'],
+        ('User', AccessOperation.READ): ['is_admin', 'is_researcher', 'is_user_manager'],
         ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
         # Any user can request to collaborate with anyone
         ('Collaboration', AccessOperation.WRITE): ['is_active'],

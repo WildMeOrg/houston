@@ -58,6 +58,7 @@ class UserListSchema(BaseUserSchema):
             User.in_beta.fget.__name__,
             User.is_email_confirmed.fget.__name__,
             User.profile_fileupload.key,
+            User.created.key,
         )
 
         if is_module_enabled('missions'):
@@ -109,7 +110,6 @@ class DetailedUserSchema(UserListSchema):
 
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
-            User.created.key,
             User.updated.key,
             User.viewed.key,
             User.affiliation.key,

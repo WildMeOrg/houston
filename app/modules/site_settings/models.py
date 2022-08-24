@@ -451,6 +451,48 @@ class SiteSetting(db.Model, Timestamp):
         return def_val
 
     @classmethod
+    def upload_file(cls, key, data):
+        from http import HTTPStatus
+        from pathlib import Path
+
+        from app.modules.fileuploads.models import FileUpload
+
+        if data.get('transactionId'):
+            transaction_id = data.pop('transactionId')
+            if data.get('transactionPath'):
+                paths = [data.pop('transactionPath')]
+            else:
+                paths = None
+
+            fups = (
+                FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
+            )
+
+            if len(fups) != 1:
+                # Delete the files in the filesystem
+                # Can't use .delete() because fups are not persisted
+                for fup in fups:
+                    path = Path(fup.get_absolute_path())
+                    if path.exists():
+                        path.unlink()
+                raise HoustonException(
+                    log,
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    log_message=f'Transaction {transaction_id} has {len(fups)} files, need exactly 1.',
+                )
+
+            with db.session.begin(subtransactions=True):
+                db.session.add(fups[0])
+            file_upload_guid = fups[0].guid
+        else:
+            raise HoustonException(
+                log,
+                log_message='The File API should only be used for manipulating files via a transactionId',
+            )
+
+        return cls.set_key_value(key, file_upload_guid)
+
+    @classmethod
     def set_after_validation(cls, key, value):
         assert key in cls.HOUSTON_SETTINGS.keys()
         key_data = cls.HOUSTON_SETTINGS[key]
@@ -606,7 +648,10 @@ class SiteSetting(db.Model, Timestamp):
         for key in data.keys():
             if key in cls._get_keys():
                 if data[key] is not None:
-                    cls.set_key_value(key, data[key])
+                    if cls.get_key_type(key) == 'file':
+                        cls.upload_file(key, data[key])
+                    else:
+                        cls.set_key_value(key, data[key])
                 else:
                     cls.forget_key_value(key)
                 success_keys.append(key)

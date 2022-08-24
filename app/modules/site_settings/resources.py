@@ -267,49 +267,6 @@ class MainDataByPath(Resource):
         except HoustonException as ex:
             abort(ex.status_code, ex.message)
 
-    def upload_file(self, key, data):
-        from app.modules.fileuploads.models import FileUpload
-
-        if data.get('transactionId'):
-            transaction_id = data.pop('transactionId')
-            if data.get('transactionPath'):
-                paths = [data.pop('transactionPath')]
-            else:
-                paths = None
-            try:
-                fups = (
-                    FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths)
-                    or []
-                )
-            except HoustonException as ex:
-                abort(ex.status_code, ex.message)
-            if len(fups) != 1:
-                # Delete the files in the filesystem
-                # Can't use .delete() because fups are not persisted
-                for fup in fups:
-                    path = Path(fup.get_absolute_path())
-                    if path.exists():
-                        path.unlink()
-
-                abort(
-                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message=f'Transaction {transaction_id} has {len(fups)} files, need exactly 1.',
-                )
-
-            with db.session.begin(subtransactions=True):
-                db.session.add(fups[0])
-            file_upload_guid = fups[0].guid
-        else:
-            abort(
-                400,
-                'The File API should only be used for manipulating files via a transactionId',
-            )
-
-        site_setting = SiteSetting.set_key_value(key, file_upload_guid)
-        message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
-        AuditLog.audit_log(log, message)
-        return site_setting
-
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -338,10 +295,11 @@ class MainDataByPath(Resource):
                     abort(400, 'Need value as the key in the data setting')
                 elif data['value'] is not None:
                     if SiteSetting.get_key_type(path) == 'file':
-                        site_setting = self.upload_file(path, data['value'])
+                        site_setting = SiteSetting.upload_file(path, data['value'])
+                        message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
                     else:
                         site_setting = SiteSetting.set_key_value(path, data['value'])
-                    message = f'Setting path:{path} to {data}'
+                        message = f'Setting path:{path} to {data}'
                     AuditLog.audit_log(log, message, duration=timer.elapsed())
                     return site_setting
                 else:

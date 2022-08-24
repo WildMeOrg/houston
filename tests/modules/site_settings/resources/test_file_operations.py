@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
+import utils as site_setting_utils
 
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
@@ -114,6 +115,24 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         resp = flask_app_client.get('/api/v1/site-settings/file')
         assert resp.status_code == 200
         assert resp.json == []
+
+
+def test_file_setting_block(
+    admin_user, flask_app_client, flask_app, db, request, test_root
+):
+    upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
+    # Edit site setting using transactionId and transactionPath as a post with other site setting data
+    with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
+        transaction_id = Path(td).name[len('trans-') :]
+        write_uploaded_file('a.txt', Path(td), '1234')
+        data = {
+            'splashImage': {
+                'transactionId': transaction_id,
+                'transactionPath': 'a.txt',
+            },
+            'site.general.tagline': 'This is a tagline',
+        }
+        site_setting_utils.modify_main_settings(flask_app_client, admin_user, data)
 
 
 def test_site_settings_permissions(

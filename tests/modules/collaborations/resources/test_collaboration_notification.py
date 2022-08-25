@@ -198,7 +198,7 @@ def test_notification_resolution(
     assert collab_request_notif.json['is_read']
     assert not collab_request_notif.json['is_resolved']
 
-    basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
+    basic_collab.set_approval_state_for_user(researcher_2.guid, 'approved')
 
     # now that it's approved, the initial request should be resolved.
     collab_request_notif = notif_utils.read_notification(
@@ -207,7 +207,15 @@ def test_notification_resolution(
     assert collab_request_notif.json['is_resolved']
 
     # Now validate that the manager can revoke it for one user and both users get the Notification
-    patch_data = [utils.patch_replace_op('view_permission', 'revoked')]
+    patch_data = [
+        utils.patch_replace_op(
+            'managed_view_permission',
+            {
+                'user_guid': str(researcher_2.guid),
+                'permission': 'revoked',
+            },
+        )
+    ]
     collab_guid = str(basic_collab.guid)
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, user_manager_user, patch_data

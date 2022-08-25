@@ -54,15 +54,14 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
                 log, f'Value for {field} must be passed as a dictionary'
             )
 
-        if 'user_guid' not in value.keys():
-            raise HoustonException(log, f'Value for {field} must contain a user_guid')
-
         if 'permission' not in value.keys():
             raise HoustonException(
                 log, f'Value for {field} must contain a permission field'
             )
+        if 'user_guid' not in value.keys():
+            return None, value['permission']
 
-        # Is the user guid valid?
+        # Is the user guid valid
         from app.modules.users.models import User
 
         user = User.query.get(value['user_guid'])
@@ -82,20 +81,30 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
 
         if field == 'view_permission':
             if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
-                ret_val = obj.set_read_approval_state_for_user(current_user.guid, value)
+                ret_val = obj.set_approval_state_for_user(current_user.guid, value)
 
         elif field == 'edit_permission':
             if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
-                ret_val = obj.set_edit_approval_state_for_user(current_user.guid, value)
+                ret_val = obj.set_approval_state_for_user(
+                    current_user.guid, value, is_edit=True
+                )
 
         elif field == 'managed_view_permission':
             if current_user.is_user_manager:
                 user_guid, permission = cls.get_managed_values(field, value)
-                ret_val = obj.set_read_approval_state_for_user(user_guid, permission)
+                if user_guid:
+                    ret_val = obj.set_approval_state_for_user(user_guid, permission)
+                else:
+                    ret_val = obj.set_approval_state_for_all(permission)
 
         elif field == 'managed_edit_permission':
             if current_user.is_user_manager:
                 user_guid, permission = cls.get_managed_values(field, value)
-                ret_val = obj.set_edit_approval_state_for_user(user_guid, permission)
+                if user_guid:
+                    ret_val = obj.set_approval_state_for_user(
+                        user_guid, permission, is_edit=True
+                    )
+                else:
+                    ret_val = obj.set_approval_state_for_all(permission, is_edit=True)
 
         return ret_val

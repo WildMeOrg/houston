@@ -206,7 +206,7 @@ def test_patch_managed_collaboration_states(
 
     # No user guid
     patch_data = [utils.patch_replace_op('managed_view_permission', {})]
-    resp = 'Value for managed_view_permission must contain a user_guid'
+    resp = 'Value for managed_view_permission must contain a permission field'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
     )

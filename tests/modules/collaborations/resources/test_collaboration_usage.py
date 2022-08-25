@@ -35,6 +35,6 @@ def test_use_collaboration(
     asset_group_utils.read_asset_group(
         flask_app_client, researcher_2, asset_group_uuid, 403
     )
-    collab.set_read_approval_state_for_user(researcher_1.guid, 'approved')
+    collab.set_approval_state_for_user(researcher_1.guid, 'approved')
 
     asset_group_utils.read_asset_group(flask_app_client, researcher_2, asset_group_uuid)

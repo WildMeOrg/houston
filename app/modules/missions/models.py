@@ -549,7 +549,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         return [assignment.user for assignment in self.user_assignments]
 
     def get_assigned_users_with_assigner_json(self):
-        from app.modules.users.schemas import BaseUserSchema
+        from app.modules.users.schemas import BaseUserSchema  # NOQA
 
         schema = BaseUserSchema()
         json = []

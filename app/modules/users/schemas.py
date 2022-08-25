@@ -40,7 +40,9 @@ class UserListSchema(BaseUserSchema):
         owned_missions = base_fields.Nested('BaseMissionSchema', many=True)
         owned_mission_tasks = base_fields.Nested('BaseMissionTaskSchema', many=True)
         assigned_missions = base_fields.Nested('BaseMissionSchema', many=True)
-        assigned_mission_tasks = base_fields.Nested('BaseMissionTaskSchema', many=True)
+        assigned_mission_tasks = base_fields.Nested(
+            'BaseMissionTaskWithAssignerSchema', many=True
+        )
 
     class Meta(BaseUserSchema.Meta):
         # pylint: disable=missing-docstring

@@ -97,6 +97,8 @@ class DetailedAssetSchema(BaseAssetSchema):
             'classifications',
             'tags',
         )
+        if is_module_enabled('missions'):
+            fields = fields + ('size_bytes',)
 
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

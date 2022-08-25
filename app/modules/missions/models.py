@@ -366,11 +366,21 @@ class MissionTaskUserAssignment(db.Model, HoustonModel):
 
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
 
+    assigner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), primary_key=True, nullable=False
+    )
+
     mission_task = db.relationship('MissionTask', back_populates='user_assignments')
 
     user = db.relationship(
         'User',
         backref=db.backref('mission_task_assignments', cascade='all, delete-orphan'),
+        foreign_keys=[user_guid],
+    )
+
+    assigner = db.relationship(
+        'User',
+        foreign_keys=[assigner_guid],
     )
 
 
@@ -538,17 +548,29 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
     def get_assigned_users(self):
         return [assignment.user for assignment in self.user_assignments]
 
+    def get_assigned_users_with_assigner_json(self):
+        from app.modules.users.schemas import BaseUserSchema
+
+        schema = BaseUserSchema()
+        json = []
+        for assignment in self.user_assignments:
+            udata = schema.dump(assignment.user).data
+            udata['assigner'] = schema.dump(assignment.assigner).data
+            json.append(udata)
+        return json
+
     def get_members(self):
         return list(set([self.owner] + self.get_assigned_users()))
 
-    def add_user(self, user):
+    def add_user(self, user, assigner):
         with db.session.begin(subtransactions=True):
-            self.add_user_in_context(user)
+            self.add_user_in_context(user, assigner)
 
-    def add_user_in_context(self, user):
+    def add_user_in_context(self, user, assigner):
         assignment = MissionTaskUserAssignment(
             mission_task=self,
             user=user,
+            assigner=assigner,
         )
 
         db.session.add(assignment)
@@ -559,6 +581,16 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
             if assignment.user == user:
                 db.session.delete(assignment)
                 break
+
+    # based on current_user
+    @property
+    def assigner(self):
+        from flask_login import current_user
+
+        for assignment in self.user_assignments:
+            if assignment.user == current_user:
+                return assignment.assigner
+        return None
 
     def get_assets(self):
         return [participation.asset for participation in self.asset_participations]

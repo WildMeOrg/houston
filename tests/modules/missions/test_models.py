@@ -93,6 +93,7 @@ def test_mission_task_add_members(
 
     temp_assignment = MissionTaskUserAssignment()
     temp_assignment.user = temp_user
+    temp_assignment.assigner = admin_user
     temp_mission_task.user_assignments.append(temp_assignment)
 
     # Doing this multiple times should not have an effect
@@ -125,13 +126,14 @@ def test_mission_task_add_members(
     try:
         duplicate_assignment = MissionTaskUserAssignment()
         duplicate_assignment.user = temp_user
+        duplicate_assignment.assigner = admin_user
         temp_mission_task.user_assignments.append(duplicate_assignment)
         with db.session.begin():
             db.session.add(duplicate_assignment)
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
 
-    temp_mission_task.add_user_in_context(admin_user)
+    temp_mission_task.add_user_in_context(admin_user, admin_user)
     # try removing a user that's not in the task
     temp_mission_task.remove_user_in_context(admin_user_2)
     temp_mission_task.remove_user_in_context(admin_user)

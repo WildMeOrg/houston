@@ -7,11 +7,10 @@ Annotations database models
 import logging
 import uuid
 
-from flask import current_app
-
 import app.extensions.logging as AuditLog
-from app.extensions import HoustonModel, SageModel, db
+from app.extensions import HoustonModel, db
 from app.modules import is_module_enabled
+from app.modules.bounded_annotation.models import BoundedAnnotation
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -26,7 +25,7 @@ class AnnotationKeywords(db.Model, HoustonModel):
     keyword = db.relationship('Keyword')
 
 
-class Annotation(db.Model, HoustonModel, SageModel):
+class Annotation(db.Model, BoundedAnnotation):
     """
     Annotations database model.
     """
@@ -38,9 +37,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    version = db.Column(db.BigInteger, default=None, nullable=True)
-    content_guid = db.Column(db.GUID, nullable=True)
-
     asset_guid = db.Column(
         db.GUID,
         db.ForeignKey('asset.guid', ondelete='CASCADE'),
@@ -49,40 +45,26 @@ class Annotation(db.Model, HoustonModel, SageModel):
     )
     asset = db.relationship('Asset', back_populates='annotations')
 
-    if is_module_enabled('encounters'):
-        encounter_guid = db.Column(
-            db.GUID,
-            db.ForeignKey('encounter.guid', ondelete='CASCADE'),
-            index=True,
-            nullable=True,
-        )
-        encounter = db.relationship(
-            'Encounter',
-            backref=db.backref(
-                'annotations',
-                primaryjoin='Encounter.guid == Annotation.encounter_guid',
-                order_by='Annotation.guid',
-            ),
-        )
-    else:
-        encounter_guid = None
-
     keyword_refs = db.relationship('AnnotationKeywords')
-    ia_class = db.Column(db.String(length=255), nullable=False)
-    viewpoint = db.Column(db.String(length=255), nullable=False)
-    bounds = db.Column(db.JSON, nullable=False)
 
     contributor_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
-    contributor = db.relationship(
-        'User',
+    contributor = db.relationship('User', back_populates='contributed_annotations')
+
+    encounter_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('encounter.guid', ondelete='CASCADE'),
+        index=True,
+        nullable=True,
+    )
+    encounter = db.relationship(
+        'Encounter',
         backref=db.backref(
-            'contributed_annotations',
-            primaryjoin='User.guid == Annotation.contributor_guid',
+            'annotations',
+            primaryjoin='Encounter.guid == Annotation.encounter_guid',
             order_by='Annotation.guid',
         ),
-        foreign_keys=[contributor_guid],
     )
 
     progress_identification_guid = db.Column(
@@ -100,15 +82,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
-
-    def __init__(self, *args, **kwargs):
-        if 'bounds' not in kwargs:
-            raise ValueError('bounds are mandatory')
-        if 'rect' not in kwargs['bounds']:
-            raise ValueError('rect in bounds is mandatory')
-        if 'theta' not in kwargs['bounds']:
-            kwargs['bounds']['theta'] = 0
-        super().__init__(*args, **kwargs)
 
     @classmethod
     def run_integrity(cls):
@@ -155,112 +128,14 @@ class Annotation(db.Model, HoustonModel, SageModel):
                 log, f'Annotation {self.guid} not connected to an encounter', obj=self
             )
 
-    @classmethod
-    def get_sage_sync_tags(cls):
-        return 'annotation', 'annot'
-
-    def sync_with_sage(
-        self, ensure=False, force=False, bulk_sage_uuids=None, skip_asset=False, **kwargs
-    ):
-        from app.extensions.sage import SAGE_UNKNOWN_NAME, from_sage_uuid, to_sage_uuid
-
-        if self.asset is None:
-            message = f'Annotation {self} has no asset, cannot send annotation to Sage'
-            AuditLog.audit_log_object_error(log, self, message)
-            log.error(message)
-
-            return
-
-        if self.asset.mime_type not in current_app.config.get(
-            'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
-        ):
-            log.info(
-                'Cannot sync Annotation %r with unsupported SAGE MIME type %r on Asset, skipping'
-                % (
-                    self,
-                    self.asset.mime_type,
-                )
-            )
-            return
-
-        # First, ensure that the annotation's asset has been synced with Sage
-        if not skip_asset:
-            self.asset.sync_with_sage(
-                ensure=ensure, force=force, bulk_sage_uuids=bulk_sage_uuids, **kwargs
-            )
-
-        if self.asset.content_guid is None:
-            message = f'Asset for Annotation {self} failed to send, cannot send annotation to Sage'
-            AuditLog.audit_log_object_error(log, self, message)
-            log.error(message)
-
-            # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
-            return
-
-        if force:
-            with db.session.begin(subtransactions=True):
-                self.content_guid = None
-                db.session.merge(self)
-            db.session.refresh(self)
-
-        if ensure:
-            if self.content_guid is not None:
-                if bulk_sage_uuids is not None:
-                    # Existence checks can be slow one-by-one, bulk checks are better
-                    if self.content_guid in bulk_sage_uuids.get('annotation', {}):
-                        # We have found this Annotation on Sage, simply return
-                        return
-                else:
-                    content_guid_str = str(self.content_guid)
-                    sage_rowids = current_app.sage.request_passthrough_result(
-                        'annotation.exists', 'get', args=content_guid_str, target='sync'
-                    )
-                    if len(sage_rowids) == 1 and sage_rowids[0] is not None:
-                        # We have found this Asset on Sage, simply return
-                        return
-
-                # If we have arrived here, it means we have a non-NULL content guid that isn't on the Sage instance
-                # Null out the local content GUID and restart
-                with db.session.begin(subtransactions=True):
-                    self.content_guid = None
-                    db.session.merge(self)
-                db.session.refresh(self)
-
-        if self.content_guid is not None:
-            return
-
-        assert self.content_guid is None
+    def get_sage_name(self):
+        from app.extensions.sage import SAGE_UNKNOWN_NAME
 
         if self.encounter and self.encounter.individual:
             annot_name = str(self.encounter.individual.guid)
         else:
             annot_name = SAGE_UNKNOWN_NAME
-
-        try:
-            self.validate_bounds(self.bounds)
-        except Exception:
-            message = f'Annotation {self} failed to pass validate_bounds(), cannot send annotation to Sage'
-            AuditLog.audit_log_object_error(log, self, message)
-            log.error(message)
-
-            return
-
-        sage_request = {
-            'image_uuid_list': [to_sage_uuid(self.asset.content_guid)],
-            'annot_species_list': [self.ia_class],
-            'annot_bbox_list': [self.bounds['rect']],
-            'annot_name_list': [annot_name],
-            'annot_theta_list': [self.bounds.get('theta', 0)],
-        }
-        sage_response = current_app.sage.request_passthrough_result(
-            'annotation.create', 'post', {'json': sage_request}, target='sync'
-        )
-        sage_guid = from_sage_uuid(sage_response[0])
-
-        with db.session.begin(subtransactions=True):
-            self.content_guid = sage_guid
-            db.session.merge(self)
-        db.session.refresh(self)
+        return annot_name
 
     def init_progress_identification(self, parent=None, overwrite=False):
         from app.modules.progress.models import Progress
@@ -293,43 +168,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
             db.session.merge(self.progress_identification)
 
         db.session.refresh(self)
-
-    # Assumes that the caller actually wants the debug data for the context of where the annotation came from.
-    # Therefore, returns an amalgamation of the detailed Annot plus one of :
-    # the sighting schema (if the annot has a sighting)
-    # or the AGS if the annot is curated to be part of an AGS (user has done curation but not hit commit)
-    # or the possible AGSs if the annot is not curated to be part of any AGS.
-    def get_debug_json(self):
-        from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
-        from app.modules.sightings.schemas import DebugSightingSchema
-
-        from .schemas import DetailedAnnotationSchema
-
-        ags_schema = DebugAssetGroupSightingSchema()
-        annot_schema = DetailedAnnotationSchema()
-        sighting_schema = DebugSightingSchema()
-
-        returned_json = {'annotation': annot_schema.dump(self).data}
-
-        if self.encounter:
-            returned_json['sighting'] = sighting_schema.dump(self.encounter.sighting).data
-            return returned_json
-
-        assert self.asset.git_store
-        ags = self.asset.git_store.get_asset_group_sighting_for_annotation(self)
-        if ags:
-            returned_json['asset_group_sighting'] = ags_schema.dump(ags).data
-        else:
-            # Annotation created but not curated into an AGS, instead use one the AGS of the asset
-            ags_s = self.asset.git_store.get_asset_group_sightings_for_asset(self.asset)
-            if len(ags_s) > 0:
-                returned_json['possible_asset_group_sightings'] = []
-                for ags_id in range(len(ags_s)):
-                    returned_json['possible_asset_group_sightings'].append(
-                        ags_schema.dump(ags_s[ags_id]).data
-                    )
-
-        return returned_json
 
     @property
     def keywords(self):
@@ -367,6 +205,48 @@ class Annotation(db.Model, HoustonModel, SageModel):
             if ref.keyword == keyword:
                 db.session.delete(ref)
                 break
+
+    def get_keyword_values(self):
+        if not self.keyword_refs:
+            return []
+        return sorted(ref.keyword.value for ref in self.keyword_refs)
+
+    # Assumes that the caller actually wants the debug data for the context of where the annotation came from.
+    # Therefore, returns an amalgamation of the detailed Annot plus one of :
+    # the sighting schema (if the annot has a sighting)
+    # or the AGS if the annot is curated to be part of an AGS (user has done curation but not hit commit)
+    # or the possible AGSs if the annot is not curated to be part of any AGS.
+    def get_debug_json(self):
+        from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
+        from app.modules.sightings.schemas import DebugSightingSchema
+
+        from .schemas import DetailedAnnotationSchema
+
+        ags_schema = DebugAssetGroupSightingSchema()
+        annot_schema = DetailedAnnotationSchema()
+        sighting_schema = DebugSightingSchema()
+
+        returned_json = {'annotation': annot_schema.dump(self).data}
+
+        if self.encounter:
+            returned_json['sighting'] = sighting_schema.dump(self.encounter.sighting).data
+            return returned_json
+
+        assert self.asset.git_store
+        ags = self.asset.git_store.get_asset_group_sighting_for_annotation(self)
+        if ags:
+            returned_json['asset_group_sighting'] = ags_schema.dump(ags).data
+        else:
+            # Annotation created but not curated into an AGS, instead use one the AGS of the asset
+            ags_s = self.asset.git_store.get_asset_group_sightings_for_asset(self.asset)
+            if len(ags_s) > 0:
+                returned_json['possible_asset_group_sightings'] = []
+                for ags_id in range(len(ags_s)):
+                    returned_json['possible_asset_group_sightings'].append(
+                        ags_schema.dump(ags_s[ags_id]).data
+                    )
+
+        return returned_json
 
     def user_is_owner(self, user):
         # Annotation has no owner, but it has one asset, that has one git store that has an owner
@@ -531,11 +411,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
         if not self.encounter_guid or not self.encounter:
             return None
         return self.encounter.get_sighting_guid_str()
-
-    def get_keyword_values(self):
-        if not self.keyword_refs:
-            return []
-        return sorted(ref.keyword.value for ref in self.keyword_refs)
 
     def delete(self):
         with db.session.begin(subtransactions=True):

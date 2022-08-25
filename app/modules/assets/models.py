@@ -77,10 +77,14 @@ class Asset(db.Model, HoustonModel, SageModel):
             order_by='Asset.guid',
         ),
     )
-
-    annotations = db.relationship(
-        'Annotation', back_populates='asset', order_by='Annotation.guid'
-    )
+    if is_module_enabled('annotations'):
+        annotations = db.relationship(
+            'Annotation', back_populates='asset', order_by='Annotation.guid'
+        )
+    elif is_module_enabled('scout_annotations'):
+        annotations = db.relationship(
+            'ScoutAnnotation', back_populates='asset', order_by='ScoutAnnotation.guid'
+        )
 
     tag_refs = db.relationship('AssetTags')
 

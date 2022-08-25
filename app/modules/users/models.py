@@ -156,6 +156,16 @@ class User(db.Model, HoustonModel):
     )
 
     PUBLIC_USER_EMAIL = 'public@localhost'
+    if is_module_enabled('annotations'):
+        contributed_annotations = db.relationship(
+            'Annotation', back_populates='contributor', order_by='Annotation.guid'
+        )
+    elif is_module_enabled('scout_annotations'):
+        contributed_annotations = db.relationship(
+            'ScoutAnnotation',
+            back_populates='contributor',
+            order_by='ScoutAnnotation.guid',
+        )
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object

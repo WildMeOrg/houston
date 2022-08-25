@@ -399,7 +399,7 @@ class MissionTaskAnnotationParticipation(db.Model, HoustonModel):
     )
 
     annotation_guid = db.Column(
-        db.GUID, db.ForeignKey('annotation.guid'), primary_key=True
+        db.GUID, db.ForeignKey('scout_annotation.guid'), primary_key=True
     )
 
     mission_task = db.relationship(
@@ -407,9 +407,12 @@ class MissionTaskAnnotationParticipation(db.Model, HoustonModel):
     )
 
     annotation = db.relationship(
-        'Annotation',
+        'ScoutAnnotation',
         backref=db.backref(
-            'mission_task_participations', cascade='delete, delete-orphan'
+            'mission_task_participations',
+            cascade='delete, delete-orphan',
+            primaryjoin='ScoutAnnotation.guid == MissionTaskAnnotationParticipation.annotation_guid',
+            order_by='MissionTaskAnnotationParticipation.annotation_guid',
         ),
     )
 

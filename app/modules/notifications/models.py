@@ -27,12 +27,22 @@ class NotificationType(str, enum.Enum):
     collab_edit_request = 'collaboration_edit_request'
     # other user approved edit request
     collab_edit_approved = 'collaboration_edit_approved'
+    # other user denied edit request
+    collab_edit_denied = 'collaboration_edit_denied'
     # other user revokes the existing edit part of your collaboration
     collab_edit_revoke = 'collaboration_edit_revoke'
     collab_revoke = 'collaboration_revoke'  # other user revokes the collaboration
-    # A user manager has created a collaboration for you with another user
+    # A user manager has created or approved a collaboration for you with another user
     collab_manager_create = 'collaboration_manager_create'
+    # A user manager has denied a collaboration for you with another user
+    collab_manager_denied = 'collaboration_manager_denied'
     # A user manager has revoked a collaboration for you with another user
+    # user_manager approved edit request
+    collab_manager_edit_approved = 'collaboration_manager_edit_approved'
+    # user_manager denied edit request
+    collab_manager_edit_denied = 'collaboration_manager_edit_denied'
+    # user_manager revokes the existing edit part of your collaboration
+    collab_manager_edit_revoke = 'collaboration_manager_edit_revoke'
     collab_manager_revoke = 'collaboration_manager_revoke'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
@@ -74,6 +84,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.collab_edit_denied: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
     NotificationType.collab_revoke: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
@@ -83,6 +97,22 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.collab_manager_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_denied: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_edit_approved: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_edit_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_edit_denied: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -133,6 +163,12 @@ NOTIFICATION_CONFIG = {
         'mandatory_fields': {'collaboration_guid'},
         'resolve_on_read': True,
     },
+    NotificationType.collab_edit_denied: {
+        'email_template_name': 'collaboration_edit_denied',
+        'email_digest_content_template': 'collaboration_edit_denied_digest',
+        'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
+    },
     NotificationType.collab_edit_revoke: {
         'email_template_name': 'collaboration_edit_revoke',
         'email_digest_content_template': 'collaboration_edit_revoke_digest',
@@ -160,6 +196,54 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_manager_revoke: {
         'email_template_name': 'collaboration_manger_revoke',
         'email_digest_content_template': 'collaboration_manager_revoke_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_manager_denied: {
+        'email_template_name': 'collaboration_manger_denied',
+        'email_digest_content_template': 'collaboration_manager_denied_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_manager_edit_approved: {
+        'email_template_name': 'collaboration_manger_edit_approved',
+        'email_digest_content_template': 'collaboration_manager_edit_approved_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_manager_edit_denied: {
+        'email_template_name': 'collaboration_manger_edit_denied',
+        'email_digest_content_template': 'collaboration_manager_edit_denied_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_manager_edit_revoke: {
+        'email_template_name': 'collaboration_manger_edit_revoke',
+        'email_digest_content_template': 'collaboration_manager_edit_revoke_digest',
         'mandatory_fields': {
             'collaboration_guid',
             'user1_name',

@@ -60,7 +60,7 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
 
     def set_read_approval_state(*user_guid_states):
         for user_guid, state in user_guid_states:
-            collab.set_read_approval_state_for_user(user_guid, state)
+            collab.set_approval_state_for_user(user_guid, state)
         for association in collab.collaboration_user_associations:
             for user_guid, state in user_guid_states:
                 if association.user_guid == user_guid:
@@ -109,10 +109,12 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
     assert str(collab_user_a.guid) in json_user_data.keys()
     assert str(collab_user_b.guid) in json_user_data.keys()
 
-    collab.set_read_approval_state_for_user(
+    collab.set_approval_state_for_user(
+        collab_user_a.guid, CollaborationUserState.APPROVED
+    )
+    collab.set_approval_state_for_user(
         collab_user_b.guid, CollaborationUserState.APPROVED
     )
-
     for association in collab.collaboration_user_associations:
         assert association.read_approval_state == CollaborationUserState.APPROVED
         assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
@@ -127,17 +129,15 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
             assert association.edit_approval_state == CollaborationUserState.APPROVED
         if association.user_guid == collab_user_b.guid:
             assert association.edit_approval_state == CollaborationUserState.PENDING
-
-    collab.set_edit_approval_state_for_user(
-        collab_user_b.guid, CollaborationUserState.APPROVED
+    collab.set_approval_state_for_user(
+        collab_user_b.guid, CollaborationUserState.APPROVED, is_edit=True
     )
+
     for association in collab.collaboration_user_associations:
         assert association.edit_approval_state == CollaborationUserState.APPROVED
 
     # Check that revoking read also revokes edit
-    collab.set_read_approval_state_for_user(
-        collab_user_b.guid, CollaborationUserState.REVOKED
-    )
+    collab.set_approval_state_for_user(collab_user_b.guid, CollaborationUserState.REVOKED)
     for association in collab.collaboration_user_associations:
         if association.user_guid == collab_user_b.guid:
             assert association.edit_approval_state == CollaborationUserState.REVOKED

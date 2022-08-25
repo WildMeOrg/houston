@@ -173,7 +173,7 @@ def test_patch_notification(
     assert len(researcher_2_unread_notifs.json) <= len(researcher_2_notifs.json)
 
     # an approval should automatically resolve on reading based on NOTIFICATION_CONFIG
-    basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
+    basic_collab.set_approval_state_for_user(researcher_2.guid, 'approved')
     researcher_1_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_1
     )

@@ -204,20 +204,8 @@ def test_patch_managed_collaboration_states(
     )
     collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
 
-    # No user guid
+    # No permission field
     patch_data = [utils.patch_replace_op('managed_view_permission', {})]
-    resp = 'Value for managed_view_permission must contain a permission field'
-    collab_utils.patch_collaboration(
-        flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
-    )
-    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
-
-    garbage_uuid = str(uuid.uuid4())
-
-    # no permission
-    patch_data = [
-        utils.patch_replace_op('managed_view_permission', {'user_guid': garbage_uuid})
-    ]
     resp = 'Value for managed_view_permission must contain a permission field'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
@@ -272,7 +260,7 @@ def test_patch_managed_collaboration_states(
     patch_data = [
         utils.patch_replace_op(
             'managed_view_permission',
-            {'user_guid': str(researcher_2.guid), 'permission': 'revoked'},
+            {'permission': 'revoked'},
         )
     ]
     collab_utils.patch_collaboration(

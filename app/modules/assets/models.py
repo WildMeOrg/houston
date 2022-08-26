@@ -86,6 +86,8 @@ class Asset(db.Model, HoustonModel, SageModel):
         annotations = db.relationship(
             'ScoutAnnotation', back_populates='asset', order_by='ScoutAnnotation.guid'
         )
+    else:
+        annotations = []
 
     tag_refs = db.relationship('AssetTags')
 

@@ -317,7 +317,7 @@ class CodexAnnotation(Annotation):
 
     @classmethod
     def get_elasticsearch_schema(cls):
-        from app.modules.codex_annotation.schemas import AnnotationElasticsearchSchema
+        from .schemas import AnnotationElasticsearchSchema
 
         return AnnotationElasticsearchSchema
 

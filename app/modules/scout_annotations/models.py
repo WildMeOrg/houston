@@ -45,3 +45,9 @@ class ScoutAnnotation(Annotation):
         annot_schema = DetailedAnnotationSchema()
 
         return {'annotation': annot_schema.dump(self).data}
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from .schemas import AnnotationElasticsearchSchema
+
+        return AnnotationElasticsearchSchema

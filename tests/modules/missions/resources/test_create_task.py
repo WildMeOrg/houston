@@ -94,6 +94,11 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
             assert 'New Task: ' in read_mission_task.title
             assert read_mission_task.owner == admin_user
             mission_task_assets = read_mission_task.get_assets()
+            users = read_mission_task.get_assigned_users_with_assigner_json()
+            assert len(users) == 1
+            assert users[0]['guid'] == str(admin_user.guid)
+            assert 'assigner' in users[0]
+            assert users[0]['assigner']['guid'] == str(admin_user.guid)
 
             if len(mission_task_assets) != 0:
                 break

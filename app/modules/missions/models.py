@@ -549,6 +549,8 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         return [assignment.user for assignment in self.user_assignments]
 
     def get_assigned_users_with_assigner_json(self):
+        # dont really like schemas from within code, but this seemed the shortest
+        #   route to basically adding this `assigner` user _within_ a normal user schema
         from app.modules.users.schemas import BaseUserSchema  # NOQA
 
         schema = BaseUserSchema()

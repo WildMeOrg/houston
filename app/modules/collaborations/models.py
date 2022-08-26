@@ -445,7 +445,6 @@ class Collaboration(db.Model, HoustonModel):
             raise ValueError(
                 f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
             )
-
         # Don't transition any user state unless all transitions are valid
         for association in self.collaboration_user_associations:
             if not self._is_state_transition_valid(association, state, is_edit):
@@ -454,24 +453,41 @@ class Collaboration(db.Model, HoustonModel):
                     f'Not permitted to move user {association.user_guid} to state {state}',
                 )
 
+        changed = False
         for association in self.collaboration_user_associations:
             if is_edit:
-                association.edit_approval_state = state
-            else:
-                association.read_approval_state = state
-
-                # If a user revokes view and previously allowed edit, they automatically
-                # revoke edit too
-                if (
-                    state == CollaborationUserState.REVOKED
-                    and association.edit_approval_state == CollaborationUserState.APPROVED
-                ):
+                if association.edit_approval_state != state:
+                    changed = True
                     association.edit_approval_state = state
+                    # If a user manager approves edit make sure view is not left inconsistent
+                    if (
+                        state == CollaborationUserState.APPROVED
+                        and self._is_state_transition_valid(association, state, False)
+                    ):
+                        association.read_approval_state = state
+            else:
+                if association.read_approval_state != state:
+                    association.read_approval_state = state
+                    changed = True
+
+                    # If a user manager revokes view make sure edit is not left inconsistent
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and self._is_state_transition_valid(association, state, True)
+                    ):
+                        association.edit_approval_state = state
 
                 with db.session.begin(subtransactions=True):
                     db.session.merge(association)
 
-                self._send_notification_for_manager_change(association, state, is_edit)
+        if changed:
+            # If something changed both users get a notification, it doesn't matter which association we send so
+            # just pick one
+            self._send_notification_for_manager_change(
+                self.collaboration_user_associations[0], state, is_edit
+            )
+
+        return True
 
     def user_has_read_access(self, user_guid):
         ret_val = False

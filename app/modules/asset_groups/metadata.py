@@ -218,8 +218,8 @@ class AssetGroupMetadata(object):
 
     @classmethod
     def validate_annotations(cls, asset_group_sighting, annotations, debug):
-        from app.modules.annotations.models import Annotation
         from app.modules.asset_groups.models import AssetGroupSightingStage
+        from app.modules.codex_annotations.models import CodexAnnotation
 
         if not asset_group_sighting.stage == AssetGroupSightingStage.curation:
             raise AssetGroupMetadataError(
@@ -227,7 +227,7 @@ class AssetGroupMetadata(object):
             )
 
         for annot_uuid in annotations:
-            annot = Annotation.query.get(annot_uuid)
+            annot = CodexAnnotation.query.get(annot_uuid)
             if not annot:
                 raise AssetGroupMetadataError(
                     log, f'{debug} annotation:{str(annot_uuid)} not found'

@@ -430,7 +430,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return self.__class__.config_field_getter('customFields', default={})(self)
 
     def _augment_encounter_json(self, encounter_data):
-        from app.modules.annotations.schemas import BaseAnnotationSchema
+        from app.modules.codex_annotations.schemas import BaseAnnotationSchema
         from app.modules.users.schemas import PublicUserSchema
 
         user_schema = PublicUserSchema()

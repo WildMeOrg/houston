@@ -59,11 +59,11 @@ class CodexAnnotation(Annotation):
         result = {'no_content_guid': [], 'no_encounter': []}
 
         # Annots must always have a content guid
-        no_contents = Annotation.query.filter(Annotation.content_guid.is_(None)).all()
+        no_contents = cls.query.filter(cls.content_guid.is_(None)).all()
         if no_contents:
             result['no_content_guid'] = [annot.guid for annot in no_contents]
 
-        no_encounters = Annotation.query.filter(Annotation.encounter_guid.is_(None)).all()
+        no_encounters = cls.query.filter(cls.encounter_guid.is_(None)).all()
 
         # just because an annot has no encounters does not immediately make this an integrity check failure
         # Annots in Assets in Asset groups that are not fully processed may validly not have an encounter

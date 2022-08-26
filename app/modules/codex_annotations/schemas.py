@@ -6,10 +6,9 @@ Serialization schemas for Annotations resources RESTful API
 
 from flask_marshmallow import base_fields
 
-from app.modules import is_module_enabled
 from flask_restx_patched import ModelSchema
 
-from .models import Annotation
+from .models import CodexAnnotation
 
 
 class BaseAnnotationSchema(ModelSchema):
@@ -19,19 +18,17 @@ class BaseAnnotationSchema(ModelSchema):
 
     class Meta:
         # pylint: disable=missing-docstring
-        model = Annotation
+        model = CodexAnnotation
         fields = (
-            Annotation.guid.key,
-            Annotation.asset_guid.key,
-            Annotation.encounter_guid.key
-            if is_module_enabled('encounters')
-            else 'encounter_guid',
-            Annotation.ia_class.key,
-            Annotation.viewpoint.key,
+            CodexAnnotation.guid.key,
+            CodexAnnotation.asset_guid.key,
+            CodexAnnotation.encounter_guid.key,
+            CodexAnnotation.ia_class.key,
+            CodexAnnotation.viewpoint.key,
             'elasticsearchable',
-            Annotation.indexed.key,
+            CodexAnnotation.indexed.key,
         )
-        dump_only = (Annotation.guid.key,)
+        dump_only = (CodexAnnotation.guid.key,)
 
 
 class DetailedAnnotationSchema(BaseAnnotationSchema):
@@ -47,15 +44,15 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
-            Annotation.created.key,
-            Annotation.updated.key,
-            Annotation.bounds.key,
+            CodexAnnotation.created.key,
+            CodexAnnotation.updated.key,
+            CodexAnnotation.bounds.key,
             'keywords',
             'asset_src',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
-            Annotation.created.key,
-            Annotation.updated.key,
+            CodexAnnotation.created.key,
+            CodexAnnotation.updated.key,
             'asset_src',
         )
 
@@ -78,10 +75,10 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
-            Annotation.created.key,
-            Annotation.updated.key,
-            Annotation.bounds.key,
-            Annotation.content_guid.key,
+            CodexAnnotation.created.key,
+            CodexAnnotation.updated.key,
+            CodexAnnotation.bounds.key,
+            CodexAnnotation.content_guid.key,
             'keywords',
             'locationId',
             'owner_guid',
@@ -91,6 +88,6 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
             'time',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
-            Annotation.created.key,
-            Annotation.updated.key,
+            CodexAnnotation.created.key,
+            CodexAnnotation.updated.key,
         )

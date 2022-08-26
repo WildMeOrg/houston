@@ -293,7 +293,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                 encounter_metadata['ownerEmail'] = user.email
 
         elif field == 'annotations':
-            from app.modules.annotations.models import Annotation
+            from app.modules.codex_annotations.models import CodexAnnotation
 
             # Need to make it a list unless it's already one
             annot_guids = value if isinstance(value, list) else [value]
@@ -304,7 +304,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                 f'Encounter {encounter_uuid}',
             )
             for annot_guid in annot_guids:
-                annot = Annotation.query.get(annot_guid)
+                annot = CodexAnnotation.query.get(annot_guid)
                 assert annot
                 if (
                     annot.encounter

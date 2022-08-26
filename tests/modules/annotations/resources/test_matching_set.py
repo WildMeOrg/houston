@@ -33,13 +33,13 @@ def test_annotation_matching_set(
 ):
     # pylint: disable=invalid-name
     from app.extensions import elasticsearch as es
-    from app.modules.annotations.models import Annotation
+    from app.modules.codex_annotations.models import CodexAnnotation
 
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')
 
     # make sure we dont have stray annots around
-    Annotation.query.delete()
+    CodexAnnotation.query.delete()
 
     enc1_uuids = enc_utils.create_encounter(
         flask_app_client, researcher_1, request, test_root
@@ -78,7 +78,7 @@ def test_annotation_matching_set(
     )
 
     annotation_guid = response.json['guid']
-    annotation = Annotation.query.get(annotation_guid)
+    annotation = CodexAnnotation.query.get(annotation_guid)
     assert annotation.asset_guid == uuid.UUID(enc1_asset_guid)
 
     request.addfinalizer(annotation.delete)
@@ -108,7 +108,7 @@ def test_annotation_matching_set(
         enc2_guid,  # same enc as target, so should be skipped
         viewpoint='frontright',
     )
-    annot0 = Annotation.query.get(response.json['guid'])
+    annot0 = CodexAnnotation.query.get(response.json['guid'])
     request.addfinalizer(annot0.delete)
     response = annot_utils.create_annotation(
         flask_app_client,
@@ -117,7 +117,7 @@ def test_annotation_matching_set(
         enc2_guid,
         viewpoint='back',  # not neighbor
     )
-    annot1 = Annotation.query.get(response.json['guid'])
+    annot1 = CodexAnnotation.query.get(response.json['guid'])
     request.addfinalizer(annot1.delete)
     response = annot_utils.create_annotation(
         flask_app_client,
@@ -128,13 +128,13 @@ def test_annotation_matching_set(
     )
     # this one should match
     annotation_match_guid = response.json['guid']
-    annotation_match = Annotation.query.get(annotation_match_guid)
+    annotation_match = CodexAnnotation.query.get(annotation_match_guid)
     request.addfinalizer(annotation_match.delete)
     annotation_match.content_guid = uuid.uuid4()
 
     # first lets query *all* annots
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
-    annots = Annotation.elasticsearch({})
+    annots = CodexAnnotation.elasticsearch({})
     assert len(annots) == 4
 
     query = annotation.get_matching_set_default_query()
@@ -190,8 +190,8 @@ def test_annotation_elasticsearch(
     test_root,
 ):
     # pylint: disable=invalid-name
-    from app.modules.annotations.models import Annotation
-    from app.modules.annotations.schemas import AnnotationElasticsearchSchema
+    from app.modules.codex_annotations.models import CodexAnnotation
+    from app.modules.codex_annotations.schemas import AnnotationElasticsearchSchema
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
@@ -223,7 +223,7 @@ def test_annotation_elasticsearch(
     )
 
     annotation_guid = response.json['guid']
-    annotation = Annotation.query.get(annotation_guid)
+    annotation = CodexAnnotation.query.get(annotation_guid)
     request.addfinalizer(annotation.delete)
     annotation.content_guid = uuid.uuid4()
 
@@ -256,10 +256,10 @@ def test_annotation_matching_set_macros(
     test_root,
 ):
     # pylint: disable=invalid-name
-    from app.modules.annotations.models import Annotation
+    from app.modules.codex_annotations.models import CodexAnnotation
 
     # make sure we dont have stray annots around
-    Annotation.query.delete()
+    CodexAnnotation.query.delete()
 
     enc1_uuids = enc_utils.create_encounter(
         flask_app_client, researcher_1, request, test_root
@@ -299,7 +299,7 @@ def test_annotation_matching_set_macros(
     )
 
     annotation_guid = response.json['guid']
-    annotation = Annotation.query.get(annotation_guid)
+    annotation = CodexAnnotation.query.get(annotation_guid)
     assert annotation.asset_guid == uuid.UUID(enc1_asset_guid)
 
     request.addfinalizer(annotation.delete)
@@ -344,7 +344,7 @@ def test_search_with_elasticsearch(
 ):
     # pylint: disable=invalid-name
     from app.extensions import elasticsearch as es
-    from app.modules.annotations.models import Annotation
+    from app.modules.codex_annotations.models import CodexAnnotation
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
@@ -376,17 +376,17 @@ def test_search_with_elasticsearch(
     )
 
     annotation_guid = response.json['guid']
-    annotation = Annotation.query.get(annotation_guid)
+    annotation = CodexAnnotation.query.get(annotation_guid)
     request.addfinalizer(annotation.delete)
     annotation.content_guid = uuid.uuid4()
 
     # Index all annotations
     with es.session.begin(blocking=True):
-        Annotation.index_all(force=True)
+        CodexAnnotation.index_all(force=True)
 
     # Wait for elasticsearch to catch up
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
-    assert len(Annotation.elasticsearch(None, load=False)) == 1
+    assert len(CodexAnnotation.elasticsearch(None, load=False)) == 1
 
     locationId = annotation.get_location_id_str()
     search = {
@@ -425,7 +425,7 @@ def test_search_with_elasticsearch(
             'must_not': {'match': {'encounter_guid': 'does not exist'}},
         }
     }
-    result_api = Annotation.elasticsearch(search, load=False)
+    result_api = CodexAnnotation.elasticsearch(search, load=False)
     response = elasticsearch(flask_app_client, researcher_1, 'annotations', search)
     result_rest = response.json
     assert len(result_api) == 1

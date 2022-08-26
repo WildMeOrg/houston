@@ -13,7 +13,7 @@ from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
 from app.extensions import CustomFieldMixin, HoustonModel, db
-from app.modules.annotations.models import Annotation
+from app.modules.codex_annotations.models import CodexAnnotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
 from app.utils import HoustonException
@@ -773,9 +773,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 annot = None
                 annot_guid = self.jobs[job_id].get('annotation')
                 if annot_guid:
-                    from app.modules.annotations.models import Annotation
-
-                    annot = Annotation.query.get(annot_guid)
+                    annot = CodexAnnotation.query.get(annot_guid)
                 if not annot:
                     details[-1]['request'] = 'No annotation in job'
                 else:
@@ -1000,16 +998,16 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         #  also: once we have > 1 config, some annot-level checks will be redundant (e.g. matching_set) so may
         #    require a rethink on how these loops are nested
         annotation_guids = (
-            Annotation.query.join(Annotation.encounter)
+            CodexAnnotation.query.join(CodexAnnotation.encounter)
             .join(Encounter.sighting)
             .filter(Sighting.guid == sighting_guid)
-            .values(Annotation.guid)
+            .values(CodexAnnotation.guid)
         )
         annotation_guids = sorted(
             {annotation_guid[0] for annotation_guid in annotation_guids}
         )
         for annotation_guid in annotation_guids:
-            annot = Annotation.query.get(annotation_guid)
+            annot = CodexAnnotation.query.get(annotation_guid)
 
             annot.sync_with_sage(ensure=True)
 
@@ -1071,7 +1069,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
         # Ensure Sage is completely up-to-date
         if current_app.testing:
-            Annotation.sync_all_with_sage(ensure=True)
+            CodexAnnotation.sync_all_with_sage(ensure=True)
 
         if annotation.progress_identification:
             annotation.progress_identification.set(2)
@@ -1150,8 +1148,8 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                     if annotation.progress_identification:
                         annotation.progress_identification.set(8)
 
-                    local_content_guids = Annotation.query.with_entities(
-                        Annotation.content_guid
+                    local_content_guids = CodexAnnotation.query.with_entities(
+                        CodexAnnotation.content_guid
                     ).all()
                     local_content_guids = {
                         item[0] for item in local_content_guids if item is not None
@@ -1227,7 +1225,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                                 < MAX_IDENTIFICATION_ATTEMPTS
                             ):
                                 # Ensure Sage is completely up-to-date
-                                Annotation.sync_all_with_sage(ensure=True)
+                                CodexAnnotation.sync_all_with_sage(ensure=True)
                                 message = f'{debug_context} Sage Identification failed to start '
                                 message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
                                 AuditLog.audit_log_object_warning(log, self, message)
@@ -1310,7 +1308,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             )
 
         sage_uuid = from_sage_uuid(query_annot_uuids[0])
-        query_annots = Annotation.query.filter_by(content_guid=sage_uuid).all()
+        query_annots = CodexAnnotation.query.filter_by(content_guid=sage_uuid).all()
         if not query_annots:
             raise HoustonException(
                 log,
@@ -1330,7 +1328,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         # Now it's reasonably valid, let's extract the bits we need
         for target_annot_data in json_result['summary_annot']:
             sage_uuid = from_sage_uuid(target_annot_data['duuid'])
-            target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
+            target_annot = CodexAnnotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
                 raise HoustonException(
                     log,
@@ -1343,7 +1341,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
         for target_annot_data in json_result['summary_name']:
             sage_uuid = from_sage_uuid(target_annot_data['duuid'])
-            target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
+            target_annot = CodexAnnotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
                 raise HoustonException(
                     log,
@@ -1369,7 +1367,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
             )
 
-            annotation = Annotation.query.get(annot_guid)
+            annotation = CodexAnnotation.query.get(annot_guid)
             if not annotation:
                 raise HoustonException(
                     log, f'annotation {annot_guid} for {job_id_str} not found'
@@ -1456,7 +1454,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         data = {}
         assert len(t_annot_result.keys()) == 1
         t_annot_guid = list(t_annot_result.keys())[0]
-        t_annot = Annotation.query.get(t_annot_guid)
+        t_annot = CodexAnnotation.query.get(t_annot_guid)
         # If no annot, assume that annot has been deleted since the job was run and use None
         if t_annot:
             data = {
@@ -1622,7 +1620,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 # Get all query annotations
                 query_annotation_guid = job.get('annotation', None)
                 if query_annotation_guid is not None:
-                    annotation = Annotation.query.get(query_annotation_guid)
+                    annotation = CodexAnnotation.query.get(query_annotation_guid)
                     if annotation:
                         annotation_guids.append(annotation.guid)
 
@@ -1633,7 +1631,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 for score in scores_by_annotation + scores_by_individual:
                     for annotation_guid in score.keys():
                         # Ensure exists in DB
-                        annotation = Annotation.query.get(annotation_guid)
+                        annotation = CodexAnnotation.query.get(annotation_guid)
                         if annotation:
                             annotation_guids.append(annotation.guid)
 
@@ -1701,7 +1699,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             #  but we would have to be careful of code calling specific *directly*
             for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
                 if self.send_annotation_for_identification_specific(
-                    Annotation.query.get(annotation_guid),
+                    CodexAnnotation.query.get(annotation_guid),
                     config_id,
                     algorithm_id,
                     matching_set_query,

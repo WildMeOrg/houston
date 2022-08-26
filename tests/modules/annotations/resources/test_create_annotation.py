@@ -52,7 +52,7 @@ def test_create_failures(flask_app_client, researcher_1, db, request, test_root)
 )
 def test_create_and_delete_annotation(flask_app_client, researcher_1, request, test_root):
     # pylint: disable=invalid-name
-    from app.modules.annotations.models import Annotation
+    from app.modules.codex_annotations.models import CodexAnnotation
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
@@ -65,7 +65,7 @@ def test_create_and_delete_annotation(flask_app_client, researcher_1, request, t
     )
 
     annotation_guid = response.json['guid']
-    read_annotation = Annotation.query.get(response.json['guid'])
+    read_annotation = CodexAnnotation.query.get(response.json['guid'])
     assert read_annotation.asset_guid == uuid.UUID(asset_guid)
 
     # Try reading it back
@@ -85,7 +85,7 @@ def test_create_and_delete_annotation(flask_app_client, researcher_1, request, t
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
 
-    read_annotation = Annotation.query.get(annotation_guid)
+    read_annotation = CodexAnnotation.query.get(annotation_guid)
     assert read_annotation is None
 
 

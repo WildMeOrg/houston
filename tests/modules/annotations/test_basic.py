@@ -7,7 +7,7 @@ from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
-    module_unavailable('annotations'), reason='Annotations module disabled'
+    module_unavailable('codex_annotations'), reason='Annotations module disabled'
 )
 def test_viewpoint_utils():
     from app.modules.annotations.models import Annotation

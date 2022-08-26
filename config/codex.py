@@ -68,7 +68,7 @@ class BaseCodexConfig(
         'relationships',
         'names',
         'complex_date_time',
-        'annotations',
+        'codex_annotations',
         'social_groups',
         'site_settings',
         'job_control',

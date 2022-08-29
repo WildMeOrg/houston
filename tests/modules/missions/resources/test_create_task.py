@@ -250,6 +250,113 @@ def test_mission_task_permission(
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
+def test_mission_task_create_with_passed_args(
+    flask_app_client,
+    admin_user,
+    staff_user,
+    regular_user,
+    test_root,
+):
+    from app.modules.missions.models import Mission, MissionCollection
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
+
+    try:
+        response = mission_utils.create_mission(
+            flask_app_client,
+            admin_user,
+            mission_utils.make_name('mission')[1],
+        )
+        mission_guid = response.json['guid']
+        temp_mission = Mission.query.get(mission_guid)
+
+        previous_list = mission_utils.read_all_mission_collections(
+            flask_app_client, admin_user
+        )
+
+        new_mission_collections = []
+        for index in range(3):
+            transaction_id = str(random_guid())
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
+
+            nonce, description = mission_utils.make_name('mission collection')
+            response = mission_utils.create_mission_collection_with_tus(
+                flask_app_client,
+                admin_user,
+                description,
+                transaction_id,
+                temp_mission.guid,
+            )
+            mission_collection_guid = response.json['guid']
+            temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
+
+            new_mission_collections.append((nonce, temp_mission_collection))
+
+        current_list = mission_utils.read_all_mission_collections(
+            flask_app_client, admin_user
+        )
+        assert len(previous_list.json) + len(new_mission_collections) == len(
+            current_list.json
+        )
+
+        nonce, new_mission_collection1 = new_mission_collections[0]
+        nonce, new_mission_collection2 = new_mission_collections[1]
+        data = [
+            utils.set_union_op('assets', [str(new_mission_collection2.assets[0].guid)]),
+            # first test with invalid user guid to assign
+            utils.set_union_op(
+                'pass', {'users': ['00000000-0000-0000-0000-000000000001']}
+            ),
+        ]
+
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, admin_user)
+
+        response = mission_utils.create_mission_task(
+            flask_app_client,
+            admin_user,
+            mission_guid,
+            data,
+            409,
+        )
+        assert (
+            response.json['message']
+            == 'wanting to assign invalid user guid=00000000-0000-0000-0000-000000000001'
+        )
+
+        # now fix the assigned users, and also test title
+        test_title = 'TEST TITLE'
+        data[1] = utils.set_union_op(
+            'pass', {'users': [str(regular_user.guid)], 'title': test_title}
+        )
+        response = mission_utils.create_mission_task(
+            flask_app_client,
+            admin_user,
+            mission_guid,
+            data,
+        )
+        mission_task_guid = response.json['guid']
+        task_resp = mission_utils.read_mission_task(
+            flask_app_client, admin_user, mission_task_guid
+        )
+        assert task_resp.json['title'] == test_title
+        assert len(task_resp.json['assigned_users']) == 2
+
+        # delete it
+        mission_utils.delete_mission_task(flask_app_client, admin_user, mission_task_guid)
+
+    finally:
+        if mission_guid:
+            mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)
+
+
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_set_operation_permission(
     flask_app_client,
     admin_user,

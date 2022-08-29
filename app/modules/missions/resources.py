@@ -365,7 +365,7 @@ class MissionTasksForMission(Resource):
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args, mission):
         """
-        Create a new instance of Mission.
+        Create a new instance of MissionTask.
         """
         from app.modules.assets.models import Asset
 
@@ -383,43 +383,65 @@ class MissionTasksForMission(Resource):
             db.session, default_error_message='Failed to create a new MissionTask'
         )
 
-        # Pick a random title with an adjective nown structure (see here: https://github.com/imsky/wordlists)
-        if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
-            current_tasks = MissionTask.query.all()
-        else:
-            current_tasks = mission.tasks
-        titles = [task.title for task in current_tasks]
-        title = None
-        while title in titles + [None]:
-            title = randomname.get_name(
-                adj=(
-                    'character',
-                    'colors',
-                    'emotions',
-                    'shape',
-                ),
-                noun=(
-                    'apex_predators',
-                    'birds',
-                    'cats',
-                    'dogs',
-                    'fish',
-                ),
-                sep=' ',
-            ).title()
-            title = 'New Task: {}'.format(title)
-        assert title is not None
-        assert title not in titles
+        passed_data = {}
+        for arg in args:
+            if arg.get('path') == '/pass':
+                passed_data = arg.get('value', {})
+                if not isinstance(passed_data, dict):
+                    abort(409, message=f'path=/pass given non-dict value: {passed_data}')
+                break
 
-        args = {}
-        args['title'] = title
-        args['owner'] = current_user
-        args['mission'] = mission
-        mission_task = MissionTask(**args)
+        title = passed_data.get('title')
+        if title is None:
+            # Pick a random title with an adjective noun structure (see here: https://github.com/imsky/wordlists)
+            if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
+                current_tasks = MissionTask.query.all()
+            else:
+                current_tasks = mission.tasks
+            titles = [task.title for task in current_tasks]
+            title = None
+            while title in titles + [None]:
+                title = randomname.get_name(
+                    adj=(
+                        'character',
+                        'colors',
+                        'emotions',
+                        'shape',
+                    ),
+                    noun=(
+                        'apex_predators',
+                        'birds',
+                        'cats',
+                        'dogs',
+                        'fish',
+                    ),
+                    sep=' ',
+                ).title()
+                title = 'New Task: {}'.format(title)
+            assert title is not None
+            assert title not in titles
+
+        users_to_assign = {current_user}  # always get current_user
+        if isinstance(passed_data.get('users'), list):
+            from app.modules.users.models import User
+
+            for user_guid in passed_data.get('users'):
+                user = User.query.get(user_guid)
+                if not user:
+                    abort(409, message=f'wanting to assign invalid user guid={user_guid}')
+                users_to_assign.add(user)
+
+        task_args = {}
+        task_args['title'] = title
+        task_args['owner'] = current_user
+        task_args['mission'] = mission
+        mission_task = MissionTask(**task_args)
 
         with context:
             db.session.add(mission_task)
-            mission_task.add_user_in_context(current_user, current_user)
+            log.debug(f'created {mission_task}, assigning: {users_to_assign}')
+            for user in users_to_assign:
+                mission_task.add_user_in_context(user, current_user)
             for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
                 mission_task.add_asset_in_context(asset)
 

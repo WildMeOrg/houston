@@ -370,7 +370,10 @@ class MissionTasksForMission(Resource):
         from app.modules.assets.models import Asset
 
         try:
-            asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+            (
+                asset_set,
+                identity_dict,
+            ) = parameters.CreateMissionTaskParameters.perform_set_operations(
                 args, obj=mission, obj_cls=Asset
             )
         except ValidationError as exception:
@@ -736,7 +739,10 @@ class MissionTaskByID(Resource):
 
         starting_set = set(mission_task.assets)
         try:
-            asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+            (
+                asset_set,
+                identity_dict,
+            ) = parameters.CreateMissionTaskParameters.perform_set_operations(
                 args, obj=mission_task.mission, obj_cls=Asset, starting_set=starting_set
             )
         except ValidationError as exception:

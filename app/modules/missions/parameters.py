@@ -192,7 +192,6 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
         'collections',
         'tasks',
         'assets',
-        'pass',  # this just allows this to pass through for use in resources.py
     ]
 
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
@@ -262,8 +261,6 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
                         )
 
             return assets
-        elif field == 'pass':
-            return []
 
         return None
 

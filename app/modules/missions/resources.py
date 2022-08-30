@@ -383,15 +383,8 @@ class MissionTasksForMission(Resource):
             db.session, default_error_message='Failed to create a new MissionTask'
         )
 
-        passed_data = {}
-        for arg in args:
-            if arg.get('path') == '/pass':
-                passed_data = arg.get('value', {})
-                if not isinstance(passed_data, dict):
-                    abort(409, message=f'path=/pass given non-dict value: {passed_data}')
-                break
-
-        title = passed_data.get('title')
+        # use data (potentially) passed via op=identity
+        title = identity_dict.get('title')
         if title is None:
             # Pick a random title with an adjective noun structure (see here: https://github.com/imsky/wordlists)
             if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
@@ -421,11 +414,11 @@ class MissionTasksForMission(Resource):
             assert title is not None
             assert title not in titles
 
-        users_to_assign = {current_user}  # always get current_user
-        if isinstance(passed_data.get('users'), list):
+        users_to_assign = {current_user}  # always assign current_user
+        if isinstance(identity_dict.get('users'), list):
             from app.modules.users.models import User
 
-            for user_guid in passed_data.get('users'):
+            for user_guid in identity_dict.get('users'):
                 user = User.query.get(user_guid)
                 if not user:
                     abort(409, message=f'wanting to assign invalid user guid={user_guid}')

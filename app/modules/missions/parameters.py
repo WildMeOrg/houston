@@ -192,6 +192,9 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
         'collections',
         'tasks',
         'assets',
+        # these are for identity op (passthru)
+        'users',
+        'title',
     ]
 
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)

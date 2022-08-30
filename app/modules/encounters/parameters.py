@@ -70,10 +70,10 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
                 obj.owner = user
                 ret_val = True
         elif field == 'annotations':
-            from app.modules.annotations.models import Annotation
+            from app.modules.codex_annotations.models import CodexAnnotation
 
             # can assign annotations (in patch only) but they must be valid
-            annot = Annotation.query.get(value)
+            annot = CodexAnnotation.query.get(value)
             if not annot:
                 raise HoustonException(
                     log, f'guid value passed ({value}) is not an annotation guid'

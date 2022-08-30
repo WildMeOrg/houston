@@ -272,9 +272,16 @@ class Asset(db.Model, HoustonModel, SageModel):
         )
 
     @property
-    @module_required('annotations', resolve='warn', default=-1)
     def annotation_count(self):
-        return -1 if self.annotations is None else len(self.annotations)
+        if is_module_enabled('codex_annotations') or is_module_enabled(
+            'scout_annotations'
+        ):
+            return -1 if self.annotations is None else len(self.annotations)
+        else:
+            log.warning(
+                'No annotations module enabled, returning -1 for annotation_count'
+            )
+            return -1
 
     @property
     @module_required('missions', resolve='warn', default=[])

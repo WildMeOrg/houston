@@ -826,9 +826,9 @@ class ElasticSearchBulkOperation(object):
         else:
             try:
                 return self.exit()
-            except (Exception, sqlalchemy.exc.InvalidRequestError):
-                self.abort(reason='Exception on exit()')
-                raise HoustonException(log, 'Elasticsearch context failure')
+            except (Exception, sqlalchemy.exc.InvalidRequestError) as ex:
+                self.abort(reason=f'Exception on exit() {ex}')
+                raise HoustonException(log, f'Elasticsearch context failure {ex}')
 
 
 def is_enabled():

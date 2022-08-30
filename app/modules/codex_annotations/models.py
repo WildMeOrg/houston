@@ -6,6 +6,7 @@
 
 import logging
 
+# import uuid
 import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.modules.annotations.models import Annotation
@@ -17,7 +18,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 class CodexAnnotation(Annotation):
 
     # Asset group did this for Gitstore but if CodexAnnotation does it blows up
-    # guid = db.Column(db.GUID, db.ForeignKey('annotation.guid'), primary_key=True)
+    # guid = db.Column(db.GUID, db.ForeignKey('annotation.guid'), default=uuid.uuid4, primary_key=True)
 
     encounter_guid = db.Column(
         db.GUID,

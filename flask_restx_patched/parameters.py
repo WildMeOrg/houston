@@ -418,6 +418,7 @@ class SetOperationsJSONParameters(Parameters):
     This implementation is designed to mirror the PATCH arguments according to RFC 6902.
     """
 
+    OP_IDENTITY = ['identity', 'id', '*']
     OP_UNION = ['union', 'or', '|']
     OP_INTERSECTION = ['intersection', 'intersect', 'and', '&']
     OP_DIFFERENCE = ['difference', 'diff', '-', '->']
@@ -426,7 +427,8 @@ class SetOperationsJSONParameters(Parameters):
 
     # However, we use only those which make sense in RESTful API
     OPERATION_CHOICES = (
-        OP_UNION
+        OP_IDENTITY
+        + OP_UNION
         + OP_INTERSECTION
         + OP_DIFFERENCE
         + OP_MIRRORED_DIFFERENCE
@@ -495,8 +497,11 @@ class SetOperationsJSONParameters(Parameters):
                 assert isinstance(starting_obj, obj_cls)
                 working_set.add(starting_obj)
 
+        identity_state = {}
         for operation in operations:
-            working_set = cls._process_set_operation(operation, working_set, obj, obj_cls)
+            working_set = cls._process_set_operation(
+                operation, working_set, obj, obj_cls, identity_state
+            )
             if working_set is None:
                 log.info(
                     'Set parsing has been stopped because of unknown operation %s',
@@ -506,10 +511,12 @@ class SetOperationsJSONParameters(Parameters):
                     'Failed to update set. Operation %s could not succeed.' % (operation)
                 )
 
-        return working_set
+        return working_set, identity_state
 
     @classmethod
-    def _process_set_operation(cls, operation, working_set, obj=None, obj_cls=None):
+    def _process_set_operation(
+        cls, operation, working_set, identity_state, obj=None, obj_cls=None
+    ):
         """
         Args:
             operation (dict): one set operation.
@@ -518,10 +525,14 @@ class SetOperationsJSONParameters(Parameters):
             processing_status (bool): True if operation was handled, otherwise False.
         """
         field_operaion = operation['op']
+        field_name = operation['field_name']
+        field_value = operation['value']
 
-        resolved_set = set(
-            cls.resolve(operation['field_name'], operation['value'], obj=obj)
-        )
+        if field_operaion in cls.OP_IDENTITY:
+            identity_state[field_name] = field_value
+            return working_set
+
+        resolved_set = set(cls.resolve(field_name, field_value, obj=obj))
 
         for resolved_obj in resolved_set:
             assert isinstance(resolved_obj, obj_cls)

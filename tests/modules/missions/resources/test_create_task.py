@@ -250,7 +250,7 @@ def test_mission_task_permission(
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_mission_task_create_with_passed_args(
+def test_mission_task_create_with_identity_op(
     flask_app_client,
     admin_user,
     staff_user,
@@ -307,10 +307,8 @@ def test_mission_task_create_with_passed_args(
         nonce, new_mission_collection2 = new_mission_collections[1]
         data = [
             utils.set_union_op('assets', [str(new_mission_collection2.assets[0].guid)]),
-            # first test with invalid user guid to assign
-            utils.set_union_op(
-                'pass', {'users': ['00000000-0000-0000-0000-000000000001']}
-            ),
+            # test with invalid user guid to assign (should give 409)
+            utils.set_identity_op('users', ['00000000-0000-0000-0000-000000000001']),
         ]
 
         # Wait for elasticsearch to catch up
@@ -328,11 +326,11 @@ def test_mission_task_create_with_passed_args(
             == 'wanting to assign invalid user guid=00000000-0000-0000-0000-000000000001'
         )
 
-        # now fix the assigned users, and also test title
+        # now fix the assigned users
+        data[1] = utils.set_identity_op('users', [str(regular_user.guid)])
+        # and add a title
         test_title = 'TEST TITLE'
-        data[1] = utils.set_union_op(
-            'pass', {'users': [str(regular_user.guid)], 'title': test_title}
-        )
+        data.append(utils.set_identity_op('title', test_title))
         response = mission_utils.create_mission_task(
             flask_app_client,
             admin_user,

@@ -467,6 +467,15 @@ def patch_replace_op(path, value, guid=None):
     return operation
 
 
+def set_identity_op(path, value):
+    operation = {
+        'op': 'identity',
+        'path': '/{}'.format(path),
+        'value': value,
+    }
+    return operation
+
+
 def set_union_op(path, value):
     operation = {
         'op': 'union',

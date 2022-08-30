@@ -500,7 +500,7 @@ class SetOperationsJSONParameters(Parameters):
         identity_state = {}
         for operation in operations:
             working_set = cls._process_set_operation(
-                operation, working_set, obj, obj_cls, identity_state
+                operation, working_set, identity_state, obj, obj_cls
             )
             if working_set is None:
                 log.info(

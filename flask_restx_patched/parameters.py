@@ -529,8 +529,7 @@ class SetOperationsJSONParameters(Parameters):
         field_value = operation['value']
 
         if field_operaion in cls.OP_IDENTITY:
-            identity_state[field_name] = field_value
-            return working_set
+            return cls.identity(working_set, identity_state, field_name, field_value)
 
         resolved_set = set(cls.resolve(field_name, field_value, obj=obj))
 
@@ -558,6 +557,11 @@ class SetOperationsJSONParameters(Parameters):
         Resolve the (field, value) into an iterable of objects for the designated class
         """
         raise NotImplementedError()
+
+    @classmethod
+    def identity(cls, working_set, identity_state, key, value):
+        identity_state[key] = value
+        return working_set
 
     @classmethod
     def union(cls, working_set, resolved_set):

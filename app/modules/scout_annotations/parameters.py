@@ -17,16 +17,21 @@ from app.modules.users.permissions import rules
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-from .models import Annotation
+from .models import Annotation, ScoutAnnotation
 
 
 class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
     asset_guid = base_fields.UUID(description='The GUID of the asset', required=True)
+    task_guid = base_fields.UUID(
+        description='The GUID of the task',
+        required=True,
+    )
 
     class Meta(schemas.BaseAnnotationSchema.Meta):
         fields = schemas.BaseAnnotationSchema.Meta.fields + (
             Annotation.ia_class.key,
             Annotation.bounds.key,
+            ScoutAnnotation.task_guid.key,
         )
 
     @validates_schema
@@ -51,7 +56,6 @@ class PatchAnnotationDetailsParameters(BasePatchAnnotationDetailsParameters):
         for field in (
             'ia_class',
             'bounds',
-            'keywords',
         )
     )
 
@@ -86,13 +90,7 @@ class PatchAnnotationDetailsParameters(BasePatchAnnotationDetailsParameters):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        if field == 'keywords':
-            keyword = cls._check_keyword_value(obj, field, value, state, create=False)
-
-            if keyword is not None:
-                obj.remove_keyword(keyword)
-                keyword.delete_if_unreferenced()
-
-            return True
+        # Nothing can be removed, Keywords not yet supported on Scout Annots but may potentially be in the
+        # future
 
         return False

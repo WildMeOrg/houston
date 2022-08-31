@@ -30,8 +30,8 @@ if is_module_enabled('missions'):
         ('MissionCollection', AccessOperation.WRITE): ['is_admin'],
         ('MissionTask', AccessOperation.READ): ['is_admin'],
         ('MissionTask', AccessOperation.WRITE): ['is_admin'],
-        ('ScoutAnnotation', AccessOperation.READ): ['is_researcher'],
-        ('ScoutAnnotation', AccessOperation.WRITE): ['is_researcher'],
+        ('ScoutAnnotation', AccessOperation.READ): ['is_researcher', 'is_admin'],
+        ('ScoutAnnotation', AccessOperation.WRITE): ['is_researcher', 'is_admin'],
         ('User', AccessOperation.READ): [
             'is_admin',
             'is_researcher',
@@ -57,6 +57,9 @@ if is_module_enabled('missions'):
             'is_admin',
             'is_researcher',
         ],
+        ('ScoutAnnotation', AccessOperation.READ): ['is_researcher', 'is_admin'],
+        ('ScoutAnnotation', AccessOperation.WRITE): ['is_researcher', 'is_admin'],
+        ('ScoutAnnotation', AccessOperation.DELETE): ['is_researcher', 'is_admin'],
         ('User', AccessOperation.WRITE): [
             'is_user_manager',
             'is_admin',

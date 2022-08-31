@@ -46,6 +46,7 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
             ScoutAnnotation.created.key,
             ScoutAnnotation.updated.key,
             ScoutAnnotation.bounds.key,
+            ScoutAnnotation.task_guid.key,
             'keywords',
             'asset_src',
         )

@@ -530,6 +530,16 @@ def all_count(db):
 
         classes.append(Collaboration)
 
+    if is_module_enabled('codex_annotations'):
+        from app.modules.codex_annotations.models import CodexAnnotation
+
+        classes.append(CodexAnnotation)
+
+    if is_module_enabled('scout_annotations'):
+        from app.modules.scout_annotations.models import ScoutAnnotation
+
+        classes.append(ScoutAnnotation)
+
     count = {}
     for cls in classes:
         count[cls.__name__] = row_count(db, cls)

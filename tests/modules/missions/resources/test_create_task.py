@@ -5,6 +5,7 @@ import pytest
 
 import tests.extensions.tus.utils as tus_utils
 from tests import utils
+from tests import utils as test_utils
 from tests.modules.missions.resources import utils as mission_utils
 from tests.utils import module_unavailable, random_guid, wait_for_elasticsearch_status
 
@@ -20,6 +21,7 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
         MissionTaskAssetParticipation,
         MissionTaskUserAssignment,
     )
+    from tests.modules.annotations.resources import utils as annot_utils
 
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')
@@ -126,7 +128,30 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
         assert mission_task_assets[0].git_store == new_mission_collection3
 
         # Try reading it back
-        mission_utils.read_mission_task(flask_app_client, admin_user, mission_task_guid)
+        task = mission_utils.read_mission_task(
+            flask_app_client, admin_user, mission_task_guid
+        ).json
+
+        # Do some scout annotation testing, basic create patch, delete and leave one annot to be deleted
+        # when the task is tidied up
+        annot1 = annot_utils.create_scout_annotation(
+            flask_app_client, admin_user, task['assets'][0]['guid'], task['guid']
+        ).json
+        new_ia_class = 'test2'
+        patch_arg = [
+            test_utils.patch_replace_op('ia_class', new_ia_class),
+        ]
+        annot_utils.patch_annotation(
+            flask_app_client, annot1['guid'], admin_user, patch_arg
+        )
+        annot2 = annot_utils.create_scout_annotation(
+            flask_app_client,
+            admin_user,
+            task['assets'][0]['guid'],
+            task['guid'],
+            bounds={'rect': [5, 6, 7, 8]},
+        ).json
+        annot_utils.delete_annotation(flask_app_client, admin_user, annot2['guid'])
 
         # And deleting it
         mission_utils.delete_mission_task(flask_app_client, admin_user, mission_task_guid)

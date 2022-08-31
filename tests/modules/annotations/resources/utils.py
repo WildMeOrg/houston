@@ -8,7 +8,13 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/annotations/'
-EXPECTED_KEYS = {'guid', 'asset_guid', 'encounter_guid'}
+
+# The creation side of these utils will be specific to scout and codex as the parameters are different but the
+# rest of the utils can be shared (apart from the expected keys)
+if test_utils.is_module_enabled('codex_annotations'):
+    EXPECTED_KEYS = {'guid', 'asset_guid', 'encounter_guid'}
+elif test_utils.is_module_enabled('scout_annotations'):
+    EXPECTED_KEYS = {'guid', 'asset_guid', 'task_guid'}
 
 
 def create_annotation_simple(
@@ -44,7 +50,7 @@ def create_annotation_simple(
     return response
 
 
-# NOTE: now (due to DEX-301) an encounter can be made *without* an encounter.  see create_annotation_simple() above.
+# NOTE: now (due to DEX-301) an annotation can be made *without* an encounter.  see create_annotation_simple() above.
 def create_annotation(
     flask_app_client,
     user,
@@ -63,6 +69,41 @@ def create_annotation(
                 {
                     'asset_guid': asset_uuid,
                     'encounter_guid': encounter_guid,
+                    'ia_class': ia_class,
+                    'viewpoint': viewpoint,
+                    'bounds': bounds,
+                }
+            ),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
+        assert response.json['asset_guid'] == asset_uuid
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def create_scout_annotation(
+    flask_app_client,
+    user,
+    asset_uuid,
+    task_guid,
+    ia_class='test',
+    viewpoint='test',
+    bounds={'rect': [0, 1, 2, 3]},
+    expected_status_code=200,
+):
+    with flask_app_client.login(user, auth_scopes=('annotations:write',)):
+        response = flask_app_client.post(
+            PATH,
+            content_type='application/json',
+            data=json.dumps(
+                {
+                    'asset_guid': asset_uuid,
+                    'task_guid': task_guid,
                     'ia_class': ia_class,
                     'viewpoint': viewpoint,
                     'bounds': bounds,

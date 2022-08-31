@@ -46,7 +46,9 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
         new_mission_collections = []
         for index in range(4):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
 
             exp_code = 200
             # index 1 is when we test failing upon duplicate filename [SCT-105]
@@ -62,7 +64,10 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
                 expected_status_code=exp_code,
             )
             if index == 1:
-                assert response.json['message'] == 'This Mission already contains files with these names: zebra.jpg'
+                assert (
+                    response.json['message']
+                    == 'This Mission already contains files with these names: zebra.jpg'
+                )
                 continue
 
             transaction_ids.append(transaction_id)
@@ -177,7 +182,9 @@ def test_mission_task_permission(
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -274,6 +281,7 @@ def test_mission_task_create_with_identity_op(
     transaction_ids = []
     transaction_ids.append(transaction_id)
     mission_guid = None
+    filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
     try:
         response = mission_utils.create_mission(
@@ -291,7 +299,9 @@ def test_mission_task_create_with_identity_op(
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -399,7 +409,9 @@ def test_set_operation_permission(
         new_mission_collections_1 = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -438,7 +450,9 @@ def test_set_operation_permission(
         new_mission_collections_2 = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')

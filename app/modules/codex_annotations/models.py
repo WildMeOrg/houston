@@ -5,8 +5,8 @@
 ￼"""
 
 import logging
+import uuid
 
-# import uuid
 import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.modules.annotations.models import Annotation
@@ -16,9 +16,12 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class CodexAnnotation(Annotation):
-
-    # Asset group did this for Gitstore but if CodexAnnotation does it blows up
-    # guid = db.Column(db.GUID, db.ForeignKey('annotation.guid'), default=uuid.uuid4, primary_key=True)
+    __mapper_args__ = {
+        'polymorphic_identity': 'codex_annotation',
+    }
+    guid = db.Column(
+        db.GUID, db.ForeignKey('annotation.guid'), default=uuid.uuid4, primary_key=True
+    )
 
     encounter_guid = db.Column(
         db.GUID,
@@ -333,3 +336,12 @@ class CodexAnnotation(Annotation):
         sighting.validate_id_configs()
         job_count = sighting.send_annotation_for_identification(self, matching_set_query)
         return job_count
+
+    def delete(self):
+        with db.session.begin(subtransactions=True):
+            while self.keyword_refs:
+                ref = self.keyword_refs.pop()
+                # this is actually removing the AnnotationKeywords refs (not actual Keywords)
+                db.session.delete(ref)
+                ref.keyword.delete_if_unreferenced()  # but this *may* remove keyword itself
+            db.session.delete(self)

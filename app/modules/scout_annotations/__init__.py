@@ -15,8 +15,8 @@ if not is_module_enabled('scout_annotations'):
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument,unused-variable
     """
-        Init Annotations module.
-    ￼"""
+    Init Scout Annotations module.
+    """
 
     # Touch underlying modules
     from . import models, resources  # NOQA

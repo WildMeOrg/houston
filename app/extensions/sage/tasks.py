@@ -4,6 +4,7 @@ import logging
 from flask import current_app
 
 from app.extensions.celery import celery
+from app.modules import is_module_enabled
 
 SAGE_DATA_SYNC_FREQUENCY = None  # 60 * 60
 SAGE_JOBS_SYNC_FREQUENCY = 60 * 5
@@ -30,7 +31,11 @@ def sage_task_setup_periodic_tasks(sender, **kwargs):
 
 @celery.task
 def sage_task_data_sync():
-    from app.modules.annotations.models import Annotation
+    if is_module_enabled('codex_annotations'):
+        from app.modules.codex_annotations.models import CodexAnnotation as Annotation
+    elif is_module_enabled('scout_annotations'):
+        from app.modules.scout_annotations.models import ScoutAnnotation as Annotation
+
     from app.modules.assets.models import Asset
 
     # Sync all Assets

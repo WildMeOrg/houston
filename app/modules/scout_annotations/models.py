@@ -5,6 +5,7 @@
 ￼"""
 
 import logging
+import uuid
 
 from app.extensions import db
 from app.modules.annotations.models import Annotation
@@ -14,8 +15,14 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 class ScoutAnnotation(Annotation):
 
-    # Asset group did this for Gitstore but if ScoutAnnotation does it blows up
-    # guid = db.Column(db.GUID, db.ForeignKey('annotation.guid'), primary_key=True)
+    __mapper_args__ = {
+        'polymorphic_identity': 'scout_annotation',
+    }
+
+    guid = db.Column(
+        db.GUID, db.ForeignKey('annotation.guid'), default=uuid.uuid4, primary_key=True
+    )
+
     task_guid = db.Column(
         db.GUID,
         db.ForeignKey('mission_task.guid', ondelete='CASCADE'),
@@ -51,3 +58,12 @@ class ScoutAnnotation(Annotation):
         from .schemas import AnnotationElasticsearchSchema
 
         return AnnotationElasticsearchSchema
+
+    def delete(self):
+        with db.session.begin(subtransactions=True):
+            while self.keyword_refs:
+                ref = self.keyword_refs.pop()
+                # this is actually removing the AnnotationKeywords refs (not actual Keywords)
+                db.session.delete(ref)
+                ref.keyword.delete_if_unreferenced()  # but this *may* remove keyword itself
+            db.session.delete(self)

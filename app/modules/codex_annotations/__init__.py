@@ -15,11 +15,10 @@ if not is_module_enabled('codex_annotations'):
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument,unused-variable
     """
-    Init Annotations module.
+    Init Codex Annotations module.
     """
 
     # Touch underlying modules
-    from app.modules.annotations import models as annot_models
 
     from . import models, resources  # NOQA
 
@@ -28,7 +27,3 @@ def init_app(app, **kwargs):
     # Register Models to use with Elasticsearch
     register_elasticsearch_model(models.CodexAnnotation)
     register_prometheus_model(models.CodexAnnotation)
-
-    # This has to be wrong surely. but doing it fixes a bunch of tests
-    register_elasticsearch_model(annot_models.Annotation)
-    register_prometheus_model(annot_models.Annotation)

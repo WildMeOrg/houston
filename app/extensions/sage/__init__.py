@@ -14,6 +14,7 @@ from flask import current_app, render_template, request, session  # NOQA
 from flask_login import current_user  # NOQA
 
 from app.extensions.restManager.RestManager import RestManager
+from app.modules import is_module_enabled
 from app.utils import HoustonException
 from flask_restx_patched import is_extension_enabled
 
@@ -479,7 +480,10 @@ class SageManager(RestManager):
         return active, seen_jobs
 
     def get_status(self):
-        from app.modules.annotations.models import Annotation
+        if is_module_enabled('codex_annotations'):
+            from app.modules.codex_annotations.models import CodexAnnotation as Annotation
+        elif is_module_enabled('scout_annotations'):
+            from app.modules.scout_annotations.models import ScoutAnnotation as Annotation
         from app.modules.assets.models import Asset
 
         # Get Sage data

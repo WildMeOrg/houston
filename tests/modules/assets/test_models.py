@@ -14,9 +14,9 @@ from tests.utils import module_unavailable
     module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
 )
 def set_up_assets(flask_app, db, test_root, admin_user, request):
-    from app.modules.annotations.models import Annotation
     from app.modules.asset_groups.metadata import AssetGroupMetadata
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.codex_annotations.models import CodexAnnotation as Annotation
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from tests.utils import cleanup, copy_uploaded_file, create_transaction_dir

@@ -196,8 +196,8 @@ def patch_in_dummy_annotation(
 ):
     import uuid
 
-    from app.modules.annotations.models import Annotation
     from app.modules.assets.models import Asset
+    from app.modules.codex_annotations.models import CodexAnnotation as Annotation
 
     asset = Asset.find(asset_uuid)
     assert asset

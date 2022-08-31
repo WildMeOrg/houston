@@ -440,7 +440,10 @@ class Asset(db.Model, HoustonModel, SageModel):
 
     # This relates to if the user can access to viewing an asset if it was specifically in a sighting's ID result that the user has access to view
     def user_can_access(self, user=None):
-        from app.modules.annotations.models import Annotation
+        if is_module_enabled('codex_annotations'):
+            from app.modules.codex_annotations.models import CodexAnnotation as Annotation
+        elif is_module_enabled('scout_annotations'):
+            from app.modules.scout_annotations.models import ScoutAnnotation as Annotation
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
 

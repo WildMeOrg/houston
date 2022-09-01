@@ -77,6 +77,12 @@ def upgrade():
             unique=False,
         )
 
+    # copy over codex annot stuff while we still have them
+    with op.get_context().autocommit_block():
+        op.execute(
+            'INSERT INTO codex_annotation (guid, encounter_guid, progress_identification_guid) SELECT annot.guid, annot.encounter_guid, annot.progress_identification_guid FROM annotation annot'
+        )
+
     with op.batch_alter_table('annotation', schema=None) as batch_op:
         batch_op.add_column(
             sa.Column('annotation_type', sa.String(length=32), nullable=True)
@@ -96,6 +102,12 @@ def upgrade():
         batch_op.drop_column('progress_identification_guid')
         batch_op.drop_column('inExport')
         batch_op.drop_column('encounter_guid')
+
+    # set existing annotations to codex type
+    with op.get_context().autocommit_block():
+        op.execute(
+            "UPDATE annotation SET annotation_type='codex_annotation' WHERE annotation_type IS NULL"
+        )
 
     # ### end Alembic commands ###
 

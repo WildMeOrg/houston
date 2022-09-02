@@ -228,9 +228,8 @@ class ElasticsearchModel(object):
 
     @classmethod
     def bulk_class(cls):
-        from app.extensions.git_store import GitStore
-
-        bulk_cls = GitStore if issubclass(cls, GitStore) else cls
+        mapper_args = getattr(cls, '__mapper_args__', {})
+        bulk_cls = cls.__base__ if 'polymorphic_identity' in mapper_args else cls
         return bulk_cls
 
     @property

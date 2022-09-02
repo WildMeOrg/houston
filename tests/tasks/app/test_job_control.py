@@ -118,6 +118,7 @@ def test_sighting_identification_jobs(
 
     jobs = sighting.jobs
     keys = list(jobs.keys())
+    assert len(keys) > 0
     key = keys[0]
     job = jobs[key]
 

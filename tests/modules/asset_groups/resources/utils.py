@@ -762,11 +762,11 @@ def commit_asset_group_sighting_sage_identification(
     expected_status_code=200,
 ):
     from app.extensions import elasticsearch as es
-    from app.modules.annotations.models import Annotation
+    from app.modules.codex_annotations.models import CodexAnnotation
 
     # Start ID simulating success response from Sage
     with es.session.begin(blocking=True, forced=True):
-        Annotation.index_all()
+        CodexAnnotation.index_all()
     response = commit_asset_group_sighting(
         flask_app_client, user, asset_group_sighting_guid, expected_status_code
     )

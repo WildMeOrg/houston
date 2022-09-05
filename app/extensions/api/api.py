@@ -29,6 +29,14 @@ class Api(BaseApi):
                 )
                 authorization_settings['scopes'][scope_name] = scope_description
 
+    def is_oauth_scope_present(self, scope_name):
+        found = False
+        for authorization_settings in self.authorizations.values():
+            if authorization_settings['type'].startswith('oauth'):
+                if scope_name in authorization_settings['scopes']:
+                    found = True
+        return found
+
     def add_namespace(self, ns, path=None):
         # Rewrite security rules for OAuth scopes since Namespaces don't have
         # enough information about authorization methods.

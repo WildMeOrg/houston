@@ -17,6 +17,10 @@ def init_app(app, **kwargs):
     """
     Init Codex Annotations module.
     """
+    api_v1.add_oauth_scope('annotations:read', 'Provide access to Annotations details')
+    api_v1.add_oauth_scope(
+        'annotations:write', 'Provide write access to Annotations details'
+    )
 
     # Touch underlying modules
 

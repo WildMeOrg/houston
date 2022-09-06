@@ -169,7 +169,18 @@ class AssetGroupSighting(db.Model, HoustonModel):
         ):
             self.init_progress_detection()  # ensure we have one
             self.progress_detection.skip('No assets were submitted')
-
+            # All encounters need to be allocated a pseudo guid. This is done by the
+            # begin_ia_pipeline if there are assets
+            for encounter_num in range(len(self.sighting_config['encounters'])):
+                if 'guid' not in self.sighting_config['encounters'][encounter_num]:
+                    with db.session.begin(subtransactions=True):
+                        self.sighting_config['encounters'][encounter_num]['guid'] = str(
+                            uuid.uuid4()
+                        )
+                        # sighting_config is actually an alias, need to rewrite the top level DB item
+                        self.config = self.config
+                        db.session.merge(self)
+                        db.session.refresh(self)
             self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
 
@@ -273,6 +284,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     decimal_latitude=req_data.get('decimalLatitude'),
                     decimal_longitude=req_data.get('decimalLongitude'),
+                    time=req_data.get('time'),
+                    timeSpecificity=req_data.get('timeSpecificity'),
                     location_guid=req_data.get('locationId'),
                     taxonomy_guid=req_data.get('taxonomy'),
                     verbatim_locality=req_data.get('verbatimLocality'),
@@ -315,7 +328,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 sighting.delete()
                 raise HoustonException(
                     log,
-                    f'Problem with creating encounter [{encounter_num}]: {ex}',
+                    f'Problem with creating encounter [{encounter_num}]: {ex}'
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
 

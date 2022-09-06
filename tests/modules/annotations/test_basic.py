@@ -54,30 +54,3 @@ def test_viewpoint_utils():
         assert vp in n
         n = annot.get_neighboring_viewpoints(include_self=False)
         assert vp not in n
-
-
-# this isnt really about annotations, but was added vaguely related to them?
-def test_misc():
-    from app.utils import datetime_string_to_isoformat
-
-    res = datetime_string_to_isoformat(None)
-    assert not res
-
-    thru = '2000-01-02T03:04:05Z'
-    res = datetime_string_to_isoformat(thru)
-    assert res == thru
-
-    thru = '2000-01-02T03:04:05+07:00'
-    res = datetime_string_to_isoformat(thru)
-    assert res == thru
-
-    # no timezone provided
-    thru = '2000-01-02T03:04:05.2342'
-    res = datetime_string_to_isoformat(thru)
-    assert res == thru + 'Z'
-
-    res = datetime_string_to_isoformat('Wed, 25 May 2022 00:16:42 GMT')
-    assert res == '2022-05-25T00:16:42Z'
-
-    res = datetime_string_to_isoformat('invalid format')
-    assert not res

@@ -589,10 +589,6 @@ def random_uuid():
     return uuid.uuid4()
 
 
-def timestamp():
-    return datetime.datetime.now().isoformat() + '+00:00'
-
-
 def random_guid():
     return random_uuid()
 
@@ -613,13 +609,41 @@ def complex_date_time_now():
     return ComplexDateTime(datetime.datetime.utcnow(), 'UTC+00:00', Specificities.time)
 
 
-def dummy_sighting_info():
+def dummy_form_group_data(transaction_id):
+    return {
+        'uploadType': 'form',
+        'description': 'This is a test asset group',
+        'transactionId': transaction_id,
+        'speciesDetectionModel': ['None'],
+        'sightings': [dummy_sighting_info()],
+    }
+
+
+# What the FE sends so a good start point for tests
+def dummy_sighting_info(time_specificity='time'):
     return {
         'time': isoformat_timestamp_now(),
-        'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
-        'encounters': [{'guid': str(uuid.uuid4())}],
+        'timeSpecificity': time_specificity,
+        'decimalLatitude': None,
+        'decimalLongitude': None,
+        'comments': '',
+        'locationId': get_valid_location_id(),
+        'encounters': [dummy_encounter_data(time_specificity)],
         'assetReferences': [],
+    }
+
+
+# What the FE sends so a good start point for tests
+def dummy_encounter_data(time_specificity='time'):
+    return {
+        'decimalLatitude': None,
+        'decimalLongitude': None,
+        'locationId': get_valid_location_id(),
+        'sex': None,
+        'taxonomy': None,
+        'verbatimLocality': '',
+        'time': isoformat_timestamp_now(),
+        'timeSpecificity': time_specificity,
     }
 
 
@@ -795,3 +819,15 @@ def elasticsearch(flask_app_client, user, namespace, data=None, expected_status_
     else:
         validate_dict_response(response, expected_status_code, {'status', 'message'})
     return response
+
+
+def get_region_ids():
+    from tests.conftest import test_config
+
+    if 'regions' in test_config:
+        return [loc['id'] for loc in test_config['regions']]
+    return []
+
+
+def get_valid_location_id(index=0):
+    return get_region_ids()[index]

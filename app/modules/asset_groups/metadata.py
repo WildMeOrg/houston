@@ -258,6 +258,7 @@ class AssetGroupMetadata(object):
     def validate_encounters(cls, encounters, debug):
         encounter_num = 0
         owner_assignment = False
+        from app.modules.complex_date_time.models import ComplexDateTime
 
         # Have a sighting with multiple encounters, make sure we have all of the files
         for encounter in encounters:
@@ -275,6 +276,8 @@ class AssetGroupMetadata(object):
                 ('customFields', dict, False),
                 ('ownerEmail', str, False),
                 ('sex', str, False),
+                ('time', str, True),
+                ('timeSpecificity', str, True),
                 ('annotations', list, False),
                 ('individualUuid', str, False),
             ]
@@ -283,6 +286,12 @@ class AssetGroupMetadata(object):
                 encounter_fields,
                 f'{debug}{encounter_num}',
             )
+
+            if 'time' in encounter or 'timeSpecificity' in encounter:
+
+                is_valid, error = ComplexDateTime.check_config_data_validity(encounter)
+                if not is_valid:
+                    raise AssetGroupMetadataError(log, error)
 
             # individual must be valid
             if 'individualUuid' in encounter:
@@ -317,7 +326,18 @@ class AssetGroupMetadata(object):
             ('customFields', dict, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
+        from app.modules.complex_date_time.models import ComplexDateTime
+        from app.modules.site_settings.models import Regions
         from app.utils import get_stored_filename
+
+        if not Regions.is_region_guid_valid(sighting['locationId']):
+            raise AssetGroupMetadataError(
+                log, f"Invalid locationId guid {sighting['locationId']}"
+            )
+
+        is_valid, error = ComplexDateTime.check_config_data_validity(sighting)
+        if not is_valid:
+            raise AssetGroupMetadataError(log, error)
 
         if 'assetReferences' in sighting:
             for filename in sighting['assetReferences']:

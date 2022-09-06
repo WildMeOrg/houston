@@ -5,39 +5,7 @@ import datetime
 
 import pytest
 
-from app.utils import (
-    datetime_as_timezone,
-    iso8601_to_datetime_with_timezone,
-    normalized_timezone_string,
-)
 from tests.utils import module_unavailable
-
-
-@pytest.mark.skipif(
-    module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
-)
-def test_utils():
-    iso = '2021-12-01T00:00:01'
-    try:
-        dt = iso8601_to_datetime_with_timezone(iso)
-    except ValueError as ve:
-        assert 'no time zone provided' in str(ve)
-
-    iso = '2021-12-01T12:00:00-07:00'
-    dt = iso8601_to_datetime_with_timezone(iso)
-    assert dt
-    assert dt.tzinfo
-    assert dt.tzname() == 'UTC-07:00'
-
-    shifted = datetime_as_timezone(dt, 'UTC-04:00')
-    assert shifted
-    assert normalized_timezone_string(shifted) == 'UTC-0400'
-    assert shifted == dt
-
-    try:
-        shifted = datetime_as_timezone(dt, 'fubar')
-    except ValueError as ve:
-        assert 'unknown time zone' in str(ve)
 
 
 @pytest.mark.skipif(

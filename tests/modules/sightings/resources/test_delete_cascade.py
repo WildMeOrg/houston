@@ -13,10 +13,6 @@
 #
 # but there may be some redundancy with these tests in here.
 
-
-import datetime
-import uuid
-
 import pytest
 
 from tests import utils as test_utils
@@ -25,7 +21,7 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
-timestamp = datetime.datetime.now().isoformat() + '+00:00'
+timestamp = test_utils.isoformat_timestamp_now()
 
 
 # this one will do nothing with individuals
@@ -40,7 +36,7 @@ def test_sighting_cascade(flask_app_client, test_root, researcher_1, request, db
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in
@@ -92,7 +88,7 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
@@ -167,7 +163,7 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,

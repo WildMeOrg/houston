@@ -7,6 +7,7 @@ import uuid
 import pytest
 
 from tests import utils
+from tests import utils as test_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -31,9 +32,9 @@ def test_modify_encounter(
     from app.modules.encounters.models import Encounter
 
     data_in = {
-        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'time': test_utils.isoformat_timestamp_now(),
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
             {'locationId': str(uuid.uuid4())},
@@ -423,7 +424,7 @@ def test_create_encounter_time_test(
         ],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client,
@@ -489,50 +490,6 @@ def test_create_encounter_time_test(
     assert test_enc.time.specificity == Specificities.day
     assert test_enc.time.isoformat_in_timezone() == sighting_data['encounters'][0]['time']
 
-    # now test dict-value version
-    test_dt_str = '2000-01-01T01:02:03'
-    del sighting_data['encounters'][0]['timeSpecificity']
-    sighting_data['encounters'][0]['time'] = {
-        'datetime': test_dt_str,
-        'timezone': 'US/Eastern',
-        'specificity': 'month',
-    }
-    uuids = sighting_utils.create_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        sighting_data=sighting_data,
-        expected_status_code=200,
-    )
-    assert uuids
-    test_enc = Encounter.query.get(uuids['encounters'][0])
-    assert test_enc
-    assert test_enc.time
-    assert test_enc.time.specificity == Specificities.month
-    assert test_enc.time.isoformat_utc() == test_dt_str
-
-    # now list/components
-    sighting_data['encounters'][0]['time'] = {
-        'components': [2021, 12],
-        'timezone': 'US/Mountain',
-        # specificity should be deduced as month
-    }
-    uuids = sighting_utils.create_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        sighting_data=sighting_data,
-        expected_status_code=200,
-    )
-    assert uuids
-    test_enc = Encounter.query.get(uuids['encounters'][0])
-    assert test_enc
-    assert test_enc.time
-    assert test_enc.time.specificity == Specificities.month
-    assert test_enc.time.isoformat_utc().startswith('2021-12-01T')
-
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
@@ -559,7 +516,7 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
     )
     assert read_resp.json['time'] == sighting_time
 
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = test_utils.isoformat_timestamp_now()
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,
@@ -576,7 +533,7 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
 
     lat = utils.random_decimal_latitude()
     long = utils.random_decimal_longitude()
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = test_utils.isoformat_timestamp_now()
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,

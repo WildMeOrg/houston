@@ -4,8 +4,6 @@
 Houston Common utils
 --------------------------
 """
-
-import datetime
 import logging
 
 from flask_login import current_user  # NOQA
@@ -112,60 +110,6 @@ def get_celery_data(task_id):
                 if 'request' in item and item['request'].get('id') == task_id:
                     return AsyncResult(task_id), item
     return None, None
-
-
-# will throw ValueError if cant parse string
-#  also *requires* timezone on iso string or will ValueError
-def iso8601_to_datetime_with_timezone(iso):
-    dt = datetime.datetime.fromisoformat(iso)
-    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-        raise ValueError(f'no time zone provided in {iso}')
-    return dt
-
-
-# this "should" handle cases such as: tzstring='+07:00', '-0400', 'US/Pacific'
-def datetime_as_timezone(dt, tzstring):
-    from dateutil import tz
-
-    if not dt or not isinstance(dt, datetime.datetime):
-        raise ValueError('must pass datetime object')
-    zone = tz.gettz(tzstring)
-    if not zone:
-        raise ValueError(f'unknown time zone value "{tzstring}"')
-    return dt.astimezone(zone)
-
-
-# in a nutshell dt.tzname() *sucks*.  i am not sure what it is showing, but its bunk.
-#   this is an attempt to get a string *that can be read back in above*
-def normalized_timezone_string(dt):
-    if not dt or not isinstance(dt, datetime.datetime):
-        raise ValueError('must pass datetime object')
-    return dt.strftime('UTC%z')
-
-
-# converts string like 'Wed, 25 May 2022 00:16:42 GMT' which is what datetime is stringified as
-#   we make assumption here that utcnow() is being used to create datetime, so please always do that
-def datetime_string_to_isoformat(dts):
-    import re
-    from datetime import datetime
-
-    if not isinstance(dts, str):
-        return None
-
-    # if are already in isoformat, just return
-    # has timezone:
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*[\+\-Z].*', dts):
-        return dts
-    # no timezone:
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*', dts):
-        return dts + 'Z'
-
-    try:
-        d = datetime.strptime(dts, '%a, %d %b %Y %H:%M:%S %Z')
-    except ValueError as err:
-        log.warning(f'could not convert {dts}: {str(err)}')
-        return None
-    return d.isoformat() + 'Z'
 
 
 # As some filenames are problematic, may contain special chars ";&/." etc store all filenames as a hash of the

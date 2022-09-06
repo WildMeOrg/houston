@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import datetime
 import logging
 import uuid
 
 import pytest
 
 from tests import utils
+from tests import utils as test_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -134,11 +134,11 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     from app.modules.individuals.models import Individual
     from app.modules.sightings.models import Sighting
 
-    test_time = datetime.datetime.now().isoformat() + '+00:00'
+    test_time = test_utils.isoformat_timestamp_now()
     data_in = {
         'time': test_time,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
             {},
@@ -587,9 +587,9 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     individual_guid = ind_create_resp.json['guid']
 
     sighting_data_in = {
-        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'time': test_utils.isoformat_timestamp_now(),
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [{}],
     }
     uuids = sighting_utils.create_sighting(

@@ -2,21 +2,16 @@
 # pylint: disable=missing-docstring
 
 import json
-import uuid
 
 import pytest
 
+from tests import utils as test_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.site_settings.resources import utils as setting_utils
-from tests.utils import (
-    module_unavailable,
-    random_decimal_latitude,
-    random_decimal_longitude,
-)
 
 
 @pytest.mark.skipif(
-    module_unavailable('encounters', 'sightings'),
+    test_utils.module_unavailable('encounters', 'sightings'),
     reason='Encounters and Sightings modules disabled',
 )
 def test_mega_data(
@@ -27,8 +22,6 @@ def test_mega_data(
     request,
     test_root,
 ):
-    import datetime
-
     from app.modules.sightings.models import Sighting
 
     # make some customFields
@@ -45,17 +38,19 @@ def test_mega_data(
     response = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     tx_guid = response['id']
 
-    sighting_timestamp = datetime.datetime.now().isoformat() + '+00:00'
-    encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
+    sighting_timestamp = test_utils.isoformat_timestamp_now()
+    encounter_timestamp = test_utils.isoformat_timestamp_now()
     cfd_test_value = 'CFD_TEST_VALUE'
-
+    location_id = test_utils.get_valid_location_id()
+    lat = test_utils.random_decimal_latitude()
+    long = test_utils.random_decimal_longitude()
     encounter_data_in = {
         'time': encounter_timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': location_id,
         'taxonomy': tx_guid,
-        'decimalLatitude': random_decimal_latitude(),
-        'decimalLongitude': random_decimal_longitude(),
+        'decimalLatitude': lat,
+        'decimalLongitude': long,
         'sex': 'male',
         'customFields': {
             encounter_cfd_id: cfd_test_value,
@@ -65,9 +60,9 @@ def test_mega_data(
     sighting_data_in = {
         'time': sighting_timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
-        'decimalLatitude': random_decimal_latitude(),
-        'decimalLongitude': random_decimal_longitude(),
+        'locationId': location_id,
+        'decimalLatitude': lat,
+        'decimalLongitude': long,
         'customFields': {
             sighting_cfd_id: cfd_test_value,
         },

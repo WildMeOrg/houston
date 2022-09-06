@@ -46,7 +46,9 @@ def test_modify_mission_task_users(
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -175,7 +177,9 @@ def test_owner_permission(flask_app_client, admin_user, admin_user_2, test_root)
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+            tus_utils.prep_tus_dir(
+                test_root, transaction_id=transaction_id, filename=filenames[index]
+            )
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -234,6 +238,22 @@ def test_owner_permission(flask_app_client, admin_user, admin_user_2, test_root)
             flask_app_client, mission_task_guid, admin_user, data
         )
         assert response.json['title'] == 'An owner modified test task, please ignore'
+
+        # anyone can update is_complete (add/replace should be same thing)
+        data = [
+            # utils.patch_test_op(admin_user_2.password_secret),
+            utils.patch_add_op('is_complete', True)
+        ]
+        mission_utils.patch_mission_task(
+            flask_app_client, mission_task_guid, admin_user_2, data
+        )
+        data = [
+            # utils.patch_test_op(admin_user_2.password_secret),
+            utils.patch_replace_op('is_complete', True)
+        ]
+        mission_utils.patch_mission_task(
+            flask_app_client, mission_task_guid, admin_user_2, data
+        )
 
         # add data manager 2 user to the task
         data = [

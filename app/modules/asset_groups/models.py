@@ -275,7 +275,18 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 individual = None
                 if DEFAULT_NAME_CONTEXT in req_data:
                     individual = Individual.get_by_name(req_data[DEFAULT_NAME_CONTEXT])
-
+                try:
+                    # will raise ValueError if data no good
+                    if 'time' in req_data:
+                        time = ComplexDateTime.from_data(req_data)
+                    else:
+                        time = None
+                except ValueError as ve:
+                    raise HoustonException(
+                        log,
+                        f'Problem with sighting time/timeSpecificity values: {str(ve)}',
+                        obj=self,
+                    )
                 assert 'guid' in req_data
                 new_encounter = Encounter(
                     individual=individual,
@@ -284,15 +295,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     decimal_latitude=req_data.get('decimalLatitude'),
                     decimal_longitude=req_data.get('decimalLongitude'),
-                    time=req_data.get('time'),
-                    timeSpecificity=req_data.get('timeSpecificity'),
                     location_guid=req_data.get('locationId'),
                     taxonomy_guid=req_data.get('taxonomy'),
                     verbatim_locality=req_data.get('verbatimLocality'),
                     sex=req_data.get('sex'),
+                    time=time,
                     custom_fields=req_data.get('customFields', {}),
                 )
-                new_encounter.set_time_from_data(req_data)
 
                 if 'individualUuid' in req_data:
                     ind_guid = req_data['individualUuid']

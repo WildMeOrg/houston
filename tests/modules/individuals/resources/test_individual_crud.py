@@ -40,8 +40,8 @@ def test_create_read_delete_individual(db, flask_app_client):
     temp_enc = utils.generate_encounter_instance(
         user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
     )
-    time_of_death = '2099-01-01T00:00:00'
-    time_of_birth = '1999-02-02T00:01:00'
+    time_of_death = '2099-01-01T00:00:00+00:00'
+    time_of_birth = '1999-02-02T00:01:00+00:00'
     sex = 'male'
     comments = 'some random text'
     individual_json = {
@@ -61,8 +61,8 @@ def test_create_read_delete_individual(db, flask_app_client):
     assert len(response['names']) == 1
     assert response['sex'] == sex
     assert response['comments'] == comments
-    assert response['timeOfDeath'] == time_of_death + '+00:00'
-    assert response['timeOfBirth'] == time_of_birth + '+00:00'
+    assert response['timeOfDeath'] == time_of_death
+    assert response['timeOfBirth'] == time_of_birth
 
     assert individual_guid is not None
 
@@ -290,7 +290,7 @@ def test_individual_has_detailed_encounter(
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
 
-    loc_id = str(uuid.uuid4())
+    loc_id = test_utils.get_valid_location_id()
     data_in = {
         'encounters': [
             {
@@ -385,7 +385,11 @@ def test_individual_patch_errors(db, flask_app_client, researcher_1, request, te
         researcher_1,
         individual_id,
         [
-            {'op': 'replace', 'path': '/timeOfBirth', 'value': '2000-01-02T03:04:05'},
+            {
+                'op': 'replace',
+                'path': '/timeOfBirth',
+                'value': '2000-01-02T03:04:05+00:00',
+            },
             {'op': 'replace', 'path': '/timeOfDeath', 'value': 'cedric'},
         ],
         expected_status_code=409,
@@ -453,7 +457,11 @@ def test_individual_patch_errors(db, flask_app_client, researcher_1, request, te
         researcher_1,
         individual_id,
         [
-            {'op': 'replace', 'path': '/timeOfBirth', 'value': '2000-01-02T03:04:05'},
+            {
+                'op': 'replace',
+                'path': '/timeOfBirth',
+                'value': '2000-01-02T03:04:05+00:00',
+            },
             {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
             {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
         ],
@@ -483,8 +491,8 @@ def test_individual_patch_add_remove(
         test_root,
     )
     individual_id = uuids['individual']
-    time_of_death = '2099-01-01T00:00'
-    time_of_birth = '1999-02-02T00:01'
+    time_of_death = '2099-01-01T00:00:00+00:00'
+    time_of_birth = '1999-02-02T00:01:00+00:00'
     sex = 'female'
     comments = 'some random text'
 
@@ -503,9 +511,8 @@ def test_individual_patch_add_remove(
         flask_app_client, researcher_1, individual_id
     ).json
 
-    # the output always includes seconds + timezone, so we deal
-    assert individual_json['timeOfDeath'] == time_of_death + ':00+00:00'
-    assert individual_json['timeOfBirth'] == time_of_birth + ':00+00:00'
+    assert individual_json['timeOfDeath'] == time_of_death
+    assert individual_json['timeOfBirth'] == time_of_birth
     assert individual_json['sex'] == sex
     assert individual_json['comments'] == comments
 

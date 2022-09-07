@@ -55,13 +55,13 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert str(ve).startswith('invalid data: ')
+        assert str(ve) == 'No data passed in'
 
     dtdata = {'time': []}  # also invalid
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert str(ve).startswith('invalid data: ')
+        assert str(ve) == 'time field must be a string'
 
     dtdata = {
         'time': '1999-01-01T00:01:02+01:00',
@@ -69,7 +69,7 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
+        assert str(ve) == 'timeSpecificity field missing'
 
     dtdata = {
         'time': '1999-01-01T00:01:02+01:00',
@@ -78,46 +78,7 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
-
-    dtdict = []  # invalid
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'invalid data' in str(ve)
-
-    dtdict = {
-        'components': 'fubar',
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'components must be a list' in str(ve)
-
-    dtdict = {
-        'fubar': 1,
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'missing datetime value' in str(ve)
-
-    dtdict = {
-        'datetime': '2000-02-02T02:02:02',  # no tz
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'timezone not passed' in str(ve)
-
-    dtdict = {
-        'datetime': '2000-02-02T02:02:02+03:00',
-        'specificity': 'fail',
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
+        assert str(ve) == 'timeSpecificity fubar not supported'
 
     dtlist = None
     try:

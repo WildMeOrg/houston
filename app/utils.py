@@ -180,11 +180,8 @@ def nlp_parse_complex_date_time(
             try:
                 return ComplexDateTime.from_data(
                     {
-                        'time': {
-                            'datetime': value,
-                            'timezone': tz,
-                            'specificity': Specificities.time,
-                        }
+                        'time': value,
+                        'timeSpecificity': Specificities.time,
                     }
                 )
             except Exception as ex:

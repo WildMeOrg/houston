@@ -276,8 +276,8 @@ class AssetGroupMetadata(object):
                 ('customFields', dict, False),
                 ('ownerEmail', str, False),
                 ('sex', str, False),
-                ('time', str, True),
-                ('timeSpecificity', str, True),
+                ('time', str, False),
+                ('timeSpecificity', str, False),
                 ('annotations', list, False),
                 ('individualUuid', str, False),
             ]

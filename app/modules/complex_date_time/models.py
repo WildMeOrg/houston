@@ -103,13 +103,13 @@ class ComplexDateTime(db.Model):
         error = None
         if not data or not isinstance(data, dict):
             error = 'No data passed in'
-        if 'time' not in data:
+        elif 'time' not in data:
             error = 'time field missing'
-        if not isinstance(data['time'], str):
+        elif not isinstance(data['time'], str):
             error = 'time field must be a string'
-        if 'timeSpecificity' not in data:
+        elif 'timeSpecificity' not in data:
             error = 'timeSpecificity field missing'
-        if not isinstance(data['timeSpecificity'], str):
+        elif not isinstance(data['timeSpecificity'], str):
             error = 'timeSpecificity field must be a string'
 
         if not error:

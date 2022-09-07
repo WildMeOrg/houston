@@ -44,6 +44,8 @@ log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
 # Global object session
 session = None
 
+ELASTICSEARCH_VERBOSE = False
+
 
 class ElasticsearchModel(object):
     """Adds `viewed` column to a derived declarative model."""
@@ -143,16 +145,17 @@ class ElasticsearchModel(object):
                 if session_forced:
                     force = True
 
-                log.info(
-                    'Elasticsearch Index All %r into %r (%d items, force=%r%s)'
-                    % (
-                        cls,
-                        index,
-                        len(guids),
-                        force,
-                        force_str,
+                if ELASTICSEARCH_VERBOSE:
+                    log.info(
+                        'Elasticsearch Index All %r into %r (%d items, force=%r%s)'
+                        % (
+                            cls,
+                            index,
+                            len(guids),
+                            force,
+                            force_str,
+                        )
                     )
-                )
 
                 # Re-index all objects in our local database
                 desc_action = 'Tracking' if session.in_bulk_mode() else 'Indexing'
@@ -178,14 +181,15 @@ class ElasticsearchModel(object):
             guids = cls.query.with_entities(cls.guid).all()
             guids = list({item[0] for item in guids})
 
-            log.info(
-                'Pruning Index All %r from %r (%d items)'
-                % (
-                    cls,
-                    index,
-                    len(guids),
+            if ELASTICSEARCH_VERBOSE:
+                log.info(
+                    'Pruning Index All %r from %r (%d items)'
+                    % (
+                        cls,
+                        index,
+                        len(guids),
+                    )
                 )
-            )
 
             # Prune all objects in our local database
             desc = 'Pruning {}'.format(cls.__name__)
@@ -195,7 +199,8 @@ class ElasticsearchModel(object):
 
     @classmethod
     def invalidate_all(cls, app=None):
-        log.info('Invalidating {!r}'.format(cls))
+        if ELASTICSEARCH_VERBOSE:
+            log.info('Invalidating {!r}'.format(cls))
         with db.session.begin(subtransactions=True):
             db.session.execute(
                 cls.bulk_class()
@@ -295,21 +300,24 @@ class ElasticSearchBulkOperation(object):
         if self.in_forced_mode():
             force = True
 
-        log.debug(
-            'Tracking %r action for %r (force = %r)'
-            % (
-                action,
-                item,
-                force,
+        if ELASTICSEARCH_VERBOSE:
+            log.debug(
+                'Tracking %r action for %r (force = %r)'
+                % (
+                    action,
+                    item,
+                    force,
+                )
             )
-        )
 
         if is_disabled():
-            log.debug('...disabled')
+            if ELASTICSEARCH_VERBOSE:
+                log.debug('...disabled')
             return 'disabled'
 
         if self.in_skip_mode():
-            log.debug('...skipped')
+            if ELASTICSEARCH_VERBOSE:
+                log.debug('...skipped')
             return 'skipped'
 
         action = action.lower().strip()
@@ -329,7 +337,8 @@ class ElasticSearchBulkOperation(object):
             self.bulk_actions[cls][action] = []
 
         self.bulk_actions[cls][action].append(item)
-        log.debug('...tracked')
+        if ELASTICSEARCH_VERBOSE:
+            log.debug('...tracked')
 
         return 'tracked'
 
@@ -408,17 +417,18 @@ class ElasticSearchBulkOperation(object):
             else:
                 skipped.append(obj)
 
-        log.info(
-            'Indexing (Bulk) %r into %r (%d items: %d outdated, %d forced, %d skipped)'
-            % (
-                cls,
-                index,
-                len(items),
-                len(outdated),
-                len(forced),
-                len(skipped),
+        if ELASTICSEARCH_VERBOSE:
+            log.info(
+                'Indexing (Bulk) %r into %r (%d items: %d outdated, %d forced, %d skipped)'
+                % (
+                    cls,
+                    index,
+                    len(items),
+                    len(outdated),
+                    len(forced),
+                    len(skipped),
+                )
             )
-        )
 
         pending = outdated + forced
 
@@ -501,7 +511,6 @@ class ElasticSearchBulkOperation(object):
 
         # We only update the indexed timestamps of the objects that succeded as a group
         pending_guids = [item.guid for item in pending]
-        log.info('Time-stamping (Bulk) {}'.format(cls.__name__))
         with db.session.begin(subtransactions=True):
             db.session.execute(
                 cls.bulk_class()
@@ -609,7 +618,8 @@ class ElasticSearchBulkOperation(object):
 
         invalid_guids = set(pending) & all_guids
         if len(invalid_guids) > 0:
-            log.info('Invalidating (Bulk) {}'.format(cls.__name__))
+            if ELASTICSEARCH_VERBOSE:
+                log.info('Invalidating (Bulk) {}'.format(cls.__name__))
             with db.session.begin(subtransactions=True):
                 db.session.execute(
                     cls.bulk_class()
@@ -670,7 +680,6 @@ class ElasticSearchBulkOperation(object):
             forced = config.get('forced', config.get('force', False))
 
             keys = self.bulk_actions.keys()
-            log.debug('ES exit block with {!r} keys'.format(keys))
 
             for cls in keys:
                 index = es_index_name(cls)
@@ -682,17 +691,19 @@ class ElasticSearchBulkOperation(object):
                 del_items = set(cls_bulk_actions.get('delete', []))
                 idx_items = list(set(cls_bulk_actions.get('index', [])))
 
-                log.debug(
-                    'Processing ES exit for %r (%d delete, %d index)'
-                    % (
-                        cls,
-                        len(del_items),
-                        len(idx_items),
+                if ELASTICSEARCH_VERBOSE:
+                    log.debug(
+                        'Processing ES exit for %r (%d delete, %d index)'
+                        % (
+                            cls,
+                            len(del_items),
+                            len(idx_items),
+                        )
                     )
-                )
 
                 if disabled or is_disabled():
-                    log.debug('...disabled')
+                    if ELASTICSEARCH_VERBOSE:
+                        log.debug('...disabled')
                     continue
 
                 # Delete all of the delete items
@@ -784,12 +795,14 @@ class ElasticSearchBulkOperation(object):
 
             if message:
                 message = False
-                log.info('Waiting for ES session to verify...')
+                if ELASTICSEARCH_VERBOSE:
+                    log.info('Waiting for ES session to verify...')
 
             time.sleep(1.0)
 
         if not message:
-            log.info('...verified')
+            if ELASTICSEARCH_VERBOSE:
+                log.info('...verified')
 
         return True
 
@@ -1692,8 +1705,9 @@ def attach_listeners(app):
     for cls in REGISTERED_MODELS:
         # Only register this hook once
         if not REGISTERED_MODELS[cls]['status']:
-            name = '{}.{}'.format(cls.__module__, cls.__name__)
-            log.info('Attach Elasticsearch listener for {!r}'.format(name))
+            if ELASTICSEARCH_VERBOSE:
+                name = '{}.{}'.format(cls.__module__, cls.__name__)
+                log.info('Attach Elasticsearch listener for {!r}'.format(name))
             listen(cls, 'before_insert', _before_insert_or_update, propagate=True)
             listen(cls, 'before_update', _before_insert_or_update, propagate=True)
             listen(cls, 'before_delete', _before_delete, propagate=True)

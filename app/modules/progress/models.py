@@ -484,6 +484,4 @@ class Progress(db.Model, Timestamp):
         if self.parent:
             self.parent.notify(self.guid, chain=chain)
 
-        log.info('Updated {!r}'.format(self))
-
         return 'set'

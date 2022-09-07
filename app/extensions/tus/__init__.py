@@ -21,9 +21,6 @@ import app.extensions.logging as AuditLog
 from app.utils import get_stored_filename
 from flask_restx_patched import is_extension_enabled
 
-# from werkzeug.utils import secure_filename, escape
-
-
 if not is_extension_enabled('tus'):
     raise RuntimeError('Tus is not enabled')
 
@@ -154,8 +151,6 @@ def _tus_upload_file_handler(
         if os.path.exists(filepath):
             os.rename(filepath, upload_file_path)
         raise
-
-    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
 
     return filename
 
@@ -356,7 +351,6 @@ def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=Non
     import hashlib
 
     base_path = app.config.get('UPLOADS_DATABASE_PATH', None)
-    # log.warning('tus_upload_dir got base_path=%r %r %r %r' % (base_path, git_store_guid, transaction_id, session_id))
     if git_store_guid is None and transaction_id is None and session_id is None:
         return base_path
     if git_store_guid is not None:
@@ -391,7 +385,6 @@ def tus_filepaths_from(
     if not os.path.exists(upload_dir):
         raise HoustonException(log, 'Upload_dir = {!r} is missing'.format(upload_dir))
 
-    log.debug(f'_tus_filepaths_from passed paths: {paths}')
     filepaths = []
     # traverse whole upload dir and take everything
     for root, dirs, files in os.walk(upload_dir):

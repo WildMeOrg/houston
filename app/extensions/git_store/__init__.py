@@ -246,10 +246,6 @@ class GitStore(db.Model, HoustonModel):
                 'mime.whitelist.{}.json'.format(self._mime_type_whitelist_guid),
             )
             if not os.path.exists(mime_type_whitelist_mapping_filepath):
-                log.debug(
-                    'Creating new MIME whitelist manifest: %r'
-                    % (mime_type_whitelist_mapping_filepath,)
-                )
                 with open(mime_type_whitelist_mapping_filepath, 'w') as mime_type_file:
                     mime_type_whitelist_dict = {
                         str(self._mime_type_whitelist_guid): sorted(
@@ -834,7 +830,6 @@ class GitStore(db.Model, HoustonModel):
         assets_added = []
         num_files = len(paths_added)
         if num_files > 0:
-            log.debug('Tus collect for %d files moved' % (num_files))
             self.git_commit(
                 'Tus collect commit for %d files.' % (num_files,),
                 input_filenames=original_filenames,
@@ -986,15 +981,13 @@ class GitStore(db.Model, HoustonModel):
                         logging.exception('Got exception in update_asset_symlinks')
                         errors.append(filepath)
 
-            log.info('Processed asset files from: {!r}'.format(self))
-            log.info('\tFiles   : %d' % (len(files),))
-            log.info('\tSkipped : %d' % (len(skipped),))
             if len(skipped) > 0:
                 skipped_ext_list = [skip[1] for skip in skipped]
                 skipped_ext_str = ut.repr3(ut.dict_hist(skipped_ext_list))
                 skipped_ext_str = skipped_ext_str.replace('\n', '\n\t\t')
                 log.info('\t\t{}'.format(skipped_ext_str))
-            log.info('\tErrors  : %d' % (len(errors),))
+            if errors:
+                log.info('\tErrors  : %d' % (len(errors),))
 
             if self.progress_preparation:
                 self.progress_preparation.set(10)
@@ -1008,7 +1001,6 @@ class GitStore(db.Model, HoustonModel):
             # Compute the xxHash64 for all found files
             filepath_list = [file_data_['filepath'] for file_data_ in files]
             arguments_list = list(zip(filepath_list))
-            log.info('Computing filesystem xxHash64...')
             filesystem_xxhash64_list = parallel(
                 compute_xxhash64_digest_filepath, arguments_list
             )
@@ -1081,9 +1073,6 @@ class GitStore(db.Model, HoustonModel):
                 semantic_guid = file_data.get('semantic_guid', None)
                 asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
                 if asset is None:
-                    log.info(
-                        'Making new asset for semantic_guid = {!r}'.format(semantic_guid)
-                    )
 
                     # Check if we can recycle existing GUID from symlink
                     recycle_guid = existing_filepath_guid_mapping.get(
@@ -1144,14 +1133,7 @@ class GitStore(db.Model, HoustonModel):
                 asset.update_symlink(local_asset_filepath)
                 asset.set_derived_meta()
 
-                log.debug(local_asset_filepath)
-                log.debug('\tAsset         : {}'.format(asset))
-                log.debug('\tSemantic GUID : {}'.format(asset.semantic_guid))
-                log.debug('\tMIME type     : {}'.format(asset.mime_type))
-                log.debug('\tSignature     : {}'.format(asset.magic_signature))
-                log.debug('\tSize bytes    : {}'.format(asset.size_bytes))
-                log.debug('\tFS xxHash64   : {}'.format(asset.filesystem_xxhash64))
-                log.debug('\tFS GUID       : {}'.format(asset.filesystem_guid))
+                log.debug(f'Created Asset {asset}')
 
             # Get all historical and current Assets for this Git Store
             assert self.exists
@@ -1177,7 +1159,6 @@ class GitStore(db.Model, HoustonModel):
         #   Percentage: 1% (89% -> 90%)
 
         # Delete any historical Assets that have been deleted from this commit
-        log.info('Deleting %d orphaned Assets' % (len(deleted_assets),))
         for deleted_asset in deleted_assets:
             with db.session.begin(subtransactions=True):
                 try:

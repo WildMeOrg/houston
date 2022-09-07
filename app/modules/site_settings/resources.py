@@ -8,14 +8,13 @@ RESTful API Site Settings resources
 import json
 import logging
 from http import HTTPStatus
-from pathlib import Path
 
 from flask import current_app, request
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog  # NOQA
 import app.version
-from app.extensions import db, is_extension_enabled
+from app.extensions import is_extension_enabled
 from app.extensions.api import Namespace, abort
 from app.modules import is_module_enabled
 from app.modules.users import permissions

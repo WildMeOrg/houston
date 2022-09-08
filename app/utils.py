@@ -178,6 +178,7 @@ def nlp_parse_complex_date_time(
             elif value[-3:] == 'TNI':
                 value = value[:11] + '22:00'
             try:
+
                 return ComplexDateTime.from_data(
                     {
                         'time': value,

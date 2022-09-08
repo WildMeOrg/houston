@@ -52,8 +52,8 @@ def is_valid_longitude(value):
     return min_longitude <= value <= max_longitude
 
 
-# Make this quite robust. Timezone is mandatory. Anything else is just making our life
-# difficult in the long term
+# This is quite robust. Timezone is mandatory. Anything else is just making our life
+# difficult for ourselves in the long term
 def is_valid_datetime_string(dtstr):
     # the 16 char is to prevent (valid 8601) date-only strings like '2001-02-03' and force a time (at least HH:MM)
     if not isinstance(dtstr, str) or len(dtstr) < 16:

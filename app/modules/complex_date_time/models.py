@@ -64,40 +64,6 @@ class ComplexDateTime(db.Model):
 
     specificity = db.Column(db.Enum(Specificities), index=True, nullable=False)
 
-    # will throw ValueError for various problems, including via datetime constructor (based on values)
-    @classmethod
-    def from_list(cls, parts, timezone, specificity=None):
-        if not parts or not isinstance(parts, list):
-            raise ValueError('must pass list of datetime components (with at least year)')
-        if not timezone:
-            raise ValueError('must provide a time zone')
-        if not tz.gettz(timezone):
-            raise ValueError(f'unrecognized time zone {timezone}')
-        if specificity and (
-            not isinstance(specificity, Specificities) or specificity not in Specificities
-        ):
-            raise ValueError(f'invalid specificity {specificity}')
-
-        # now we ascertain specificity if we dont have it
-        if not specificity:
-            if len(parts) == 1:
-                specificity = Specificities.year
-            elif len(parts) == 2:
-                specificity = Specificities.month
-            elif len(parts) == 3:
-                specificity = Specificities.day
-            else:
-                specificity = Specificities.time
-
-        # now we pad out parts (dont need to do hour/min/sec as they have defaults of 0 in constructor)
-        if len(parts) == 1:
-            parts.append(1)  # add january
-        if len(parts) == 2:
-            parts.append(1)  # add 1st of month
-        # will throw ValueError if bunk data passed in
-        dt = datetime.datetime(*parts, tzinfo=tz.gettz(timezone))
-        return ComplexDateTime(dt, timezone, specificity)
-
     @classmethod
     def check_config_data_validity(cls, data):
         error = None

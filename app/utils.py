@@ -124,8 +124,12 @@ def get_stored_filename(input_filename):
 
 
 def nlp_parse_complex_date_time(
-    text, reference_date=None, tz='UTC', time_specificity=None
+    text, reference_date=None, timezone='UTC', time_specificity=None
 ):
+    import datetime
+
+    import pytz
+    from dateutil import tz
     from sutime import SUTime
 
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
@@ -160,8 +164,32 @@ def nlp_parse_complex_date_time(
                 # winter is weird - is it this year or next ... or last?
                 value = value[:5] + '01'
             parts = [int(p) for p in value.split('-')]
+
+            # now we ascertain specificity if we dont have it
+            if not time_specificity:
+                if len(parts) == 1:
+                    time_specificity = Specificities.year
+                elif len(parts) == 2:
+                    time_specificity = Specificities.month
+                elif len(parts) == 3:
+                    time_specificity = Specificities.day
+                else:
+                    time_specificity = Specificities.time
+            # now we pad out parts (dont need to do hour/min/sec as they have defaults of 0 in constructor)
+            if len(parts) == 1:
+                parts.append(1)  # add january
+            if len(parts) == 2:
+                parts.append(1)  # add 1st of month
+
             try:
-                return ComplexDateTime.from_list(parts, tz, time_specificity)
+                # Now need to make a string for the time plus tz to pass to CDT.
+                date_time = datetime.datetime(*parts, tzinfo=tz.gettz(timezone))
+                return ComplexDateTime.from_data(
+                    {
+                        'time': date_time.isoformat(),
+                        'timeSpecificity': time_specificity,
+                    }
+                )
             except Exception as ex:
                 log.warning(
                     f'nlp_parse_complex_date_time(): DATE exception on value={value} [from {res}]: {str(ex)}'
@@ -178,11 +206,15 @@ def nlp_parse_complex_date_time(
             elif value[-3:] == 'TNI':
                 value = value[:11] + '22:00'
             try:
-
+                # Now need to make a string for the time plus tz to pass to CDT.
+                tzinfo = pytz.timezone(timezone)
+                date_time = datetime.datetime.fromisoformat(value)
+                if not time_specificity:
+                    time_specificity = Specificities.time
                 return ComplexDateTime.from_data(
                     {
-                        'time': value,
-                        'timeSpecificity': Specificities.time,
+                        'time': tzinfo.localize(date_time).isoformat(),
+                        'timeSpecificity': time_specificity,
                     }
                 )
             except Exception as ex:

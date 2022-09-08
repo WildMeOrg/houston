@@ -80,38 +80,12 @@ def test_models(db, request):
     except ValueError as ve:
         assert str(ve) == 'timeSpecificity fubar not supported'
 
-    dtlist = None
-    try:
-        cdt = ComplexDateTime.from_list(dtlist, 'fubar')
-    except ValueError as ve:
-        assert 'must pass list' in str(ve)
-
-    dtlist = [2021]
-    try:
-        cdt = ComplexDateTime.from_list(dtlist, 'fubar')
-    except ValueError as ve:
-        assert 'unrecognized time zone' in str(ve)
-
-    # this should work
-    cdt = ComplexDateTime.from_list(dtlist, 'US/Pacific')
-    assert cdt
-    # since only year passed, should be set to January 1
-    assert cdt.get_datetime_in_timezone().year == 2021
-    assert cdt.get_datetime_in_timezone().month == 1
-    assert cdt.get_datetime_in_timezone().day == 1
-    # and time should be midnight of (in timezone-based version)
-    assert 'T00:00:00' in cdt.isoformat_in_timezone()
-    # but we are only this specific:
-    assert cdt.specificity == Specificities.year
-
-    # another quicky check of day-level specificity
-    cdt = ComplexDateTime.from_list([1999, 5, 31], 'US/Eastern')
-    assert cdt
-    assert cdt.get_datetime_in_timezone().year == 1999
-    assert cdt.get_datetime_in_timezone().month == 5
-    assert cdt.get_datetime_in_timezone().day == 31
-    assert 'T00:00:00' in cdt.isoformat_in_timezone()
-    assert cdt.specificity == Specificities.day
+    # Now a valid day one
+    dtdata = {
+        'time': '1999-05-31T00:01:02+01:00',
+        'timeSpecificity': 'day',
+    }
+    cdt = ComplexDateTime.from_data(dtdata)
 
     # now some comparisons.  note this assumes we have not traveled back in time prior to 1999.
     dt_later = datetime.datetime.utcnow()
@@ -158,7 +132,9 @@ def test_nlp_time():
     refdate = '2019-08-15'
     text = 'a week ago at 3:30'
     try:
-        cdt = nlp_parse_complex_date_time(text, reference_date=refdate, tz='US/Mountain')
+        cdt = nlp_parse_complex_date_time(
+            text, reference_date=refdate, timezone='US/Mountain'
+        )
     except RuntimeError:
         pytest.skip('NLP jar files not available')
     assert cdt
@@ -186,6 +162,35 @@ def test_nlp_time():
 
     cdt = nlp_parse_complex_date_time('i have no idea')
     assert not cdt
+
+    cdt = nlp_parse_complex_date_time('2021', reference_date='fubar')
+    assert not cdt
+
+    # this should work
+    cdt = nlp_parse_complex_date_time(
+        '2021', reference_date=refdate, timezone='US/Pacific'
+    )
+    assert cdt
+
+    # since only year passed, should be set to January 1
+    assert cdt.get_datetime_in_timezone().year == 2021
+    assert cdt.get_datetime_in_timezone().month == 1
+    assert cdt.get_datetime_in_timezone().day == 1
+    # and time should be midnight of (in timezone-based version)
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
+    # but we are only this specific:
+    assert cdt.specificity == Specificities.year
+
+    # another quicky check of day-level specificity
+    cdt = nlp_parse_complex_date_time(
+        '1999:05:31', reference_date=refdate, timezone='US/Eastern'
+    )
+    assert cdt
+    assert cdt.get_datetime_in_timezone().year == 1999
+    assert cdt.get_datetime_in_timezone().month == 5
+    assert cdt.get_datetime_in_timezone().day == 31
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
+    assert cdt.specificity == Specificities.day
 
 
 @pytest.mark.skipif(

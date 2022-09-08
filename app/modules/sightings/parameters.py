@@ -152,7 +152,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
             elif field == 'locationId':
                 from app.modules.site_settings.models import Regions
 
-                if not Regions.is_region_guid_valid(value):
+                if value and not Regions.is_region_guid_valid(value):
                     raise HoustonException(
                         log,
                         f'locationId value passed ({value}) is not a valid guid for a Region',

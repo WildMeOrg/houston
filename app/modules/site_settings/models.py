@@ -367,6 +367,7 @@ class SiteSetting(db.Model, Timestamp):
         'splashImage': {'type': 'file', 'public': True},
         'splashVideo': {'type': 'file', 'public': True},
         'customCardImage': {'type': 'file', 'public': True},
+        'individualMergeDefaultDelayDays': {'type': int, 'public': False, 'default': 14},
     }
 
     if is_extension_enabled('intelligent_agent'):

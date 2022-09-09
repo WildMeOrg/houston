@@ -805,10 +805,11 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
 
-    # this might end up being a SiteSetting etc
     @classmethod
     def get_merge_request_deadline_days(cls):
-        return 14
+        from app.modules.site_settings.models import SiteSetting
+
+        return SiteSetting.get_value('individualMergeDefaultDelayDays')
 
     # does the actual work of setting up celery task to execute this merge
     # NOTE: this does not do any notification of users; see merge_request_from()

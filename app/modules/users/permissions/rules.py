@@ -224,22 +224,11 @@ class DenyAbortMixin(object):
     DENY_ABORT_HTTP_CODE = HTTPStatus.FORBIDDEN
     DENY_ABORT_MESSAGE = None
 
-    # Helper to identify what the module is
-    def _is_module(self, cls: Type[Any]):
-        try:
-            return issubclass(self._module, tuple(cls))
-        except TypeError:
-            return False
-
     def deny(self):
         """
         Abort HTTP request by raising HTTP error exception with a specified
         HTTP code.
         """
-        log.debug(
-            'Access permission denied for %r on %r by %r'
-            % (self._action, self._module, current_user)
-        )
         return abort(code=self.DENY_ABORT_HTTP_CODE, message=self.DENY_ABORT_MESSAGE)
 
 
@@ -260,6 +249,31 @@ class Rule(BaseRule):
         return None
 
 
+# Base class for ModuleActionRule and ModuleOrObjectActionRule as contains utils shared bby both
+class ModuleActionBaseMixin(object):
+
+    DENY_ABORT_HTTP_CODE = HTTPStatus.FORBIDDEN
+    DENY_ABORT_MESSAGE = None
+
+    # Helper to identify what the module is
+    def _is_module(self, cls: Type[Any]):
+        try:
+            return issubclass(self._module, tuple(cls))
+        except TypeError:
+            return False
+
+    def deny(self):
+        """
+        Abort HTTP request by raising HTTP error exception with a specified
+        HTTP code.
+        """
+        log.debug(
+            'Access permission denied for %r on %r by %r'
+            % (self._action, self._module, current_user)
+        )
+        return abort(code=self.DENY_ABORT_HTTP_CODE, message=self.DENY_ABORT_MESSAGE)
+
+
 class AllowAllRule(Rule):
     """
     Helper rule that always grants access.
@@ -269,7 +283,7 @@ class AllowAllRule(Rule):
         return True
 
 
-class ModuleActionRule(DenyAbortMixin, Rule):
+class ModuleActionRule(ModuleActionBaseMixin, Rule):
     """
     Ensure that the current_user has permission to perform the action on the module passed.
     """
@@ -565,7 +579,7 @@ class ObjectActionRule(Rule):
 
 
 # Some modules are special (AssetGroups) mad may require both access controls in one
-class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
+class ModuleOrObjectActionRule(ModuleActionBaseMixin, Rule):
     def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
         """
         Args:

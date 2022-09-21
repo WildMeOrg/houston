@@ -14,6 +14,7 @@ import PIL
 from flask_login import current_user
 from flask_marshmallow import base_fields
 from marshmallow import validates_schema
+from marshmallow.exceptions import ValidationError
 
 from app.extensions.api import abort
 from app.extensions.api.parameters import PaginationParameters
@@ -241,6 +242,23 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         if field == User.profile_fileupload_guid.key:
             value = cls.add_replace_profile_fileupload(value)
 
+        if field == User.email.key:
+            # Reuse the marshmallow email validator to check for validity
+            # This is pretty horrible so any suggestions of improvements gratefully received
+            email_validator = base_fields.Email()
+            try:
+                email_validator._validated(value)
+            except ValidationError as ex:
+                abort(code=HTTPStatus.UNPROCESSABLE_ENTITY, message=str(ex))
+            user = User.query.filter_by(email=value).first()
+            if user and user != current_user:
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message='Email address already in use',
+                )
+            return super(PatchUserDetailsParameters, cls).replace(
+                obj, field, value, state
+            )
         if field == User.notification_preferences.key:
             # The current implementation of this code allows the API to set the entire set of preferences or a
             # subset.

@@ -218,21 +218,23 @@ def test_create_asset_group_invalid_gps(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    # How confident is everyone that this doesn't exist anywhere in old world?
     expected_error = (
         'decimalLongitude field had incorrect type, expected float in Sighting 1'
     )
+    data.set_sighting_field(0, 'decimalLongitude', [25, 999])
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+    # How confident is everyone that this doesn't exist anywhere in old world?
+
+    expected_error = 'Cannot convert twenty five point nine nine nine to float for decimalLongitude in Sighting 1'
     data.set_sighting_field(0, 'decimalLongitude', 'twenty five point nine nine nine')
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_sighting_field(0, 'decimalLongitude', [25, 999])
-    asset_group_utils.create_asset_group(
-        flask_app_client, researcher_1, data.get(), 400, expected_error
-    )
-
     # Yes this is how some people (the french) represent floating point values
+    expected_error = 'Cannot convert 25,999 to float for decimalLongitude in Sighting 1'
     data.set_sighting_field(0, 'decimalLongitude', '25,999')
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
@@ -266,13 +268,11 @@ def test_create_asset_group_invalid_gps(
     )
 
     data.set_encounter_field(0, 0, 'decimalLatitude', 'twenty five point nine nine nine')
-    expected_error = (
-        'decimalLatitude field had incorrect type, expected float in Encounter 1.1'
-    )
+    expected_error = 'Cannot convert twenty five point nine nine nine to float for decimalLatitude in Encounter 1.1'
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
-
+    expected_error = 'Cannot convert null to float for decimalLatitude in Encounter 1.1'
     data.set_encounter_field(0, 0, 'decimalLatitude', 'null')
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
@@ -291,8 +291,10 @@ def test_create_asset_group_invalid_gps(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    # allowed incorrect type, user can enter this manually on the FE so we should allow it
+    # allowed incorrect type, user can enter integer manually on the FE so we should allow it
+    # Bulk upload contains lat& long as strings so need to allow that too
     data.set_encounter_field(0, 0, 'decimalLatitude', 90)
+    data.set_encounter_field(0, 0, 'decimalLongitude', '90.34')
     create_resp = asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get()
     ).json

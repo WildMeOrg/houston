@@ -462,7 +462,7 @@ def test_modifying_user_info_with_conflict_data_must_fail(
             ),
         )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
     assert response.content_type == 'application/json'
     assert isinstance(response.json, dict)
     assert set(response.json.keys()) >= {'status', 'message'}

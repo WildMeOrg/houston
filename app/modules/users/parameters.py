@@ -14,7 +14,6 @@ import PIL
 from flask_login import current_user
 from flask_marshmallow import base_fields
 from marshmallow import validates_schema
-from marshmallow.exceptions import ValidationError
 
 from app.extensions.api import abort
 from app.extensions.api.parameters import PaginationParameters
@@ -244,10 +243,11 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
         if field == User.email.key:
             # Reuse the marshmallow email validator to check for validity
-            # This is pretty horrible so any suggestions of improvements gratefully received
-            email_validator = base_fields.Email()
+            from marshmallow.exceptions import ValidationError
+            from marshmallow.validate import Email as EmailValidator
+
             try:
-                email_validator._validated(value)
+                EmailValidator()(value)
             except ValidationError as ex:
                 abort(code=HTTPStatus.UNPROCESSABLE_ENTITY, message=str(ex))
             user = User.query.filter_by(email=value).first()

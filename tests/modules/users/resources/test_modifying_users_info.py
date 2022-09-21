@@ -176,6 +176,40 @@ def test_invalid_modifying_user_info_by_admin(
     user_utils.patch_user(flask_app_client, admin_user, regular_user, data, 422, error)
 
 
+def test_modifying_email_addr(flask_app_client, regular_user, admin_user, db):
+    # Test a garbage one
+    data = [
+        {
+            'op': 'test',
+            'path': '/current_password',
+            'value': regular_user.password_secret,
+        },
+        {'op': 'replace', 'path': '/email', 'value': 'invalidemailaddress'},
+    ]
+    error = 'Not a valid email address.'
+    user_utils.patch_user(flask_app_client, regular_user, regular_user, data, 422, error)
+
+    data = [
+        {
+            'op': 'test',
+            'path': '/current_password',
+            'value': regular_user.password_secret,
+        },
+        {'op': 'replace', 'path': '/email', 'value': admin_user.email},
+    ]
+    error = 'Email address already in use'
+    user_utils.patch_user(flask_app_client, regular_user, regular_user, data, 422, error)
+    data = [
+        {
+            'op': 'test',
+            'path': '/current_password',
+            'value': regular_user.password_secret,
+        },
+        {'op': 'replace', 'path': '/email', 'value': regular_user.email},
+    ]
+    user_utils.patch_user(flask_app_client, regular_user, regular_user, data)
+
+
 def test_modifying_password(flask_app_client, regular_user, user_manager_user, db):
     # pylint: disable=invalid-name
     test_password = 'TEST_NEW_PASSWORD'

@@ -391,7 +391,6 @@ if elasticsearch is None:
         def elasticsearch(self, *args, **kwargs):
             return []
 
-
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -411,13 +410,12 @@ if sage is None:
     class SageModel(object):
         pass
 
-
 else:
 
     SageModel = sage.SageModel
 
 
-class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
+class HoustonModel(TimestampViewed, ElasticsearchModel):
     """
     A completely transient model that allows for Houston to wrap EDM or Sage
     responses into a model and allows for serialization of results with
@@ -496,18 +494,16 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
 
+    def get_all_owners(self):
+        if hasattr(self, 'owner'):
+            return [getattr(self, 'owner')]
+        # intentionally owners (plural) before owner(singular) as sighting has both
+        if hasattr(self, 'get_owners'):
+            return getattr(self, 'get_owners')()
+        if hasattr(self, 'get_owner'):
+            return [getattr(self, 'get_owner')()]
 
-class HoustonModel(CommonHoustonModel):
-    """
-    A permanent model that stores information for objects in Houston only.  A
-    HoustonModel is a fully-fledged database ORM object that has full CRUD
-    support and does not need to interface with an external component for any
-    information or metadata.
-
-    REST API Read Access : YES
-    Houston Exists Check : YES
-    Houston Read Access  : YES
-    """
+        return []
 
 
 class CustomFieldMixin(object):

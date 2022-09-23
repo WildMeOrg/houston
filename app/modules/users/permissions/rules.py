@@ -224,13 +224,6 @@ class DenyAbortMixin(object):
     DENY_ABORT_HTTP_CODE = HTTPStatus.FORBIDDEN
     DENY_ABORT_MESSAGE = None
 
-    # Helper to identify what the module is
-    def _is_module(self, cls: Type[Any]):
-        try:
-            return issubclass(self._module, tuple(cls))
-        except TypeError:
-            return False
-
     def deny(self):
         """
         Abort HTTP request by raising HTTP error exception with a specified
@@ -256,6 +249,31 @@ class Rule(BaseRule):
         return None
 
 
+# Base class for ModuleActionRule and ModuleOrObjectActionRule as contains utils shared bby both
+class ModuleActionBaseMixin(object):
+
+    DENY_ABORT_HTTP_CODE = HTTPStatus.FORBIDDEN
+    DENY_ABORT_MESSAGE = None
+
+    # Helper to identify what the module is
+    def _is_module(self, cls: Type[Any]):
+        try:
+            return issubclass(self._module, tuple(cls))
+        except TypeError:
+            return False
+
+    def deny(self):
+        """
+        Abort HTTP request by raising HTTP error exception with a specified
+        HTTP code.
+        """
+        log.debug(
+            'Access permission denied for %r on %r by %r'
+            % (self._action, self._module, current_user)
+        )
+        return abort(code=self.DENY_ABORT_HTTP_CODE, message=self.DENY_ABORT_MESSAGE)
+
+
 class AllowAllRule(Rule):
     """
     Helper rule that always grants access.
@@ -265,7 +283,7 @@ class AllowAllRule(Rule):
         return True
 
 
-class ModuleActionRule(DenyAbortMixin, Rule):
+class ModuleActionRule(ModuleActionBaseMixin, Rule):
     """
     Ensure that the current_user has permission to perform the action on the module passed.
     """
@@ -327,11 +345,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                     current_user.is_active
                     & self._can_user_perform_action(current_user)
                 )
-        if not has_permission:
-            log.debug(
-                'Access permission denied for %r on %r by %r'
-                % (self._action, self._module, current_user)
-            )
+
         return has_permission
 
     # Permissions control entry point for real users, for all objects and all operations
@@ -358,7 +372,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         return has_permission
 
 
-class ObjectActionRule(DenyAbortMixin, Rule):
+class ObjectActionRule(Rule):
     """
     Ensure that the current_user has has permission to perform the action on the object passed.
     """
@@ -377,6 +391,38 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             user = current_user
         self._user = user
         super().__init__(**kwargs)
+
+    def deny(self):
+        """
+        Abort HTTP request by raising HTTP error exception with a specified
+        HTTP code.
+        """
+
+        # Object failure requires a bit more finesse in terms of the response to allow
+        # users to know how to fix the issue themselves
+        log.info(
+            f'Access permission denied for {self._action}, {self._obj} by {self._user}'
+        )
+        message = None
+        # A frequently seen user error is trying to edit data that they only have view permission on
+        # so give a more helpful error in that specific situation
+        if (
+            self._user
+            and not self._user.is_anonymous
+            and self._user.is_active
+            and self._action == AccessOperation.WRITE
+            and not self._permitted_via_collaboration(self._action)
+            and self._permitted_via_collaboration(AccessOperation.READ)
+        ):
+            message = 'You have permission to view but not edit '
+            message += f'{self._obj.__class__.__name__} {self._obj.guid}. '
+            owners = self._obj.get_all_owners()
+            if len(owners) == 1:
+                message += f'You will need to upgrade your collaboration with {owners[0].full_name} to an edit collaboration to do so'
+            else:
+                owner_names = [owner.full_name for owner in owners]
+                message += f'You will need an edit collaboration with any of {owner_names} to do so'
+        return abort(code=HTTPStatus.FORBIDDEN, message=message)
 
     def any_table_driven_permission(self):
         roles = OBJECT_USER_MAP.get((self._obj.__class__.__name__, self._action))
@@ -436,17 +482,12 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
             if not has_permission:
                 has_permission = self.elevated_permission() | (
-                    self._permitted_via_collaboration()
+                    self._permitted_via_collaboration(self._action)
                     | self._permitted_as_public_data()
                     # | self._permitted_via_org()
                     # | self._permitted_via_project()
                 )
 
-        if not has_permission:
-            log.info(
-                'Access permission denied for %r, %r by %r'
-                % (self._action, self._obj, self._user)
-            )
         return has_permission
 
     def _permitted_as_public_data(self):
@@ -503,7 +544,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     @module_required('collaborations', resolve='warn', default=False)
-    def _permitted_via_collaboration(self):
+    def _permitted_via_collaboration(self, action):
         from app.modules.collaborations.models import Collaboration
 
         tried_users = [self._user]
@@ -511,9 +552,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             (self._obj.__class__.__name__, self._action)
         )
 
-        if self._action == AccessOperation.READ:
+        if action == AccessOperation.READ:
             collab_users = Collaboration.get_users_for_read(self._user)
-        elif self._action == AccessOperation.WRITE:
+        elif action == AccessOperation.WRITE:
             collab_users = Collaboration.get_users_for_write(self._user)
         else:
             collab_users = []
@@ -538,7 +579,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
 
 # Some modules are special (AssetGroups) mad may require both access controls in one
-class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
+class ModuleOrObjectActionRule(ModuleActionBaseMixin, Rule):
     def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
         """
         Args:

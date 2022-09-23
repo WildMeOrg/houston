@@ -680,3 +680,6 @@ class Asset(db.Model, HoustonModel, SageModel):
     def user_is_owner(self, user: User) -> bool:
         # Asset has no owner, but it has one git_store that has an owner
         return self.git_store.user_is_owner(user)
+
+    def get_owner(self):
+        return self.git_store.owner

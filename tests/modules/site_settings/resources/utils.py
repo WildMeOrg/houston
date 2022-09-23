@@ -104,6 +104,24 @@ def read_main_settings(
     )
 
 
+def read_site_info(
+    flask_app_client,
+    user,
+    expected_status_code=200,
+    response_200={'houston', 'sage'},
+):
+    res = test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='site-settings:read',
+        path='/api/v1/site-settings/site-info/',
+        expected_status_code=expected_status_code,
+        response_200=response_200,
+        response_error={'message'},
+    )
+    return res
+
+
 def _modify_setting(
     flask_app_client,
     user,

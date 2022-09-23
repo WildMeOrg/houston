@@ -231,6 +231,7 @@ class IaClassConfigs(Resource):
 @api.route('/site-info')
 class SiteInfo(Resource):
     def get(self):
+        from flask_login import current_user  # NOQA
 
         sage_version = current_app.sage.get_dict('version.dict', None)
         if isinstance(sage_version, dict):
@@ -239,7 +240,11 @@ class SiteInfo(Resource):
             # sage returns a non 200 response
             sage_version = repr(sage_version)
         sage_uris = current_app.config.get('SAGE_URIS')
-        default_sage_uri = sage_uris.get('default')
+        default_sage_uri = ''
+
+        # All users can get the site info but only staff users are permitted to see the Sage URI
+        if current_user and not current_user.is_anonymous and current_user.is_staff:
+            default_sage_uri = sage_uris.get('default')
         return {
             'houston': {
                 'version': app.version.version,

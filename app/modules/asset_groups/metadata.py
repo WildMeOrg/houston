@@ -69,10 +69,20 @@ class AssetGroupMetadata(object):
                 )
         elif not isinstance(dictionary[field], field_type):
 
-            # change the int type to what it should be
-            if field_type == float and isinstance(dictionary[field], int):
-                # change the int type to what it should be
-                dictionary[field] = float(dictionary[field])
+            # change the int/string type to what it should be. FE sends an int if no decimal provided.
+            # Bulk import sends a string for lat/long
+            if field_type == float and (
+                isinstance(dictionary[field], int) or isinstance(dictionary[field], str)
+            ):
+                # change the int/str type to what it should be
+                try:
+                    dictionary[field] = float(dictionary[field])
+                except ValueError:
+                    raise AssetGroupMetadataError(
+                        log,
+                        f'Cannot convert {dictionary[field]} to float for {field} in {error_str}',
+                    )
+
             elif dictionary[field]:
                 # if present it must be the correct type
                 raise AssetGroupMetadataError(

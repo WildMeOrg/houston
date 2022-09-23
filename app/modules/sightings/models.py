@@ -388,15 +388,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
     def get_time_specificity(self):
         return self.time.specificity if self.time else None
 
-    # this does the heavy lifting of trying to set time from user-provided data
-    def set_time_from_data(self, data):
-        if not data or 'time' not in data:
-            return  # no need to try, time not being set
-        from app.modules.complex_date_time.models import ComplexDateTime
-
-        # will raise ValueError if data no good
-        self.time = ComplexDateTime.from_data(data)
-
     # truly unsure if these sets might always be the same, so.....
     def get_assets(self):
         return [ref.asset for ref in self.sighting_assets]

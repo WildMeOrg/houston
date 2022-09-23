@@ -206,15 +206,6 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin):
         time = self.get_time(sighting_fallback=sighting_fallback)
         return time.specificity if time else None
 
-    # this does the heavy lifting of trying to set time from user-provided data
-    def set_time_from_data(self, data):
-        if not data or 'time' not in data:
-            return  # no need to try, time not being set
-        from app.modules.complex_date_time.models import ComplexDateTime
-
-        # will raise ValueError if data no good
-        self.time = ComplexDateTime.from_data(data)
-
     # not going to check for ownership by User.get_public_user() because:
     #  a) this allows for other-user-owned data to be toggled to public
     #  b) allows for us to _disallow_ public access to public-user-owned data

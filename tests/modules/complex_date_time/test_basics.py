@@ -5,39 +5,7 @@ import datetime
 
 import pytest
 
-from app.utils import (
-    datetime_as_timezone,
-    iso8601_to_datetime_with_timezone,
-    normalized_timezone_string,
-)
 from tests.utils import module_unavailable
-
-
-@pytest.mark.skipif(
-    module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
-)
-def test_utils():
-    iso = '2021-12-01T00:00:01'
-    try:
-        dt = iso8601_to_datetime_with_timezone(iso)
-    except ValueError as ve:
-        assert 'no time zone provided' in str(ve)
-
-    iso = '2021-12-01T12:00:00-07:00'
-    dt = iso8601_to_datetime_with_timezone(iso)
-    assert dt
-    assert dt.tzinfo
-    assert dt.tzname() == 'UTC-07:00'
-
-    shifted = datetime_as_timezone(dt, 'UTC-04:00')
-    assert shifted
-    assert normalized_timezone_string(shifted) == 'UTC-0400'
-    assert shifted == dt
-
-    try:
-        shifted = datetime_as_timezone(dt, 'fubar')
-    except ValueError as ve:
-        assert 'unknown time zone' in str(ve)
 
 
 @pytest.mark.skipif(
@@ -87,13 +55,13 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert str(ve).startswith('invalid data: ')
+        assert str(ve) == 'No data passed in'
 
     dtdata = {'time': []}  # also invalid
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert str(ve).startswith('invalid data: ')
+        assert str(ve) == 'time field must be a string'
 
     dtdata = {
         'time': '1999-01-01T00:01:02+01:00',
@@ -101,7 +69,7 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
+        assert str(ve) == 'timeSpecificity field missing'
 
     dtdata = {
         'time': '1999-01-01T00:01:02+01:00',
@@ -110,79 +78,14 @@ def test_models(db, request):
     try:
         cdt = ComplexDateTime.from_data(dtdata)
     except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
+        assert str(ve) == 'timeSpecificity fubar not supported'
 
-    dtdict = []  # invalid
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'invalid data' in str(ve)
-
-    dtdict = {
-        'components': 'fubar',
+    # Now a valid day one
+    dtdata = {
+        'time': '1999-05-31T00:01:02+01:00',
+        'timeSpecificity': 'day',
     }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'components must be a list' in str(ve)
-
-    dtdict = {
-        'fubar': 1,
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'missing datetime value' in str(ve)
-
-    dtdict = {
-        'datetime': '2000-02-02T02:02:02',  # no tz
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'timezone not passed' in str(ve)
-
-    dtdict = {
-        'datetime': '2000-02-02T02:02:02+03:00',
-        'specificity': 'fail',
-    }
-    try:
-        cdt = ComplexDateTime.from_dict(dtdict)
-    except ValueError as ve:
-        assert 'invalid specificity' in str(ve)
-
-    dtlist = None
-    try:
-        cdt = ComplexDateTime.from_list(dtlist, 'fubar')
-    except ValueError as ve:
-        assert 'must pass list' in str(ve)
-
-    dtlist = [2021]
-    try:
-        cdt = ComplexDateTime.from_list(dtlist, 'fubar')
-    except ValueError as ve:
-        assert 'unrecognized time zone' in str(ve)
-
-    # this should work
-    cdt = ComplexDateTime.from_list(dtlist, 'US/Pacific')
-    assert cdt
-    # since only year passed, should be set to January 1
-    assert cdt.get_datetime_in_timezone().year == 2021
-    assert cdt.get_datetime_in_timezone().month == 1
-    assert cdt.get_datetime_in_timezone().day == 1
-    # and time should be midnight of (in timezone-based version)
-    assert 'T00:00:00' in cdt.isoformat_in_timezone()
-    # but we are only this specific:
-    assert cdt.specificity == Specificities.year
-
-    # another quicky check of day-level specificity
-    cdt = ComplexDateTime.from_list([1999, 5, 31], 'US/Eastern')
-    assert cdt
-    assert cdt.get_datetime_in_timezone().year == 1999
-    assert cdt.get_datetime_in_timezone().month == 5
-    assert cdt.get_datetime_in_timezone().day == 31
-    assert 'T00:00:00' in cdt.isoformat_in_timezone()
-    assert cdt.specificity == Specificities.day
+    cdt = ComplexDateTime.from_data(dtdata)
 
     # now some comparisons.  note this assumes we have not traveled back in time prior to 1999.
     dt_later = datetime.datetime.utcnow()
@@ -229,7 +132,9 @@ def test_nlp_time():
     refdate = '2019-08-15'
     text = 'a week ago at 3:30'
     try:
-        cdt = nlp_parse_complex_date_time(text, reference_date=refdate, tz='US/Mountain')
+        cdt = nlp_parse_complex_date_time(
+            text, reference_date=refdate, timezone='US/Mountain'
+        )
     except RuntimeError:
         pytest.skip('NLP jar files not available')
     assert cdt
@@ -257,6 +162,35 @@ def test_nlp_time():
 
     cdt = nlp_parse_complex_date_time('i have no idea')
     assert not cdt
+
+    cdt = nlp_parse_complex_date_time('2021', reference_date='fubar')
+    assert not cdt
+
+    # this should work
+    cdt = nlp_parse_complex_date_time(
+        '2021', reference_date=refdate, timezone='US/Pacific'
+    )
+    assert cdt
+
+    # since only year passed, should be set to January 1
+    assert cdt.get_datetime_in_timezone().year == 2021
+    assert cdt.get_datetime_in_timezone().month == 1
+    assert cdt.get_datetime_in_timezone().day == 1
+    # and time should be midnight of (in timezone-based version)
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
+    # but we are only this specific:
+    assert cdt.specificity == Specificities.year
+
+    # another quicky check of day-level specificity
+    cdt = nlp_parse_complex_date_time(
+        '1999:05:31', reference_date=refdate, timezone='US/Eastern'
+    )
+    assert cdt
+    assert cdt.get_datetime_in_timezone().year == 1999
+    assert cdt.get_datetime_in_timezone().month == 5
+    assert cdt.get_datetime_in_timezone().day == 31
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
+    assert cdt.specificity == Specificities.day
 
 
 @pytest.mark.skipif(

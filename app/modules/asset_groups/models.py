@@ -169,7 +169,18 @@ class AssetGroupSighting(db.Model, HoustonModel):
         ):
             self.init_progress_detection()  # ensure we have one
             self.progress_detection.skip('No assets were submitted')
-
+            # All encounters need to be allocated a pseudo guid. This is done by the
+            # begin_ia_pipeline if there are assets
+            for encounter_num in range(len(self.sighting_config['encounters'])):
+                if 'guid' not in self.sighting_config['encounters'][encounter_num]:
+                    with db.session.begin(subtransactions=True):
+                        self.sighting_config['encounters'][encounter_num]['guid'] = str(
+                            uuid.uuid4()
+                        )
+                        # sighting_config is actually an alias, need to rewrite the top level DB item
+                        self.config = self.config
+                        db.session.merge(self)
+                        db.session.refresh(self)
             self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
 
@@ -264,7 +275,18 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 individual = None
                 if DEFAULT_NAME_CONTEXT in req_data:
                     individual = Individual.get_by_name(req_data[DEFAULT_NAME_CONTEXT])
-
+                try:
+                    # will raise ValueError if data no good
+                    if 'time' in req_data:
+                        time = ComplexDateTime.from_data(req_data)
+                    else:
+                        time = None
+                except ValueError as ve:
+                    raise HoustonException(
+                        log,
+                        f'Problem with sighting time/timeSpecificity values: {str(ve)}',
+                        obj=self,
+                    )
                 assert 'guid' in req_data
                 new_encounter = Encounter(
                     individual=individual,
@@ -277,9 +299,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     taxonomy_guid=req_data.get('taxonomy'),
                     verbatim_locality=req_data.get('verbatimLocality'),
                     sex=req_data.get('sex'),
+                    time=time,
                     custom_fields=req_data.get('customFields', {}),
                 )
-                new_encounter.set_time_from_data(req_data)
 
                 if 'individualUuid' in req_data:
                     ind_guid = req_data['individualUuid']
@@ -315,7 +337,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 sighting.delete()
                 raise HoustonException(
                     log,
-                    f'Problem with creating encounter [{encounter_num}]: {ex}',
+                    f'Problem with creating encounter [{encounter_num}]: {ex}'
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
 

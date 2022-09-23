@@ -23,6 +23,9 @@ from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID, utils
 
 log = logging.getLogger('pytest.conftest')  # pylint: disable=invalid-name
 
+# So that every single util does not need to be passed the flask_config to get stuff, read it all at test startup
+# and have it accessible from here. Populated in  create_test_data autouse function below
+test_config = {}
 
 # Force FLASK_ENV to be testing instead of using what's defined in the environment
 os.environ['FLASK_ENV'] = 'testing'
@@ -215,9 +218,12 @@ def email_setup(flask_app):
 def create_test_data(db, flask_app_client, admin_user):
     import tests.modules.site_settings.resources.utils as site_setting_utils
 
-    site_setting_utils.get_and_ensure_test_regions(flask_app_client, admin_user)
+    test_config['regions'] = site_setting_utils.get_and_ensure_test_regions(
+        flask_app_client, admin_user
+    )
 
-    # Potentially add taxonomy too
+    taxonomy = site_setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    test_config['taxonomy_guid'] = taxonomy['id']
     yield
     # Do not remove afterwards as not supported
 

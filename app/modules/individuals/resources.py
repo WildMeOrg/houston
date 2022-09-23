@@ -136,7 +136,7 @@ class Individuals(Resource):
         if error_messages:  # something failed
             msg = f"problem with passed values: {'; '.join(error_messages)}"
             log.error(f'Individual.post: {msg}. Aborting Individual creation.')
-            abort(500, msg)
+            abort(400, msg)
 
         # finally make the Individual if all encounters are found
         individual = Individual(

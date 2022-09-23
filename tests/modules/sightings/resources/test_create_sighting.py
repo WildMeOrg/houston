@@ -12,26 +12,31 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
-timestamp = datetime.datetime.now().isoformat() + '+00:00'
+timestamp = test_utils.isoformat_timestamp_now()
 
 valid_lat = 25.9999
 valid_long = 25.9999
-# Used in multiple tests so only have it once
-saturn_data = {
-    'time': timestamp,
-    'timeSpecificity': 'time',
-    'locationId': str(uuid.uuid4()),
-    'encounters': [
-        {
-            'locationId': str(uuid.uuid4()),
-            'decimalLatitude': valid_lat,
-            'decimalLongitude': valid_long,
-            'verbatimLocality': 'Saturn',
-            'time': '2010-01-01T01:01:01+00:00',
-            'timeSpecificity': 'time',
-        },
-    ],
-}
+
+
+# Used in multiple tests so only have it once, but needs to be a function, not static data as the
+# autouse function that creates the regions is run before this is called
+def get_saturn_data():
+
+    return {
+        'time': timestamp,
+        'timeSpecificity': 'time',
+        'locationId': test_utils.get_valid_location_id(),
+        'encounters': [
+            {
+                'locationId': test_utils.get_valid_location_id(),
+                'decimalLatitude': valid_lat,
+                'decimalLongitude': valid_long,
+                'verbatimLocality': 'Saturn',
+                'time': '2010-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
+            },
+        ],
+    }
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -54,7 +59,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
     )
 
     data_in = {
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'time': timestamp,
         'timeSpecificity': 'time',
     }
@@ -69,7 +74,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         'time': timestamp,
         'timeSpecificity': 'time',
         'assetReferences': [{'fail': 'fail'}],
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     expected_error = "Invalid assetReference data {'fail': 'fail'}"
     sighting_utils.create_sighting(
@@ -95,7 +100,6 @@ def test_create_and_modify_and_delete_sighting(
     from app.modules.sightings.models import Sighting
 
     regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
-    region1_id = regions[0]['id']
     region2_id = regions[1]['id']
 
     # we should end up with these same counts (which _should be_ all zeros!)
@@ -104,7 +108,7 @@ def test_create_and_modify_and_delete_sighting(
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': region1_id,
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in
@@ -260,7 +264,7 @@ def test_create_and_modify_and_delete_sighting(
             {
                 'op': 'add',
                 'path': '/encounters',
-                'value': {'locationId': region1_id},
+                'value': {'locationId': test_utils.get_valid_location_id()},
             }
         ],
     )
@@ -339,7 +343,7 @@ def test_create_anon_and_delete_sighting(
     sighting_data = {
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [{}],
         'assetReferences': [test_filename, 'fluke.jpg'],
     }
@@ -391,7 +395,7 @@ def test_create_anon_and_delete_sighting(
         assert sorted(a['guid'] for a in response.json['assets']) == asset_guids
 
     # test some modification; this should fail (401) cuz anon should not be allowed
-    new_loc_id = str(uuid.uuid4())
+    new_loc_id = test_utils.get_valid_location_id(1)
     sighting_utils.patch_sighting(
         flask_app_client,
         None,
@@ -407,13 +411,18 @@ def test_create_anon_and_delete_sighting(
     module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
 )
 def test_edm_and_houston_encounter_data_within_sightings(
-    db, flask_app_client, researcher_1, staff_user, request, test_root
+    db,
+    flask_app_client,
+    researcher_1,
+    staff_user,
+    request,
+    test_root,
 ):
 
     json = None
     try:
         uuids = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, request, test_root, saturn_data
+            flask_app_client, researcher_1, request, test_root, get_saturn_data()
         )
         sighting_guid = uuids['sighting']
 
@@ -479,7 +488,7 @@ def test_edm_and_houston_encounter_data_within_sightings(
 def test_create_old_sighting(flask_app_client, researcher_1):
     error = 'Not supported. Use the AssetGroup POST API instead'
     sighting_utils.create_old_sighting(
-        flask_app_client, researcher_1, saturn_data, 400, error
+        flask_app_client, researcher_1, get_saturn_data(), 400, error
     )
 
 
@@ -492,7 +501,7 @@ def test_complex_misc_patch(
 ):
 
     uuids = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, request, test_root, saturn_data
+        flask_app_client, researcher_1, request, test_root, get_saturn_data()
     )
     sighting_guid = uuids['sighting']
 
@@ -573,35 +582,35 @@ def test_create_sighting_time_test(
     sighting_data = {
         'time': 'fubar',
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [{}],
     }
-    uuids = sighting_utils.create_sighting(
+    sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error='time field is not a valid datetime: fubar',
     )
 
     # now ok, but missing timezone
     sighting_data['time'] = '1999-12-31T23:59:59'
-    uuids = sighting_utils.create_sighting(
+    sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error=f"timezone cannot be derived from time: {sighting_data['time']}",
     )
 
     # timezone included, but no specificity
     sighting_data['time'] = '1999-12-31T23:59:59+03:00'
     del sighting_data['timeSpecificity']
-    uuids = sighting_utils.create_sighting(
+    sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
@@ -613,14 +622,14 @@ def test_create_sighting_time_test(
 
     # getting closer; bad specificity
     sighting_data['timeSpecificity'] = 'fubar'
-    uuids = sighting_utils.create_sighting(
+    sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error='timeSpecificity fubar not supported',
     )
 
     # finally; ok
@@ -650,7 +659,7 @@ def test_admin_user(db, flask_app_client, researcher_1, test_root, admin_user, r
         'encounters': [{}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in

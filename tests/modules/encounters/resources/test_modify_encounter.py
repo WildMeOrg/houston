@@ -7,6 +7,7 @@ import uuid
 import pytest
 
 from tests import utils
+from tests import utils as test_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -31,9 +32,9 @@ def test_modify_encounter(
     from app.modules.encounters.models import Encounter
 
     data_in = {
-        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'time': test_utils.isoformat_timestamp_now(),
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
             {'locationId': str(uuid.uuid4())},
@@ -423,18 +424,28 @@ def test_create_encounter_time_test(
         ],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
-    uuids = sighting_utils.create_sighting(
+    sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error='timeSpecificity field missing',
     )
-
+    # Now TimeSpecificity, but still garbage time
+    sighting_data['encounters'][0]['timeSpecificity'] = 'time'
+    sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=400,
+        expected_error='time field is not a valid datetime: fubar',
+    )
     # now ok, but missing timezone
     sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59'
     uuids = sighting_utils.create_sighting(
@@ -443,23 +454,12 @@ def test_create_encounter_time_test(
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
-    )
-
-    # timezone included, but no specificity
-    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59+03:00'
-    uuids = sighting_utils.create_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error='timezone cannot be derived from time: 1999-12-31T23:59:59',
     )
 
     # getting closer; bad specificity
+    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59+03:00'
     sighting_data['encounters'][0]['timeSpecificity'] = 'fubar'
     uuids = sighting_utils.create_sighting(
         flask_app_client,
@@ -467,8 +467,8 @@ def test_create_encounter_time_test(
         request,
         test_root,
         sighting_data=sighting_data,
-        expected_status_code=200,
-        commit_expected_status_code=400,
+        expected_status_code=400,
+        expected_error='timeSpecificity fubar not supported',
     )
 
     # finally; ok
@@ -489,54 +489,9 @@ def test_create_encounter_time_test(
     assert test_enc.time.specificity == Specificities.day
     assert test_enc.time.isoformat_in_timezone() == sighting_data['encounters'][0]['time']
 
-    # now test dict-value version
-    test_dt_str = '2000-01-01T01:02:03'
-    del sighting_data['encounters'][0]['timeSpecificity']
-    sighting_data['encounters'][0]['time'] = {
-        'datetime': test_dt_str,
-        'timezone': 'US/Eastern',
-        'specificity': 'month',
-    }
-    uuids = sighting_utils.create_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        sighting_data=sighting_data,
-        expected_status_code=200,
-    )
-    assert uuids
-    test_enc = Encounter.query.get(uuids['encounters'][0])
-    assert test_enc
-    assert test_enc.time
-    assert test_enc.time.specificity == Specificities.month
-    assert test_enc.time.isoformat_utc() == test_dt_str
-
-    # now list/components
-    sighting_data['encounters'][0]['time'] = {
-        'components': [2021, 12],
-        'timezone': 'US/Mountain',
-        # specificity should be deduced as month
-    }
-    uuids = sighting_utils.create_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        sighting_data=sighting_data,
-        expected_status_code=200,
-    )
-    assert uuids
-    test_enc = Encounter.query.get(uuids['encounters'][0])
-    assert test_enc
-    assert test_enc.time
-    assert test_enc.time.specificity == Specificities.month
-    assert test_enc.time.isoformat_utc().startswith('2021-12-01T')
-
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
-    sighting_time = '2000-01-01T01:01:01+00:00'
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     encounter_guid = uuids['encounters'][0]
 
@@ -553,13 +508,11 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
         ],
         expected_status_code=409,
     )
-    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
     assert (
         patch_resp.json['message'] == 'decimalLongitude value passed (999.9) is invalid'
     )
-    assert read_resp.json['time'] == sighting_time
 
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = test_utils.isoformat_timestamp_now()
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,
@@ -570,13 +523,11 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
         ],
         expected_status_code=409,
     )
-    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
     assert 'Failed to update Encounter details.' in patch_resp.json['message']
-    assert read_resp.json['time'] == sighting_time
 
     lat = utils.random_decimal_latitude()
     long = utils.random_decimal_longitude()
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = test_utils.isoformat_timestamp_now()
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,
@@ -588,8 +539,5 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
             {'op': 'add', 'path': '/owner', 'value': str(uuid.uuid4())},
         ],
         expected_status_code=409,
-    ).json
-    read_resp = enc_utils.read_encounter(
-        flask_app_client, researcher_1, encounter_guid
     ).json
     assert "('field_name', 'owner')]) could not succeed." in patch_resp['message']

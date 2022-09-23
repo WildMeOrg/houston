@@ -15,7 +15,6 @@ from dateutil import tz
 
 import app.extensions.logging as AuditLog
 from app.extensions import db
-from app.utils import normalized_timezone_string
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -65,108 +64,46 @@ class ComplexDateTime(db.Model):
 
     specificity = db.Column(db.Enum(Specificities), index=True, nullable=False)
 
-    # will throw ValueError for various problems, including via datetime constructor (based on values)
     @classmethod
-    def from_list(cls, parts, timezone, specificity=None):
-        if not parts or not isinstance(parts, list):
-            raise ValueError('must pass list of datetime components (with at least year)')
-        if not timezone:
-            raise ValueError('must provide a time zone')
-        if not tz.gettz(timezone):
-            raise ValueError(f'unrecognized time zone {timezone}')
-        if specificity and (
-            not isinstance(specificity, Specificities) or specificity not in Specificities
-        ):
-            raise ValueError(f'invalid specificity {specificity}')
+    def check_config_data_validity(cls, data):
+        error = None
+        if not data or not isinstance(data, dict):
+            error = 'No data passed in'
+        elif 'time' not in data:
+            error = 'time field missing'
+        elif not isinstance(data['time'], str):
+            error = 'time field must be a string'
+        elif 'timeSpecificity' not in data:
+            error = 'timeSpecificity field missing'
+        elif not isinstance(data['timeSpecificity'], str):
+            error = 'timeSpecificity field must be a string'
 
-        # now we ascertain specificity if we dont have it
-        if not specificity:
-            if len(parts) == 1:
-                specificity = Specificities.year
-            elif len(parts) == 2:
-                specificity = Specificities.month
-            elif len(parts) == 3:
-                specificity = Specificities.day
-            else:
-                specificity = Specificities.time
+        if not error:
+            date_time_str = data['time']
+            try:
+                # will throw ValueError if invalid
+                date_time = datetime.datetime.fromisoformat(date_time_str)
+                if not date_time.tzinfo:
+                    error = f'timezone cannot be derived from time: {date_time_str}'
+            except ValueError:
+                error = f'time field is not a valid datetime: {date_time_str}'
+            spec_string = data['timeSpecificity']
+            if not Specificities.has_value(spec_string):
+                error = f'timeSpecificity {spec_string} not supported'
 
-        # now we pad out parts (dont need to do hour/min/sec as they have defaults of 0 in constructor)
-        if len(parts) == 1:
-            parts.append(1)  # add january
-        if len(parts) == 2:
-            parts.append(1)  # add 1st of month
-        # will throw ValueError if bunk data passed in
-        dt = datetime.datetime(*parts, tzinfo=tz.gettz(timezone))
-        return ComplexDateTime(dt, timezone, specificity)
+        return error is None, error
 
-    # this accepts a dict which is roughly "user input".  it will look for a mix of items passed in,
-    #   but requires `time` to be one of them.   valid combinations include:
-    #   1. time, timeSpecificity - time is iso8601 and must have timezone
-    #   2. time = {datetime:, timezone:, specificity:} - timezone optional here iff included in datetime iso8601
-    #   3. time = {components: [], timezone:, specificity:} - components = [Y, M, D, h, m, s]; specificity is optional
-    #  note: heavy-lifting really done by from_dict() below
     @classmethod
     def from_data(cls, data):
-        if not data or not isinstance(data, dict) or 'time' not in data:
-            AuditLog.frontend_fault(
-                log, f'invalid data for ComplexDateTime.from_data(): {data}'
-            )
-            raise ValueError(f'invalid data: {data}')
-        time_data = data['time']
-        if isinstance(time_data, str):
-            time_data = {
-                'datetime': data['time'],
-                'specificity': data.get('timeSpecificity'),
-            }
-        elif not isinstance(time_data, dict):
-            AuditLog.frontend_fault(
-                log, f'invalid data type for ComplexDateTime.from_data(): {time_data}'
-            )
-            raise ValueError(f'invalid data: {time_data}')
-        return cls.from_dict(time_data)
+        is_valid, error = cls.check_config_data_validity(data)
+        if not is_valid:
+            AuditLog.frontend_fault(log, error)
+            raise ValueError(error)
 
-    # see notes above; this only wants a dict passed in
-    @classmethod
-    def from_dict(cls, data):
-        if not data or not isinstance(data, dict):
-            AuditLog.frontend_fault(
-                log, f'invalid data for ComplexDateTime.from_dict(): {data}'
-            )
-            raise ValueError(f'time parsing error, invalid data: {data}')
-        if 'components' in data:
-            if not isinstance(data['components'], list):
-                AuditLog.frontend_fault(
-                    log,
-                    f'components element not a list in ComplexDateTime.from_dict(): {data}',
-                )
-                raise ValueError('time parsing error, components must be a list')
-            return cls.from_list(
-                data['components'], data.get('timezone'), data.get('specificity')
-            )
-        dt_str = data.get('datetime')
-        if not dt_str:
-            AuditLog.frontend_fault(
-                log, f'no datetime for ComplexDateTime.from_dict(): {data}'
-            )
-            raise ValueError('time parsing error, missing datetime value')
-        dt = datetime.datetime.fromisoformat(dt_str)  # will throw ValueError if invalid
-        timezone = data.get('timezone')
-        if not timezone:  # hope we can get one from datetime
-            if not dt.tzinfo:
-                AuditLog.frontend_fault(
-                    log,
-                    f'no timezone in data and cannot be derived from datetime: {data}',
-                )
-                raise ValueError(
-                    f'time parsing error, timezone not passed and cannot be derived from {dt_str}'
-                )
-            timezone = normalized_timezone_string(dt)
-        spec_str = data.get('specificity')
-        if not spec_str or not Specificities.has_value(spec_str):
-            AuditLog.frontend_fault(log, f'no/invalid specificity: {data}')
-            raise ValueError('time parsing error, invalid specificity')
-        specificity = Specificities[spec_str]
-        return ComplexDateTime(dt, timezone, specificity)
+        date_time = datetime.datetime.fromisoformat(data['time'])
+        timezone = cls._normalized_timezone_string(date_time)
+        specificity = Specificities[data['timeSpecificity']]
+        return ComplexDateTime(date_time, timezone, specificity)
 
     def __repr__(self):
         return (
@@ -186,7 +123,15 @@ class ComplexDateTime(db.Model):
         return self.datetime.astimezone(self.get_timezone_object())
 
     def get_timezone_normalized(self):
-        return normalized_timezone_string(self.get_datetime_in_timezone())
+        return self._normalized_timezone_string(self.get_datetime_in_timezone())
+
+    # in a nutshell dt.tzname() *sucks*.  i am not sure what it is showing, but its bunk.
+    #   this is an attempt to get a string *that can be read back in above*
+    @classmethod
+    def _normalized_timezone_string(cls, dt):
+        if not dt or not isinstance(dt, datetime.datetime):
+            raise ValueError('must pass datetime object')
+        return dt.strftime('UTC%z')
 
     def isoformat_utc(self):
         return self.datetime.isoformat()
@@ -200,7 +145,6 @@ class ComplexDateTime(db.Model):
         import pytz
 
         from app.modules.complex_date_time.models import ComplexDateTime, Specificities
-        from app.utils import normalized_timezone_string
 
         from .models import db
 
@@ -220,7 +164,7 @@ class ComplexDateTime(db.Model):
                 dt = datetime.datetime.fromisoformat(value)
                 if not dt.tzinfo:
                     raise ValueError(f'passed value {value} does not have time zone data')
-                timezone = normalized_timezone_string(dt)
+                timezone = cls._normalized_timezone_string(dt)
                 log.debug(f'patch field={field} value => {dt} + {timezone}')
             else:
                 if not Specificities.has_value(value):
@@ -250,18 +194,6 @@ class ComplexDateTime(db.Model):
             time_cfd = ComplexDateTime(dt, timezone, specificity)
             with db.session.begin(subtransactions=True):
                 db.session.add(time_cfd)
-            obj.time = time_cfd
-            obj.time_guid = time_cfd.guid
-            return True
-
-        elif field == 'time' and isinstance(value, dict):
-            time_cfd = ComplexDateTime.from_dict(value)
-            with db.session.begin(subtransactions=True):
-                db.session.add(time_cfd)
-            old_cdt = ComplexDateTime.query.get(obj.time_guid)
-            if old_cdt:
-                with db.session.begin(subtransactions=True):
-                    db.session.delete(old_cdt)
             obj.time = time_cfd
             obj.time_guid = time_cfd.guid
             return True

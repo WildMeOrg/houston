@@ -36,14 +36,11 @@ def add_individual(flask_app_client, user, request, enc_id):
 def create_individuals(flask_app_client, user, request, test_root, num_individuals=3):
 
     # Create a sighting with three encounters
-    sighting_data = {
-        'time': '2000-01-01T01:01:01+00:00',
-        'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
-        'encounters': [],
-    }
-    for enc_id in range(0, num_individuals):
-        sighting_data['encounters'].append({'locationId': str(uuid.uuid4())})
+    sighting_data = test_utils.dummy_sighting_info()
+    for enc_id in range(1, num_individuals):
+        sighting_data['encounters'].append(
+            {'locationId': test_utils.get_valid_location_id()}
+        )
 
     uuids = sighting_utils.create_sighting(
         flask_app_client, user, request, test_root, sighting_data

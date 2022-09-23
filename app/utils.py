@@ -4,8 +4,6 @@
 Houston Common utils
 --------------------------
 """
-
-import datetime
 import logging
 
 from flask_login import current_user  # NOQA
@@ -114,60 +112,6 @@ def get_celery_data(task_id):
     return None, None
 
 
-# will throw ValueError if cant parse string
-#  also *requires* timezone on iso string or will ValueError
-def iso8601_to_datetime_with_timezone(iso):
-    dt = datetime.datetime.fromisoformat(iso)
-    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-        raise ValueError(f'no time zone provided in {iso}')
-    return dt
-
-
-# this "should" handle cases such as: tzstring='+07:00', '-0400', 'US/Pacific'
-def datetime_as_timezone(dt, tzstring):
-    from dateutil import tz
-
-    if not dt or not isinstance(dt, datetime.datetime):
-        raise ValueError('must pass datetime object')
-    zone = tz.gettz(tzstring)
-    if not zone:
-        raise ValueError(f'unknown time zone value "{tzstring}"')
-    return dt.astimezone(zone)
-
-
-# in a nutshell dt.tzname() *sucks*.  i am not sure what it is showing, but its bunk.
-#   this is an attempt to get a string *that can be read back in above*
-def normalized_timezone_string(dt):
-    if not dt or not isinstance(dt, datetime.datetime):
-        raise ValueError('must pass datetime object')
-    return dt.strftime('UTC%z')
-
-
-# converts string like 'Wed, 25 May 2022 00:16:42 GMT' which is what datetime is stringified as
-#   we make assumption here that utcnow() is being used to create datetime, so please always do that
-def datetime_string_to_isoformat(dts):
-    import re
-    from datetime import datetime
-
-    if not isinstance(dts, str):
-        return None
-
-    # if are already in isoformat, just return
-    # has timezone:
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*[\+\-Z].*', dts):
-        return dts
-    # no timezone:
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*', dts):
-        return dts + 'Z'
-
-    try:
-        d = datetime.strptime(dts, '%a, %d %b %Y %H:%M:%S %Z')
-    except ValueError as err:
-        log.warning(f'could not convert {dts}: {str(err)}')
-        return None
-    return d.isoformat() + 'Z'
-
-
 # As some filenames are problematic, may contain special chars ";&/." etc store all filenames as a hash of the
 # original filename but maintain the extension
 def get_stored_filename(input_filename):
@@ -180,8 +124,12 @@ def get_stored_filename(input_filename):
 
 
 def nlp_parse_complex_date_time(
-    text, reference_date=None, tz='UTC', time_specificity=None
+    text, reference_date=None, timezone='UTC', time_specificity=None
 ):
+    import datetime
+
+    import pytz
+    from dateutil import tz
     from sutime import SUTime
 
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
@@ -216,8 +164,32 @@ def nlp_parse_complex_date_time(
                 # winter is weird - is it this year or next ... or last?
                 value = value[:5] + '01'
             parts = [int(p) for p in value.split('-')]
+
+            # now we ascertain specificity if we dont have it
+            if not time_specificity:
+                if len(parts) == 1:
+                    time_specificity = Specificities.year
+                elif len(parts) == 2:
+                    time_specificity = Specificities.month
+                elif len(parts) == 3:
+                    time_specificity = Specificities.day
+                else:
+                    time_specificity = Specificities.time
+            # now we pad out parts (dont need to do hour/min/sec as they have defaults of 0 in constructor)
+            if len(parts) == 1:
+                parts.append(1)  # add january
+            if len(parts) == 2:
+                parts.append(1)  # add 1st of month
+
             try:
-                return ComplexDateTime.from_list(parts, tz, time_specificity)
+                # Now need to make a string for the time plus tz to pass to CDT.
+                date_time = datetime.datetime(*parts, tzinfo=tz.gettz(timezone))
+                return ComplexDateTime.from_data(
+                    {
+                        'time': date_time.isoformat(),
+                        'timeSpecificity': time_specificity,
+                    }
+                )
             except Exception as ex:
                 log.warning(
                     f'nlp_parse_complex_date_time(): DATE exception on value={value} [from {res}]: {str(ex)}'
@@ -234,13 +206,15 @@ def nlp_parse_complex_date_time(
             elif value[-3:] == 'TNI':
                 value = value[:11] + '22:00'
             try:
+                # Now need to make a string for the time plus tz to pass to CDT.
+                tzinfo = pytz.timezone(timezone)
+                date_time = datetime.datetime.fromisoformat(value)
+                if not time_specificity:
+                    time_specificity = Specificities.time
                 return ComplexDateTime.from_data(
                     {
-                        'time': {
-                            'datetime': value,
-                            'timezone': tz,
-                            'specificity': Specificities.time,
-                        }
+                        'time': tzinfo.localize(date_time).isoformat(),
+                        'timeSpecificity': time_specificity,
                     }
                 )
             except Exception as ex:

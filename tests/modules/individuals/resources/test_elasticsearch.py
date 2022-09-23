@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import uuid
-
 import pytest
 
 from app.extensions import elasticsearch as es
@@ -74,7 +72,6 @@ def test_individual_elasticsearch_mappings(
     reason='Elasticsearch extension disabled',
 )
 def test_returned_schema(flask_app_client, researcher_1, admin_user, request, test_root):
-    import datetime
 
     from app.modules.individuals.models import Individual
     from tests.modules.site_settings.resources import utils as setting_utils
@@ -83,17 +80,17 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
     response = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     tx_guid = response['id']
 
-    timestamp = datetime.datetime.now().isoformat() + '+00:00'
+    timestamp = test_utils.isoformat_timestamp_now()
     sighting_data = {
         'encounters': [
             {
-                'locationId': str(uuid.uuid4()),
+                'locationId': test_utils.get_valid_location_id(),
                 'taxonomy': tx_guid,
                 'time': timestamp,
                 'timeSpecificity': 'time',
             }
         ],
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'time': timestamp,
         'timeSpecificity': 'time',
         'taxonomies': tx_guid,

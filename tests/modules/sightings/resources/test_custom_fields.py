@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import uuid
 
 import pytest
 
+from tests import utils as test_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import module_unavailable
@@ -20,8 +20,6 @@ def test_custom_fields_on_sighting(
     test_asset_group_uuid,
     request,
 ):
-    import datetime
-
     from app.modules.sightings.models import Sighting
 
     cfd_id = setting_utils.custom_field_create(
@@ -33,14 +31,14 @@ def test_custom_fields_on_sighting(
     )
     assert cfd_multi_id is not None
 
-    timestamp = datetime.datetime.now().isoformat() + '+00:00'
+    timestamp = test_utils.isoformat_timestamp_now()
     # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     cfd_test_value = 'CFD_TEST_VALUE'
     cfd_multi_value = ['one', 'two']
     data_in = {
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'customFields': {
             cfd_id: cfd_test_value,
             cfd_multi_id: cfd_multi_value,

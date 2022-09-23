@@ -6,7 +6,6 @@ Asset_group resources utils
 import json
 import os
 import shutil
-import uuid
 from unittest import mock
 
 import tests.extensions.tus.utils as tus_utils
@@ -73,8 +72,6 @@ def create_simple_asset_group_uuids(flask_app_client, user, request, test_root):
 
 # Helper that does what the above method does but for multiple files and multiple encounters in the sighting
 def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
-    import uuid
-
     import tests.extensions.tus.utils as tus_utils
     from tests import utils as test_utils
 
@@ -82,23 +79,24 @@ def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
     uuids = {'transaction': transaction_id}
     request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
 
-    locationId = str(uuid.uuid4())
+    regions = test_utils.get_region_ids()
+
     sighting_data = {
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': locationId,
+        'locationId': regions[0],
         'encounters': [
             {
                 'decimalLatitude': test_utils.random_decimal_latitude(),
                 'decimalLongitude': test_utils.random_decimal_longitude(),
                 'verbatimLocality': 'Tiddleywink',
-                'locationId': locationId,
+                'locationId': regions[0],
             },
             {
                 'decimalLatitude': test_utils.random_decimal_latitude(),
                 'decimalLongitude': test_utils.random_decimal_longitude(),
                 'verbatimLocality': 'Tiddleywink',
-                'locationId': locationId,
+                'locationId': regions[0],
             },
         ],
         'assetReferences': [
@@ -574,8 +572,7 @@ def create_asset_group_extract_uuids(
 
 class AssetGroupCreationData(object):
     def __init__(self, transaction_id, filename=None, populate_default=True):
-        import uuid
-
+        regions = test_utils.get_region_ids()
         if not populate_default:
             self.content = {}
         else:
@@ -590,7 +587,7 @@ class AssetGroupCreationData(object):
                     {
                         'time': '2000-01-01T01:01:01+00:00',
                         'timeSpecificity': 'time',
-                        'locationId': str(uuid.uuid4()),
+                        'locationId': regions[0],
                         'encounters': [{}],
                     },
                 ],
@@ -603,12 +600,12 @@ class AssetGroupCreationData(object):
             self.content['sightings'][sighting]['assetReferences'] = []
         self.content['sightings'][sighting]['assetReferences'].append(filename)
 
-    def add_sighting(
-        self,
-    ):
+    def add_sighting(self):
+        regions = test_utils.get_region_ids()
+
         self.content['sightings'].append(
             {
-                'locationId': str(uuid.uuid4()),
+                'locationId': regions[0],
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
                 'assetReferences': [],

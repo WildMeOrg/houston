@@ -72,44 +72,34 @@ def create_sighting(
     commit_user=None,
     add_annot=False,
 ):
-    import tests.modules.site_settings.resources.utils as site_setting_utils
 
     if not commit_user:
         commit_user = asset_group_user
 
-    regions = site_setting_utils.get_and_ensure_test_regions(
-        flask_app_client, commit_user
-    )
-    region1_id = regions[0]['id']
-
-    if not sighting_data:
-        # Create a valid but simple one
-        sighting_data = {
-            'encounters': [{}],
-            'time': '2000-01-01T01:01:01+00:00',
-            'timeSpecificity': 'time',
-            'locationId': region1_id,
-        }
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     uuids = {'transaction': transaction_id}
-    group_data = {
-        'description': 'This is a test asset_group, please ignore',
-        'uploadType': 'form',
-        'speciesDetectionModel': ['None'],
-        'transactionId': transaction_id,
-        'sightings': [
-            sighting_data,
-        ],
-    }
+    group_data = test_utils.dummy_form_group_data(transaction_id)
+    if sighting_data:
+        # Override dummy sighting data with whatever caller provided
+        group_data['sightings'] = [sighting_data]
+
+        # caller may not have provided empty assertRefs, so ensure it's there
+        if 'assetReferences' not in group_data['sightings'][0].keys():
+            group_data['sightings'][0]['assetReferences'] = []
+
+        # For multiple encounters, it must be a bulk upload
+        if 'encounters' in sighting_data and len(sighting_data['encounters']) > 1:
+            group_data['uploadType'] = 'bulk'
 
     # Need to add the new filename to the sighting for the Asset group code to process it
-    if 'assetReferences' not in group_data['sightings'][0].keys():
-        group_data['sightings'][0]['assetReferences'] = []
     if test_filename not in group_data['sightings'][0]['assetReferences']:
         group_data['sightings'][0]['assetReferences'].append(test_filename)
 
     # For multiple encounters, it must be a bulk upload
-    if 'encounters' in sighting_data and len(sighting_data['encounters']) > 1:
+    if (
+        'encounters' in group_data['sightings']
+        and len(group_data['sightings']['encounters']) > 1
+    ):
         group_data['uploadType'] = 'bulk'
 
     # Use shared helper to create the asset group and extract the uuids

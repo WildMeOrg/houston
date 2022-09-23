@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-
-import datetime
-import uuid
-
 import pytest
 
 import tests.modules.sightings.resources.utils as sighting_utils
+from tests import utils as test_utils
 from tests.utils import module_unavailable
 
-timestamp = datetime.datetime.now().isoformat() + '+00:00'
+timestamp = test_utils.isoformat_timestamp_now()
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -18,7 +15,7 @@ def test_sighting_patch_add(db, flask_app_client, researcher_1, request, test_ro
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in

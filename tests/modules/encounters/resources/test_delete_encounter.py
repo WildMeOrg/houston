@@ -21,9 +21,9 @@ def test_delete_method(
     orig_ct = test_utils.all_count(db)
 
     data_in = {
-        'time': test_utils.timestamp(),
+        'time': test_utils.isoformat_timestamp_now(),
         'timeSpecificity': 'time',
-        'locationId': str(uuid.uuid4()),
+        'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
             {'locationId': str(uuid.uuid4())},

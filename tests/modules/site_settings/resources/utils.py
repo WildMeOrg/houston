@@ -104,28 +104,6 @@ def read_main_settings(
     )
 
 
-def read_main_settings_definition(
-    flask_app_client,
-    user,
-    conf_path='block',
-    expected_status_code=200,
-):
-    path = f'{SETTING_PATH}/definition/main/{conf_path}'
-    return _read_settings(
-        flask_app_client, user, path, expected_status_code, response_200={'response'}
-    )
-
-
-def read_file(flask_app_client, user, filename, expected_status_code=302):
-    path = f'{SETTING_PATH}/file/{filename}'
-
-    # Files are special in that they have no json response so cannot be validated by the normal utils
-    resp = _read_settings(flask_app_client, user, path)
-    assert resp.status_code == expected_status_code
-
-    return resp
-
-
 def _modify_setting(
     flask_app_client,
     user,
@@ -281,44 +259,19 @@ def patch_main_setting(
     )
 
 
-def _delete_setting(
-    flask_app_client,
-    user,
-    conf_path,
-    expected_status_code=200,
-):
-    res = test_utils.delete_via_flask(
-        flask_app_client,
-        user,
-        scopes='site-settings:write',
-        path=conf_path,
-        expected_status_code=expected_status_code,
-    )
-
-    return res
-
-
 def delete_main_setting(
     flask_app_client,
     user,
     conf_key,
     expected_status_code=204,
 ):
-    if conf_key == 'block':
-        path = f'{SETTING_PATH}/data'
-    else:
-        path = f'{SETTING_PATH}/data/{conf_key}'
-    return _delete_setting(flask_app_client, user, path, expected_status_code)
-
-
-def delete_file(
-    flask_app_client,
-    user,
-    conf_key,
-    expected_status_code=204,
-):
-    path = f'{SETTING_PATH}/file/{conf_key}'
-    _delete_setting(flask_app_client, user, path, expected_status_code)
+    return test_utils.delete_via_flask(
+        flask_app_client,
+        user,
+        scopes='site-settings:write',
+        path=f'{SETTING_PATH}/data/{conf_key}',
+        expected_status_code=expected_status_code,
+    )
 
 
 def extract_from_main_block(main_block, field):

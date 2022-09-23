@@ -322,7 +322,7 @@ def transfer_data_setting():
         conf_keys.remove(cfcat)
         conf_keys.insert(0, cfcat)
     for conf_key in conf_keys:
-        if not SiteSetting.is_houston_setting(conf_key):
+        if not SiteSetting.is_valid_setting(conf_key):
             print(f'{conf_key} unknown houston_setting; skipping')
             continue
         value = edm_conf[conf_key].get('value')

@@ -282,7 +282,7 @@ def test_alter_custom_field_categories(flask_app_client, admin_user):
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_dict_write(flask_app_client, admin_user):
+def test_dict_write(flask_app_client, admin_user, regular_user):
     # Create json site setting
     import uuid
 
@@ -291,11 +291,17 @@ def test_dict_write(flask_app_client, admin_user):
         {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
 
+    conf_utils.modify_main_settings(
+        flask_app_client, regular_user, data, 'social_group_roles', 403
+    )
     resp = conf_utils.modify_main_settings(
         flask_app_client, admin_user, data, 'social_group_roles'
     )
 
     assert resp.json['key'] == 'social_group_roles'
+    conf_utils.delete_main_setting(
+        flask_app_client, regular_user, 'social_group_roles', 403
+    )
 
     conf_utils.delete_main_setting(flask_app_client, admin_user, 'social_group_roles')
 

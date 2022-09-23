@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import json
 from pathlib import Path
 
 import pytest
@@ -15,10 +14,7 @@ from tests.utils import (
 )
 
 
-@pytest.mark.skipif(
-    module_unavailable('social_groups'), reason='Social Groups module disabled'
-)
-def test_file_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
+def setup_logo(db, test_root, request):
     zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
     with db.session.begin():
@@ -27,96 +23,74 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
     logo_image = SiteSetting.set_key_value('logo', fup.guid)
     request.addfinalizer(lambda: db.session.delete(logo_image))
 
-    # Get site setting without logging in
-    resp = flask_app_client.get('/api/v1/site-settings/file/logo')
-    assert resp.status_code == 302
-    resp = flask_app_client.get(resp.location)
+
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
+def test_file_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
+    setup_logo(db, test_root, request)
+
+    # Get image without logging inn (in the way that the FE does it)
+    block = site_setting_utils.read_main_settings(flask_app_client, None).json
+    logo_path = block['site.images']['logo']
+    resp = flask_app_client.get(logo_path)
     assert resp.status_code == 200
     assert resp.content_type == 'image/jpeg'
     resp.close()
-    filename = 'splashImage'
-    with flask_app_client.login(
-        admin_user, auth_scopes=('site-settings:read', 'site-settings:write')
-    ):
-        # Create site setting using transactionId
-        upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
-        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
-            copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
 
-            resp = flask_app_client.post(
-                f'/api/v1/site-settings/data/{filename}',
-                data=json.dumps(
-                    {
-                        'value': {
-                            'transactionId': transaction_id,
-                        }
-                    }
-                ),
-            )
-            assert resp.status_code == 200, resp.data
-            assert resp.json['key'] == filename
-            assert resp.json['value'] != str(fup.guid)
-            filename_guid = resp.json['value']
-            resp = flask_app_client.get(f'/api/v1/site-settings/data/{filename}')
-            assert resp.status_code == 200
-            assert resp.json == {
-                'key': filename,
-                'value': filename_guid,
-            }
+    upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
 
-        # Edit site setting using transactionId with 2 files
-        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
-            write_uploaded_file('a.txt', Path(td), '1234')
-            write_uploaded_file('b.txt', Path(td), '5678')
-            resp = flask_app_client.post(
-                '/api/v1/site-settings/data/logo',
-                data=json.dumps(
-                    {
-                        'value': {
-                            'transactionId': transaction_id,
-                        }
-                    }
-                ),
-            )
-            assert resp.status_code == 422
-            assert (
-                resp.json['message']
-                == f'Transaction {transaction_id} has 2 files, need exactly 1.'
-            )
+    with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
+        transaction_id = Path(td).name[len('trans-') :]
+        copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
 
-        # Edit site setting using transactionId and transactionPath
-        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
-            write_uploaded_file('a.txt', Path(td), '1234')
+        splash_image_data = site_setting_utils.modify_main_settings(
+            flask_app_client, admin_user, {'transactionId': transaction_id}, 'splashImage'
+        ).json
+        assert splash_image_data['key'] == 'splashImage'
+        filename_guid = splash_image_data['value']
 
-            resp = flask_app_client.post(
-                '/api/v1/site-settings/data/logo',
-                data=json.dumps(
-                    {
-                        'value': {
-                            'transactionId': transaction_id,
-                            'transactionPath': 'a.txt',
-                        }
-                    }
-                ),
-            )
-            assert resp.status_code == 200
-            assert resp.json['key'] == 'logo'
+        splash_read = site_setting_utils.read_main_settings(
+            flask_app_client, admin_user, 'splashImage'
+        ).json
+        assert splash_read['key'] == 'splashImage'
+        assert splash_read['value'] == filename_guid
 
-        # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/data/logo')
-        assert resp.status_code == 204
-        resp = flask_app_client.delete(f'/api/v1/site-settings/data/{filename}')
-        assert resp.status_code == 204
+    # Edit site setting using transactionId with 2 files
+    with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
+        transaction_id = Path(td).name[len('trans-') :]
+        write_uploaded_file('a.txt', Path(td), '1234')
+        write_uploaded_file('b.txt', Path(td), '5678')
+        resp = site_setting_utils.modify_main_settings(
+            flask_app_client, admin_user, {'transactionId': transaction_id}, 'logo', 422
+        ).json
+        assert (
+            resp['message']
+            == f'Transaction {transaction_id} has 2 files, need exactly 1.'
+        )
 
-        # List site settings
-        resp = flask_app_client.get('/api/v1/site-settings/file')
-        assert resp.status_code == 200
-        assert resp.json == []
+    # Edit site setting using transactionId and transactionPath
+    with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
+        transaction_id = Path(td).name[len('trans-') :]
+        write_uploaded_file('a.txt', Path(td), '1234')
+        file_data = {
+            'transactionId': transaction_id,
+            'transactionPath': 'a.txt',
+        }
+        resp = site_setting_utils.modify_main_settings(
+            flask_app_client, admin_user, file_data, 'logo'
+        ).json
+
+        assert resp['key'] == 'logo'
+
+    # Delete site setting
+    site_setting_utils.delete_main_setting(flask_app_client, admin_user, 'logo')
+    site_setting_utils.delete_main_setting(flask_app_client, admin_user, 'splashImage')
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
 def test_file_setting_block(
     admin_user, flask_app_client, flask_app, db, request, test_root
 ):
@@ -135,44 +109,30 @@ def test_file_setting_block(
         site_setting_utils.modify_main_settings(flask_app_client, admin_user, data)
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
 def test_site_settings_permissions(
     regular_user, flask_app_client, flask_app, db, request, test_root
 ):
-    zebra_path = test_root / 'zebra.jpg'
-    fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
-    with db.session.begin():
-        db.session.add(fup)
-    request.addfinalizer(lambda: fup.delete())
-    header_image = SiteSetting.set_key_value('logo', fup.guid)
-    request.addfinalizer(lambda: db.session.delete(header_image))
+    setup_logo(db, test_root, request)
 
-    with flask_app_client.login(
-        regular_user, auth_scopes=('site-settings:read', 'site-settings:write')
-    ):
-        # Create site setting
-        resp = flask_app_client.post(
-            '/api/v1/site-settings/file',
-            data={
-                'key': 'splashImage',
-                'file_upload_guid': str(fup.guid),
-            },
+    upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
+    with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
+        transaction_id = Path(td).name[len('trans-') :]
+        copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
+
+        # Regular user cannot write images
+        site_setting_utils.modify_main_settings(
+            flask_app_client,
+            regular_user,
+            {'transactionId': transaction_id},
+            'splashImage',
+            403,
         )
-        assert resp.status_code == 403
-
-        # Edit site setting
-        resp = flask_app_client.post(
-            '/api/v1/site-settings/file',
-            data={
-                'key': 'logo',
-                'file_upload_guid': str(fup.guid),
-            },
+        site_setting_utils.modify_main_settings(
+            flask_app_client, regular_user, {'transactionId': transaction_id}, 'logo', 403
         )
-        assert resp.status_code == 403
 
-        # List site settings
-        resp = flask_app_client.get('/api/v1/site-settings/file')
-        assert resp.status_code == 403
-
-        # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/file/logo')
-        assert resp.status_code == 403
+        # or delete them
+        site_setting_utils.delete_main_setting(flask_app_client, regular_user, 'logo', 403)

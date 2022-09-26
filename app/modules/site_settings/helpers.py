@@ -476,10 +476,14 @@ class SiteSettingCustomFields(object):
                 value[0] = float(value[0])
             if isinstance(value[1], int):
                 value[1] = float(value[1])
-            if not util.is_valid_latitude(value[0]):
+            if not value[0] and not value[1]:
+                if cf_defn.get('required', False):
+                    log.debug('latlong is mandatory')
+                    return False
+            elif not util.is_valid_latitude(value[0]):
                 log.debug(f'latlong latitude={value[0]} is invalid')
                 return False
-            if not util.is_valid_longitude(value[1]):
+            elif not util.is_valid_longitude(value[1]):
                 log.debug(f'latlong longitude={value[1]} is invalid')
                 return False
 

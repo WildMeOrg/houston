@@ -477,6 +477,7 @@ def test_set_and_reset_values(
     )
     assert _set_and_reset_test(db, sight, cfd_id, [0.001, 120]) == 0
     assert _set_and_reset_test(db, sight, cfd_id, [333, 444]) == 1
+    assert _set_and_reset_test(db, sight, cfd_id, [None, None]) == 0
 
     # individual
     indiv = Individual()

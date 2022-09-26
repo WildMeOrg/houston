@@ -138,7 +138,7 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert not SiteSettingCustomFields.is_valid_value(defn, 'test')
     assert not SiteSettingCustomFields.is_valid_value(defn, '')
-    assert not SiteSettingCustomFields.is_valid_value(defn, None)
+    assert SiteSettingCustomFields.is_valid_value(defn, None)
     assert SiteSettingCustomFields.is_valid_value(defn, 'b')
 
     # multiselect
@@ -410,6 +410,54 @@ def test_set_and_reset_values(
     assert _set_and_reset_test(db, sight, cfd_id, 'test') == 0
     assert _set_and_reset_test(db, sight, cfd_id, 100) == 1
     assert _set_and_reset_test(db, enc, cfd_id, 'test') == 1
+
+    # select (not required)
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_select_cfd',
+        displayType='select',
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
+        },
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, 'a') == 0
+    assert _set_and_reset_test(db, sight, cfd_id, None) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, 'c') == 1
+
+    # select (required)
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_select_required_cfd',
+        displayType='select',
+        required=True,
+        schema_mods={
+            'choices': [{'label': 'A', 'value': 'a'}, {'label': 'B', 'value': 'b'}],
+        },
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, 'a') == 0
+    assert _set_and_reset_test(db, sight, cfd_id, None) == 1
+    assert _set_and_reset_test(db, sight, cfd_id, 'c') == 1
+
+    # select (required, but None in choices)
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_select_required_nullchoice_cfd',
+        displayType='select',
+        required=True,
+        schema_mods={
+            'choices': [
+                {'label': 'A', 'value': 'a'},
+                {'label': 'B', 'value': 'b'},
+                {'label': 'NONE', 'value': None},
+            ],
+        },
+    )
+    assert _set_and_reset_test(db, sight, cfd_id, 'a') == 0
+    assert _set_and_reset_test(db, sight, cfd_id, None) == 0
+    assert _set_and_reset_test(db, sight, cfd_id, 'c') == 1
 
     # integer, multiple
     cfd_id = setting_utils.custom_field_create(

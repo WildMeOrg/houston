@@ -366,18 +366,14 @@ class SiteSettingCustomFields(object):
             return True  # all passed
 
         # since we arent multiple, we let None be acceptable except:
-        #   1. we are required
+        #   1. we are required  -and-
         #   2. we have choices (that dont include None)
         if value is None:
-            if cf_defn.get('required', False):
-                log.debug('required=True, but value=None')
-                return False
-            # kinda weird case?  i guess multiselect being None (rather than empty []) is ok if not required?
-            if dtype == 'multiselect':
+            # special case when required + None is allowed (via choices)
+            if cf_defn.get('required', False) and choices and None in choices:
                 return True
-            # this basically only applies to select
-            if choices and None not in choices:
-                log.debug(f'value=None but None not in choices {choices}')
+            if cf_defn.get('required', False):
+                log.debug('required=True, but value=None (and None not in choices)')
                 return False
             return True
 

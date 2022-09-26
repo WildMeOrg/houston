@@ -476,7 +476,7 @@ class SiteSettingCustomFields(object):
                 value[0] = float(value[0])
             if isinstance(value[1], int):
                 value[1] = float(value[1])
-            if not value[0] and not value[1]:
+            if value[0] is None and value[1] is None:
                 if cf_defn.get('required', False):
                     log.debug('latlong is mandatory')
                     return False

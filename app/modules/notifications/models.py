@@ -47,6 +47,8 @@ class NotificationType(str, enum.Enum):
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
     individual_merge_blocked = 'individual_merge_blocked'
+    # this is a grouping of the above three
+    individual_merge_all = 'individual_merge_all'
 
 
 # Can send messages out on multiple channels
@@ -125,6 +127,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.individual_merge_blocked: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.individual_merge_all: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -263,6 +269,7 @@ NOTIFICATION_CONFIG = {
             'deadline',
         },
         'allow_multiple': True,
+        'subtype_of': NotificationType.individual_merge_all,
     },
     NotificationType.individual_merge_complete: {
         'email_template_name': 'individual_merge_complete',
@@ -272,6 +279,7 @@ NOTIFICATION_CONFIG = {
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'subtype_of': NotificationType.individual_merge_all,
     },
     NotificationType.individual_merge_blocked: {
         'email_template_name': 'individual_merge_blocked',
@@ -283,6 +291,7 @@ NOTIFICATION_CONFIG = {
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'subtype_of': NotificationType.individual_merge_all,
     },
     NotificationType.raw: {
         'email_template_name': 'raw',
@@ -465,6 +474,12 @@ class Notification(db.Model, HoustonModel):
         # In future the channels to send right now will be different for digest generation
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
         channels = user_prefs.get(self.message_type, {})
+        super_type = NOTIFICATION_CONFIG[self.message_type].get('subtype_of')
+        if super_type:
+            channels = user_prefs.get(super_type, channels)
+            log.debug(
+                f'{self.message_type} is a subtype_of {super_type}: channels now {channels}'
+            )
         for name in channels:
             # If user set a channel to False in "all", it overrides the
             # local channel setting

@@ -525,7 +525,7 @@ class CustomFieldMixin(object):
                 f'value "{value}" not valid for customField definition id {cfd_id} (on {self})'
             )
             raise ValueError(
-                f'Value "{value}" not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
+                f'Value "{value}" is not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
             )
         cf = self.custom_fields or {}
         cf[cfd_id] = SiteSettingCustomFields.serialize_value(
@@ -565,7 +565,7 @@ class CustomFieldMixin(object):
                     f'value "{value}" not valid for customField definition id {cfd_id} (on {self})'
                 )
                 raise ValueError(
-                    f'Value "{value}" not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
+                    f'Value "{value}" is not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
                 )
             cf[cfd_id] = SiteSettingCustomFields.serialize_value(
                 self.__class__.__name__, cfd_id, value

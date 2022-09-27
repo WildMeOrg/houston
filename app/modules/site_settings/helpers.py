@@ -319,6 +319,14 @@ class SiteSettingCustomFields(object):
                 {f'site.custom.customFields.{class_name}': {'definitions': new_list}}
             )
 
+    @classmethod
+    # tries to always return at least _something_
+    def nice_name(cls, class_name, guid):
+        defn = cls.get_definition(class_name, guid) or {'id': guid}
+        if 'schema' in defn and defn['schema'].get('label'):
+            return defn['schema']['label']
+        return defn.get('name') or defn.get('id', 'UNKNOWN')
+
     # expects cf_defn as from above
     # NOTE this is very very likely incomplete.  the 'type' value in definitions are quite complex.
     #    probably need to check in with FE for what is actually needed

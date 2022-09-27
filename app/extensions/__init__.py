@@ -391,6 +391,7 @@ if elasticsearch is None:
         def elasticsearch(self, *args, **kwargs):
             return []
 
+
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -409,6 +410,7 @@ if sage is None:
 
     class SageModel(object):
         pass
+
 
 else:
 
@@ -519,8 +521,11 @@ class CustomFieldMixin(object):
         if not SiteSettingCustomFields.is_valid_value_for_class(
             self.__class__.__name__, cfd_id, value
         ):
+            log.error(
+                f'value "{value}" not valid for customField definition id {cfd_id} (on {self})'
+            )
             raise ValueError(
-                f'value {value} not valid for customField definition id {cfd_id} (on {self})'
+                f'Value "{value}" not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
             )
         cf = self.custom_fields or {}
         cf[cfd_id] = SiteSettingCustomFields.serialize_value(
@@ -556,8 +561,11 @@ class CustomFieldMixin(object):
             if not SiteSettingCustomFields.is_valid_value_for_class(
                 self.__class__.__name__, cfd_id, value
             ):
+                log.error(
+                    f'value "{value}" not valid for customField definition id {cfd_id} (on {self})'
+                )
                 raise ValueError(
-                    f'value {value} not valid for customField definition id {cfd_id} (on {self})'
+                    f'Value "{value}" not valid for {SiteSettingCustomFields.nice_name(self.__class__.__name__, cfd_id)}'
                 )
             cf[cfd_id] = SiteSettingCustomFields.serialize_value(
                 self.__class__.__name__, cfd_id, value

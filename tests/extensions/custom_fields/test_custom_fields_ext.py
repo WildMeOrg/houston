@@ -210,8 +210,10 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
     assert SiteSettingCustomFields.is_valid_value(defn, 123)
     assert SiteSettingCustomFields.is_valid_value(defn, -123)
     assert SiteSettingCustomFields.is_valid_value(defn, 0)
+    assert SiteSettingCustomFields.is_valid_value(defn, '123')
     assert SiteSettingCustomFields.is_valid_value(defn, None)
     assert not SiteSettingCustomFields.is_valid_value(defn, 123.123)
+    assert not SiteSettingCustomFields.is_valid_value(defn, '123.123')
     assert not SiteSettingCustomFields.is_valid_value(defn, 1.0)
     assert not SiteSettingCustomFields.is_valid_value(defn, 0.0)  # i dont make the rules
     assert not SiteSettingCustomFields.is_valid_value(defn, 'word')
@@ -230,6 +232,8 @@ def test_is_valid_value(flask_app, flask_app_client, admin_user, db):
     defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
     assert SiteSettingCustomFields.is_valid_value(defn, 123.1)
     assert SiteSettingCustomFields.is_valid_value(defn, -123.2)
+    assert SiteSettingCustomFields.is_valid_value(defn, '-123.2')
+    assert SiteSettingCustomFields.is_valid_value(defn, 123)
     assert SiteSettingCustomFields.is_valid_value(defn, 0.0)
     assert SiteSettingCustomFields.is_valid_value(defn, None)
     #   we now allow ints to be cast as floats.  sorrynotsorry

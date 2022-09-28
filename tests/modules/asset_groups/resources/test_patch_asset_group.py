@@ -56,6 +56,25 @@ def test_patch_asset_group(
         400,
         expected_resp,
     )
+    patch_data = [utils.patch_replace_op('time', None)]
+    expected_resp = "Failed to update AssetGroupSighting details. Operation OrderedDict([('op', 'replace'), ('path', '/time'), ('value', None), ('field_name', 'time')]) could not succeed."
+
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+        patch_data,
+        409,
+        expected_resp,
+    )
+
+    patch_data = [utils.patch_replace_op('time', '2020-05-01T00:00:00+01:00')]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+        patch_data,
+    )
 
     # Valid patch, adding a new encounter
     patch_data = [utils.patch_add_op('encounters', {})]

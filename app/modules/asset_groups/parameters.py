@@ -160,6 +160,40 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             cls.validate_asset_references(obj, value)
             obj.sighting_config[field] = value
             ret_val = True
+
+        elif field == 'timeSpecificity':
+            log.debug('updating time specificity')
+            from app.modules.complex_date_time.models import ComplexDateTime
+
+            # If no time in the config, using a valid time here allows the specificity to be set
+            # This is a reasonably safe assumption as (1) This should never happen and (2) if we blocked this,
+            # it would make it actually difficult to fix and (3) The FE should always send the time anyway.
+            timeData = {
+                'time': obj.sighting_config.get('time', '2020-05-01T00:00:00+01:00'),
+                'timeSpecificity': value,
+            }
+            is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
+            if not is_valid:
+                log.warning(f'Time specificity update failed with {error}')
+            else:
+                obj.sighting_config[field] = value
+                ret_val = True
+
+        elif field == 'time':
+            log.debug('updating time')
+
+            from app.modules.complex_date_time.models import ComplexDateTime
+
+            timeData = {
+                'time': value,
+                'timeSpecificity': obj.sighting_config.get('timeSpecificity', 'time'),
+            }
+            is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
+            if not is_valid:
+                log.warning(f'Time update failed with {error}')
+            else:
+                obj.sighting_config[field] = value
+                ret_val = True
         else:
             obj.sighting_config[field] = value
             ret_val = True
@@ -215,29 +249,10 @@ class PatchAssetGroupSightingAsSightingParameters(
         ret_val = False
 
         # this is the only part with differing logic vs. PatchAssetGroupSightingDetailsParameters.
-        # We will not get the 'config' field here bc it is not on Sightings. Any fields
-        # in app.modules.asset_groups.schemas.SIGHTING_FIELDS_IN_AGS_CONFIG will be handled
-        # by the final else case
-        if field == 'idConfigs':
-            # Raises AssetGroupMetadataError on error which is intentionally unnhandled
-            AssetGroupMetadata.validate_id_configs(value, f'Sighting {obj.guid}')
-            obj.sighting_config[field] = value
-            ret_val = True
-        elif field == 'encounters':
-            # Does not make sense to replace an encounter
-            ret_val = False
-        elif field == 'assetReferences':
-            # Only supports patch of all refs as one operation
-            # Raises AssetGroupMetadataError on error which is intentionally unnhandled
-            cls.validate_asset_references(obj, value)
-            obj.sighting_config[field] = value
-            ret_val = True
-        else:
-            obj.sighting_config[field] = value
-            ret_val = True
-
-        # Force the DB write
-        obj.config = obj.config
+        # We will not get the 'config' field here bc it is not on Sightings.
+        if field != 'config':
+            log.debug(f'updating {field} as sighting to {value}')
+            return super().replace(obj, field, value, state)
 
         return ret_val
 
@@ -323,6 +338,34 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
+
+        elif field == 'timeSpecificity':
+            from app.modules.complex_date_time.models import ComplexDateTime
+
+            # If no time in the config, using a valid time here allows the specificity to be set
+            # This is a reasonably safe assumption as (1) This should never happen and (2) if we blocked this,
+            # it would make it actually difficult to fix and (3) The FE should always send the time anyway.
+            timeData = {
+                'time': encounter_metadata.get('time', '2020-05-01T00:00:00+01:00'),
+                'timeSpecificity': value,
+            }
+            is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
+            if not is_valid:
+                return False
+            else:
+                encounter_metadata[field] = value
+        elif field == 'time':
+            from app.modules.complex_date_time.models import ComplexDateTime
+
+            timeData = {
+                'time': value,
+                'timeSpecificity': encounter_metadata.get('timeSpecificity', 'time'),
+            }
+            is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
+            if not is_valid:
+                return False
+            else:
+                encounter_metadata[field] = value
         else:
             encounter_metadata[field] = value
         # force the write to the database

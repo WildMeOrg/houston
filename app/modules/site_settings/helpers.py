@@ -392,6 +392,26 @@ class SiteSettingCustomFields(object):
         if instance_type == float and isinstance(value, int):
             instance_type = int
 
+        # want int, got string, try conversion
+        if instance_type == int and isinstance(value, str):
+            try:
+                value = int(value)
+            except Exception as ex:
+                log.debug(
+                    f'value string "{value}" could not be made into an int: {str(ex)}'
+                )
+                return False
+
+        # want float, got string, try conversion
+        if instance_type == float and isinstance(value, str):
+            try:
+                value = float(value)
+            except Exception as ex:
+                log.debug(
+                    f'value string "{value}" could not be made into an float: {str(ex)}'
+                )
+                return False
+
         # try to convert str to uuid if appropriate
         if instance_type == uuid.UUID and isinstance(value, str):
             try:

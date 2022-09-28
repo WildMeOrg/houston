@@ -34,6 +34,7 @@ def test_notification_preferences(session, login, logout, codex_url):
         'individual_merge_request': {'restAPI': True, 'email': False},
         'individual_merge_blocked': {'restAPI': True, 'email': False},
         'individual_merge_complete': {'restAPI': True, 'email': False},
+        'individual_merge_all': {'restAPI': True, 'email': False},
     }
     user_guid = response.json()['guid']
 
@@ -77,6 +78,7 @@ def test_notification_preferences(session, login, logout, codex_url):
         'individual_merge_request': {'restAPI': False, 'email': False},
         'individual_merge_blocked': {'restAPI': True, 'email': False},
         'individual_merge_complete': {'restAPI': True, 'email': False},
+        'individual_merge_all': {'restAPI': True, 'email': False},
     }
 
     # DELETE user

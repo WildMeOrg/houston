@@ -100,6 +100,61 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
             db.session.delete(notification)
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_notification_message_subtype(db, researcher_1, researcher_2, flask_app, request):
+    builder = NotificationBuilder(researcher_1)
+    # weirdly this (currently) is good enough for testing:
+    builder.set_individual_merge([], [], {})
+
+    # we make user want emails in NotificationPreferences to test email-send-upon-creation
+    researcher_2.notification_preferences = []
+    notification_preferences = UserNotificationPreferences(user=researcher_2)
+    notification_preferences.preferences = {
+        NotificationType.individual_merge_request.value: {
+            'email': False,
+            'restAPI': True,
+        },
+        NotificationType.individual_merge_complete.value: {
+            'email': False,
+            'restAPI': True,
+        },
+        # this should override either of the above
+        NotificationType.individual_merge_all.value: {
+            'email': True,
+            'restAPI': True,
+        },
+        NotificationType.all.value: {'email': True},
+    }
+
+    Notification.query.delete()  # make sure no existing notifications (cuz multiple=false)
+    notification = Notification.create(
+        NotificationType.individual_merge_complete, researcher_2, builder
+    )
+    with db.session.begin():
+        db.session.add(notification)
+    request.addfinalizer(lambda: db.session.delete(notification))
+
+    # check the email we (hopefully) (did not really) sent out
+    assert 'email' in notification._channels_sent
+    sent_email = notification._channels_sent['email']
+    assert 'have been merged' in sent_email.subject
+    assert researcher_2.email in sent_email.recipients
+    assert 'merge between' in sent_email.html
+    assert '</body>' in sent_email.html
+    with db.session.begin():
+        db.session.delete(notification_preferences)
+
+    try:
+        chans = notification.channels_to_send()
+        assert set({'restAPI', 'email'}) == set(chans.keys())
+
+    finally:
+        with db.session.begin():
+            db.session.delete(notification)
+
+
 def test_validate_preferences():
     from app.modules.notifications.models import (
         NotificationChannel,

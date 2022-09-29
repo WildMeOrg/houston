@@ -175,7 +175,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                     'profile_fileupload': None,
                 },
                 'owner_guid': my_guid,
-                'annotations': [],
                 'annotations': encounters[0]['annotations'],
                 'sex': 'male',
                 'sighting': sighting_id,

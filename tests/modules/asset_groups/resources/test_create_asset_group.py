@@ -117,7 +117,9 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-        data.set_encounter_field(0, 0, 'locationId', str(uuid.uuid4))
+        invalid_guid = str(uuid.uuid4())
+        data.set_encounter_field(0, 0, 'locationId', invalid_guid)
+        resp_msg = f'Invalid locationId guid {invalid_guid} in Encounter 1.1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )

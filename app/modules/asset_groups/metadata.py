@@ -293,7 +293,8 @@ class AssetGroupMetadata(object):
                 encounter['locationId']
             ):
                 raise AssetGroupMetadataError(
-                    log, f"Invalid locationId guid {encounter['locationId']}"
+                    log,
+                    f"Invalid locationId guid {encounter['locationId']} in {debug}{encounter_num}",
                 )
 
             if 'time' in encounter or 'timeSpecificity' in encounter:

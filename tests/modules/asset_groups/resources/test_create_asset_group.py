@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import json
+import uuid
 
 import pytest
 
@@ -110,6 +111,17 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
         data.content['sightings'][0].pop('ambiguity')
+        resp_msg = 'locationId is not a valid uuid string in Encounter 1.1'
+
+        data.set_encounter_field(0, 0, 'locationId', 'Enceladus')
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.set_encounter_field(0, 0, 'locationId', str(uuid.uuid4))
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.set_encounter_field(0, 0, 'locationId', test_utils.get_valid_location_id())
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )

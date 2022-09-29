@@ -176,7 +176,8 @@ class ElasticsearchIndividualSchema(ModelSchema):
     firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
     adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
     encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
-    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    # see DEX-1457 for why this was (temporarily?) disabled
+    # social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
     sex = base_fields.Function(lambda ind: ind.get_sex())
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())
@@ -238,7 +239,8 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     firstName = base_fields.Function(lambda ind: ind.get_first_name())
     firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
     adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
-    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    # see DEX-1457 for why this was (temporarily?) disabled
+    # social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
     sex = base_fields.Function(lambda ind: ind.get_sex())
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())

@@ -144,7 +144,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
             {},
             {},
             {},
-            {'locationId': str(uuid.uuid4())},
+            {'locationId': test_utils.get_valid_location_id()},
         ],
     }
 

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import uuid
-
 import pytest
 
 from tests import utils as test_utils
@@ -26,7 +24,7 @@ def test_delete_method(
         'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
-            {'locationId': str(uuid.uuid4())},
+            {'locationId': test_utils.get_valid_location_id()},
         ],
     }
     uuids = sighting_utils.create_sighting(

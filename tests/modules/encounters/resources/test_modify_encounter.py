@@ -37,7 +37,7 @@ def test_modify_encounter(
         'locationId': test_utils.get_valid_location_id(),
         'encounters': [
             {},
-            {'locationId': str(uuid.uuid4())},
+            {'locationId': test_utils.get_valid_location_id()},
         ],
     }
 
@@ -93,7 +93,7 @@ def test_modify_encounter(
     assert new_encounter_1.owner == researcher_2
 
     # test changing locationId via patch
-    new_val = str(uuid.uuid4())
+    new_val = test_utils.get_valid_location_id(1)
     patch_data = [utils.patch_replace_op('locationId', new_val)]
     enc_utils.patch_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data

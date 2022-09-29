@@ -287,8 +287,17 @@ class AssetGroupMetadata(object):
                 f'{debug}{encounter_num}',
             )
 
-            if 'time' in encounter or 'timeSpecificity' in encounter:
+            from app.modules.site_settings.models import Regions
 
+            if 'locationId' in encounter and not Regions.is_region_guid_valid(
+                encounter['locationId']
+            ):
+                raise AssetGroupMetadataError(
+                    log,
+                    f"Invalid locationId guid {encounter['locationId']} in {debug}{encounter_num}",
+                )
+
+            if 'time' in encounter or 'timeSpecificity' in encounter:
                 is_valid, error = ComplexDateTime.check_config_data_validity(encounter)
                 if not is_valid:
                     raise AssetGroupMetadataError(log, error)

@@ -197,15 +197,23 @@ class PatchJSONParameters(Parameters):
                 objs.append(obj)
 
             if not cls._process_patch_operation(operation, obj=obj, state=state):
-                log.info(
-                    '%s patching has been stopped because of unknown operation %s',
-                    obj.__class__.__name__,
-                    operation,
-                )
-                raise ValidationError(
-                    'Failed to update %s details. Operation %s could not succeed.'
-                    % (obj.__class__.__name__, operation)
-                )
+                if 'error_message' in state:
+                    log.info(
+                        '%s patching has been stopped because of %s',
+                        obj.__class__.__name__,
+                        state['error_message'],
+                    )
+                    raise ValidationError(state['error_message'])
+                else:
+                    log.info(
+                        '%s patching has been stopped because of unknown operation %s',
+                        obj.__class__.__name__,
+                        operation,
+                    )
+                    raise ValidationError(
+                        'Failed to update %s details. Operation %s could not succeed.'
+                        % (obj.__class__.__name__, operation)
+                    )
 
         # Refresh the index for any patched object
         for obj in objs:

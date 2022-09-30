@@ -153,6 +153,7 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             ret_val = True
         elif field == 'encounters':
             # Does not make sense to replace an encounter
+            state['error_message'] = 'Not permitted to update Encounters'
             ret_val = False
         elif field == 'assetReferences':
             # Only supports patch of all refs as one operation
@@ -175,6 +176,9 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
             if not is_valid:
                 log.warning(f'Time specificity update failed with {error}')
+                state[
+                    'error_message'
+                ] = f'Sighting timeSpecificity {value} is not valid {error}'
             else:
                 obj.sighting_config[field] = value
                 ret_val = True
@@ -191,6 +195,9 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             is_valid, error = ComplexDateTime.check_config_data_validity(timeData)
             if not is_valid:
                 log.warning(f'Time update failed with {error}')
+                state[
+                    'error_message'
+                ] = f'Sighting timeSpecificity {value} is not valid {error}'
             else:
                 obj.sighting_config[field] = value
                 ret_val = True
@@ -215,12 +222,21 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             if 'encounters' in obj.sighting_config.keys():
                 if not isinstance(value, str):
                     # but fails for invalid value type
+                    state[
+                        'error_message'
+                    ] = 'Removal of encounter from sighting must be passed a valid guid'
                     ret_val = False
                 else:
                     for config_encounter in obj.sighting_config['encounters']:
                         if config_encounter['guid'] == value:
                             obj.sighting_config['encounters'].remove(config_encounter)
                             changed = True
+                            ret_val = True
+                    if not ret_val:
+                        state[
+                            'error_message'
+                        ] = 'Removal of encounter from sighting must be passed a valid guid'
+
         elif field == 'assetReferences':
             # always succeed. reference is remove or wasn't there. Either way it's not there anymore
             ret_val = True

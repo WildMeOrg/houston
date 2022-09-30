@@ -9,6 +9,19 @@ from app.utils import HoustonException
 from tests.utils import module_unavailable
 
 
+def ensure_encounter_guids(db, ags):
+    for encounter_num in range(len(ags.sighting_config['encounters'])):
+        if 'guid' not in ags.sighting_config['encounters'][encounter_num]:
+            with db.session.begin(subtransactions=True):
+                ags.sighting_config['encounters'][encounter_num]['guid'] = str(
+                    uuid.uuid4()
+                )
+                # sighting_config is actually an alias, need to rewrite the top level DB item
+                ags.config = ags.config
+                db.session.merge(ags)
+                db.session.refresh(ags)
+
+
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
@@ -61,6 +74,11 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
 
     # no assets => processed
     assert ags2.stage == AssetGroupSightingStage.processed
+    # Need to ensure all encounters in ags's have guids. The real operation of the code does this itself but as
+    # this test pokes bits of the object randomly, it needs to be done here.
+    ensure_encounter_guids(db, ags1)
+    ensure_encounter_guids(db, ags2)
+
     assert ags2.get_detection_start_time() is None
     assert ags2.get_curation_start_time() is not None
 

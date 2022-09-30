@@ -225,7 +225,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'encounterCounts': {},
         'encounters': [
             {
-                'annotations': [],
+                'annotations': encounters[0]['annotations'],
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'created': encounters[0]['created'],

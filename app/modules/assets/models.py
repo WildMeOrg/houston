@@ -118,6 +118,7 @@ class Asset(db.Model, HoustonModel, SageModel):
             'no_content_guid': [],
             'multiple_sightings': [],
             'no_sightings': [],
+            'file_not_on_disk': [],
         }
 
         # Assets must have a content guid unless they are in an AGS that is still detecting
@@ -167,6 +168,11 @@ class Asset(db.Model, HoustonModel, SageModel):
             else:
                 # Not an asset group, definitely a problem
                 result['no_sightings'].append(asset.guid)
+
+        all_assets = Asset.query.all()
+        for asset in all_assets:
+            if not asset.file_exists_on_disk():
+                result['file_not_on_disk'].append(asset.guid)
 
         return result
 
@@ -409,6 +415,11 @@ class Asset(db.Model, HoustonModel, SageModel):
         assert asset_symlink.is_symlink()
 
         return asset_symlink
+
+    def file_exists_on_disk(self):
+        symlink = self.get_symlink()
+        image_filepath = symlink.resolve()
+        return os.path.exists(image_filepath)
 
     def mime_type_major(self):
         if not self.mime_type:

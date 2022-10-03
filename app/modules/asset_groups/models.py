@@ -1573,7 +1573,7 @@ class AssetGroup(GitStore):
             'now': datetime.datetime.utcnow().isoformat(),
             # All non migrated groups have AGS, migrated groups just have assets, so use the presence of AGS to
             # set the migrated flag to True
-            'migrated': len(self.asset_group_sightings) != 0
+            'migrated': len(self.asset_group_sightings) == 0
             # no summary cuz that seems weird with only one section?
         }
         return status

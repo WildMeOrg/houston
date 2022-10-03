@@ -527,7 +527,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'identification': self._get_pipeline_status_identification(),
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
-            'migrated': False,  # always false, but just for consistency with sighting
+            'migrated': False,  # always false as AGS not created for migrated sightings
             'summary': {},
         }
         status['summary']['complete'] = (
@@ -1571,7 +1571,9 @@ class AssetGroup(GitStore):
         status = {
             'preparation': self._get_pipeline_status_preparation(),
             'now': datetime.datetime.utcnow().isoformat(),
-            'migrated': False,  # always false, but just for consistency
+            # All non migrated groups have AGS, migrated groups just have assets, so use the presence of AGS to
+            # set the migrated flag to True
+            'migrated': len(self.asset_group_sightings) != 0
             # no summary cuz that seems weird with only one section?
         }
         return status

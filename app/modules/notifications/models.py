@@ -247,6 +247,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -262,6 +263,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -277,6 +279,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -292,6 +295,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -307,6 +311,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -322,6 +327,7 @@ NOTIFICATION_CONFIG = {
             'user1_guid',
             'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -396,6 +402,7 @@ class NotificationBuilder(object):
                 return
 
             self.data['manager_name'] = current_user.full_name
+            self.data['manager_guid'] = current_user.guid
 
     def set_individual_merge(self, your_individuals, other_individuals, request_data):
         self.data['your_individuals'] = []

@@ -5,6 +5,7 @@ import uuid
 import pytest
 
 import tests.modules.collaborations.resources.utils as collab_utils
+import tests.modules.notifications.resources.utils as notif_utils
 from tests import utils
 from tests.utils import module_unavailable
 
@@ -188,6 +189,8 @@ def test_patch_collaboration_states(
 def test_patch_managed_collaboration_states(
     flask_app_client, researcher_1, researcher_2, user_manager_user, db, request
 ):
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
 
     create_resp = collab_utils.create_simple_collaboration(
         flask_app_client, researcher_1, researcher_2
@@ -270,3 +273,25 @@ def test_patch_managed_collaboration_states(
         patch_data,
     )
     collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
+
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1, 'unread'
+    ).json
+
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2, 'unread'
+    ).json
+    researcher_1_manager_edit_approvals = [
+        notif
+        for notif in researcher_1_notifs
+        if notif['message_type'] == 'collaboration_manager_edit_approved'
+    ]
+    researcher_2_manager_edit_approvals = [
+        notif
+        for notif in researcher_2_notifs
+        if notif['message_type'] == 'collaboration_manager_edit_approved'
+    ]
+    assert len(researcher_1_manager_edit_approvals) == 1
+    assert len(researcher_2_manager_edit_approvals) == 1
+    assert 'manager_name' in researcher_1_manager_edit_approvals[0]['message_values']
+    assert 'manager_name' in researcher_2_manager_edit_approvals[0]['message_values']

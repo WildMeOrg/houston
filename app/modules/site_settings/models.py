@@ -1085,7 +1085,10 @@ class Taxonomy:
         # Taxonomies is it's own DB which it isn't so we need to 'pretend'
         class TaxonomyQuery(object):
             def count(self):
-                return len(Taxonomy.get_configuration_value())
+                conf = SiteSetting.get_value('site.species')
+                if not conf or not isinstance(conf, list):
+                    return 0
+                return len(conf)
 
         return TaxonomyQuery()
 

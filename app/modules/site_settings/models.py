@@ -1078,6 +1078,17 @@ class Taxonomy:
     def get_all_names(self):
         return self.commonNames + [self.scientificName]
 
+    @classmethod
+    @property
+    def query(cls):
+        # Need to generate a query object from which count() can be called. Prometheus presumes that
+        # Taxonomies is it's own DB which it isn't so we need to 'pretend'
+        class TaxonomyQuery(object):
+            def count(self):
+                return len(Taxonomy.get_configuration_value())
+
+        return TaxonomyQuery()
+
     def __eq__(self, other):
         if not isinstance(other, Taxonomy):
             return False

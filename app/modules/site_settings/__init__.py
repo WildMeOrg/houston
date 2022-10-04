@@ -4,6 +4,7 @@ Site Settings module
 ============
 """
 
+from app.extensions import register_prometheus_model
 from app.extensions.api import api_v1
 from app.modules import is_module_enabled
 
@@ -27,3 +28,4 @@ def init_app(app, **kwargs):
     from . import models, resources  # NOQA
 
     api_v1.add_namespace(resources.api)
+    register_prometheus_model(models.Taxonomy)

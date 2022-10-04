@@ -233,7 +233,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         else:
             taxonomy_guid = self.taxonomy_guid
         if not taxonomy_guid:
-            return None
+            return []
 
         from app.modules.site_settings.models import Taxonomy
 

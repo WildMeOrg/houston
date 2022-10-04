@@ -141,6 +141,7 @@ def _update_taxonomies(*args, **kwargs):
 
     encounters_taxonomies = set(collector)
     for taxonomy in sorted(encounters_taxonomies):
+        value = collector.count(taxonomy)
         taxonomies.labels(taxonomy=taxonomy, metric='encounters').set(value)
 
     all_taxonomies = individuals_taxonomies | encounters_taxonomies

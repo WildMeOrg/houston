@@ -21,6 +21,7 @@ from tasks.codex import (
     organizations,
     progress,
     projects,
+    prometheus,
     sightings,
 )
 
@@ -37,6 +38,7 @@ namespace = Collection(
     organizations,
     progress,
     projects,
+    prometheus,
     sightings,
     run,
     edm,

@@ -126,7 +126,9 @@ def _update_taxonomies(*args, **kwargs):
 
     individuals = Individual.query.all()
     for individual in tqdm.tqdm(individuals, desc='Individuals Taxonomy'):
-        collector += individual.get_taxonomy_names()
+        tx_names = individual.get_taxonomy_names()
+        if tx_names:
+            collector += tx_names
 
     individuals_taxonomies = set(collector)
     for taxonomy in sorted(individuals_taxonomies):

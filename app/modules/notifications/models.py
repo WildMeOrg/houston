@@ -9,6 +9,8 @@ import enum
 import logging
 import uuid
 
+from flask_login import current_user
+
 from app.extensions import HoustonModel, db
 from app.utils import HoustonException
 
@@ -144,47 +146,95 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_request: {
         'email_template_name': 'collaboration_request',
         'email_digest_content_template': 'collaboration_request_digest.jinja2',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
     },
     NotificationType.collab_approved: {
         'email_template_name': 'collaboration_approved',
         'email_digest_content_template': 'collaboration_approved_digest.jinja2',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_denied: {
         'email_template_name': 'collaboration_denied',
         'email_digest_content_template': 'collaboration_denied_digest.jinja2',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_edit_request: {
         'email_template_name': 'collaboration_edit_request',
         'email_digest_content_template': 'collaboration_edit_request_digest',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
     },
     NotificationType.collab_edit_approved: {
         'email_template_name': 'collaboration_edit_approved',
         'email_digest_content_template': 'collaboration_edit_approved_digest',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_edit_denied: {
         'email_template_name': 'collaboration_edit_denied',
         'email_digest_content_template': 'collaboration_edit_denied_digest',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_edit_revoke: {
         'email_template_name': 'collaboration_edit_revoke',
         'email_digest_content_template': 'collaboration_edit_revoke_digest',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_revoke: {
         'email_template_name': 'collaboration_revoke',
         'email_digest_content_template': 'collaboration_revoke_digest',
-        'mandatory_fields': {'collaboration_guid'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
         'resolve_on_read': True,
     },
     NotificationType.collab_manager_create: {
@@ -194,10 +244,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.collab_manager_revoke: {
         'email_template_name': 'collaboration_manger_revoke',
@@ -206,10 +260,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.collab_manager_denied: {
         'email_template_name': 'collaboration_manger_denied',
@@ -218,10 +276,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.collab_manager_edit_approved: {
         'email_template_name': 'collaboration_manger_edit_approved',
@@ -230,10 +292,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.collab_manager_edit_denied: {
         'email_template_name': 'collaboration_manger_edit_denied',
@@ -242,10 +308,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.collab_manager_edit_revoke: {
         'email_template_name': 'collaboration_manger_edit_revoke',
@@ -254,10 +324,14 @@ NOTIFICATION_CONFIG = {
             'collaboration_guid',
             'user1_name',
             'user2_name',
+            'user1_guid',
+            'user2_guid',
             'manager_name',
+            'manager_guid',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
+        'managed': True,
     },
     NotificationType.individual_merge_request: {
         'email_template_name': 'individual_merge_request',
@@ -307,17 +381,28 @@ class NotificationBuilder(object):
         self.sender = sender
         self.data = {}
 
-    def set_collaboration(self, collab, manager=None):
+    def set_collaboration(self, collab, notification_type):
         self.data['collaboration_guid'] = collab.guid
         users = collab.get_users()
         assert len(users) == 2
         self.data['user1_name'] = users[0].full_name
         self.data['user2_name'] = users[1].full_name
+        self.data['user1_guid'] = users[0].guid
+        self.data['user2_guid'] = users[1].guid
 
-        if manager:
-            self.data['manager_name'] = manager.full_name
-        else:  # snh
-            self.data['manager_name'] = 'no user manager'
+        notif_config = NOTIFICATION_CONFIG.get(notification_type)
+        if not notif_config:
+            log.error(f'Notification {notification_type} has no config')
+            return
+        managed_collab = notif_config.get('managed', False)
+        if managed_collab:
+
+            if not current_user:
+                log.error(f'No current user for generating {notification_type}')
+                return
+
+            self.data['manager_name'] = current_user.full_name
+            self.data['manager_guid'] = current_user.guid
 
     def set_individual_merge(self, your_individuals, other_individuals, request_data):
         self.data['your_individuals'] = []

@@ -60,7 +60,7 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
     basic_collab = Collaboration(members, researcher_2)
     request.addfinalizer(basic_collab.delete)
 
-    builder.set_collaboration(basic_collab)
+    builder.set_collaboration(basic_collab, NotificationType.collab_request)
 
     # we make user want emails in NotificationPreferences to test email-send-upon-creation
     researcher_2.notification_preferences = []

@@ -254,7 +254,7 @@ class Collaboration(db.Model, HoustonModel):
                         NotificationType.collab_edit_request,
                     )
 
-    def _notify_user(self, sending_user, receiving_user, notification_type, manager=None):
+    def _notify_user(self, sending_user, receiving_user, notification_type):
         from app.modules.notifications.models import (
             Notification,
             NotificationBuilder,
@@ -262,7 +262,7 @@ class Collaboration(db.Model, HoustonModel):
         )
 
         builder = NotificationBuilder(sending_user)
-        builder.set_collaboration(self, manager)
+        builder.set_collaboration(self, notification_type)
         notif = Notification.create(notification_type, receiving_user, builder)
 
         if notification_type is NotificationType.collab_request:

@@ -60,13 +60,17 @@ def test_get_notifications(
     basic_collab = Collaboration(members, researcher_2, notify_users=False)
     request.addfinalizer(basic_collab.delete)
 
-    notif_to_researcher_2_data.set_collaboration(basic_collab)
+    notif_to_researcher_2_data.set_collaboration(
+        basic_collab, NotificationType.collab_request
+    )
 
     notif_to_researcher_2 = Notification.create(
         NotificationType.collab_request, researcher_2, notif_to_researcher_2_data
     )
     notif_to_researcher_1_data = NotificationBuilder(researcher_2)
-    notif_to_researcher_1_data.set_collaboration(basic_collab)
+    notif_to_researcher_1_data.set_collaboration(
+        basic_collab, NotificationType.collab_request
+    )
     notif_to_researcher_1 = Notification.create(
         NotificationType.collab_request, researcher_1, notif_to_researcher_1_data
     )

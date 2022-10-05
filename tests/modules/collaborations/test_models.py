@@ -33,8 +33,10 @@ def test_collaboration_create_with_members(
             assert association.read_approval_state == 'approved'
         else:
             assert association.read_approval_state == 'pending'
-
-    manager_collab = Collaboration(members, user_manager_user)
+    with mock.patch(
+        'app.modules.notifications.models.current_user', new=user_manager_user
+    ):
+        manager_collab = Collaboration(members, user_manager_user)
     request.addfinalizer(manager_collab.delete)
 
     request.addfinalizer(manager_collab.delete)

@@ -11,8 +11,8 @@ def update(context, debug=False):
     """
     Manually update prometheus, very useful for debugging
     """
-    from app.extensions.prometheus import update
+    from app.extensions.prometheus.tasks import prometheus_update
 
     if debug:
         breakpoint()
-    update()
+    prometheus_update()

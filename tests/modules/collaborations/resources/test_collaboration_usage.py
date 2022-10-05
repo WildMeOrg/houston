@@ -31,6 +31,16 @@ def test_use_collaboration(
         'user_guid': str(researcher_1.guid),
     }
 
+    # should not work and should give informative error
+    ags_resp = asset_group_utils.read_asset_group_sighting(
+        flask_app_client, researcher_2, uuids['asset_group_sighting'], 403
+    ).json
+    access_error = f"You do not have permission to view AssetGroupSighting {uuids['asset_group_sighting']}. "
+    access_error += (
+        f'To do this, you need a view collaboration with {researcher_1.full_name}'
+    )
+    assert ags_resp['message'] == access_error
+
     collab_utils.create_collaboration(flask_app_client, researcher_2, data)
     collabs = Collaboration.query.all()
     collab = collabs[0]
@@ -58,8 +68,10 @@ def test_use_collaboration(
     enc_patch = [
         test_utils.patch_replace_op('taxonomy', taxonomy_guid),
     ]
-    expected_err = f'You have permission to view but not edit Encounter {enc_guid}. '
-    expected_err += f'You will need to upgrade your collaboration with {researcher_1.full_name} to an edit collaboration to do so'
+    expected_err = f'You do not have permission to edit Encounter {enc_guid}. '
+    expected_err += (
+        f'To do this, you need an edit collaboration with {researcher_1.full_name}'
+    )
     enc_utils.patch_encounter(
         flask_app_client, enc_guid, researcher_2, enc_patch, 403, expected_err
     )
@@ -72,8 +84,10 @@ def test_use_collaboration(
             'value': {'rotate': {'angle': -90}},
         },
     ]
-    expected_err = f'You have permission to view but not edit Asset {asset_guid}. '
-    expected_err += f'You will need to upgrade your collaboration with {researcher_1.full_name} to an edit collaboration to do so'
+    expected_err = f'You do not have permission to edit Asset {asset_guid}. '
+    expected_err += (
+        f'To do this, you need an edit collaboration with {researcher_1.full_name}'
+    )
 
     asset_utils.patch_asset(
         flask_app_client, uuids['assets'][0], researcher_2, asset_patch, 403, expected_err
@@ -91,6 +105,8 @@ def test_use_collaboration(
         sighting_patch,
         expected_status_code=403,
     )
-    expected_err = f'You have permission to view but not edit Sighting {sighting_guid}. '
-    expected_err += f'You will need to upgrade your collaboration with {researcher_1.full_name} to an edit collaboration to do so'
+    expected_err = f'You do not have permission to edit Sighting {sighting_guid}. '
+    expected_err += (
+        f'To do this, you need an edit collaboration with {researcher_1.full_name}'
+    )
     assert sighting_patch_resp.json['message'] == expected_err

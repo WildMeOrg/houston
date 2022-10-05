@@ -14,7 +14,13 @@ from tests.utils import module_unavailable
 # helpers to make object and module reading and writing testing more intuitive
 class NotARealClass(object):
     # fake class for the module tests as the code checks against None
-    pass
+    def get_all_owners(self):
+        return []
+
+
+class MockObj(Mock):
+    def get_all_owners(self):
+        return []
 
 
 def validate_can_read_object(obj):
@@ -221,7 +227,7 @@ def test_AdminRolePermission_authenticated_user_with_password_not_admin(
 
 def test_ObjectAccessPermission_anonymous_user(anonymous_user_login):
     # pylint: disable=unused-argument
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: True
 
     # anon user should only be able to read public data
@@ -237,7 +243,7 @@ def test_ObjectAccessPermission_anonymous_user(anonymous_user_login):
 
 def test_ObjectAccessPermission_authenticated_user(authenticated_user_login):
     # pylint: disable=unused-argument
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: True
 
     # regular user should have same permissions as anon user for objects they don't own
@@ -276,7 +282,7 @@ def test_ObjectAccessPermission_admin_user(
 ):
     # pylint: disable=unused-argument
 
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: False
 
     # Admin user should not be able to do what they like
@@ -416,7 +422,7 @@ def test_ObjectAccessPermission_researcher_user(
     validate_cannot_write_object(temp_user)
     validate_cannot_delete_object(temp_user)
 
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: False
 
     # Researcher user should not be able to access everything
@@ -469,7 +475,7 @@ def test_ObjectAccessPermission_contributor_user(
     validate_cannot_write_object(temp_user)
     validate_cannot_delete_object(temp_user)
 
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: False
 
     # contributor user should not be able to access everything
@@ -491,14 +497,14 @@ def test_ObjectAccessPermission_contributor_user(
     validate_cannot_delete_object(owned_encounter)
 
     # project, encounter, asset permitted via project
-    project1 = Mock(is_public=lambda: False, get_encounters=lambda: [])
-    project2 = Mock(is_public=lambda: False)
+    project1 = MockObj(is_public=lambda: False, get_encounters=lambda: [])
+    project2 = MockObj(is_public=lambda: False)
     project2.get_encounters.return_value = [Mock(get_assets=lambda: []), owned_encounter]
-    mock_asset = Mock(__class__=Asset, is_public=lambda: False)
-    project3 = Mock(is_public=lambda: False)
+    mock_asset = MockObj(__class__=Asset, is_public=lambda: False)
+    project3 = MockObj(is_public=lambda: False)
     project3.get_encounters.return_value = [Mock(get_assets=lambda: [mock_asset])]
     # object that is not a project, encounter or asset
-    mock_other = Mock(is_public=lambda: False)
+    mock_other = MockObj(is_public=lambda: False)
     projects = [project1, project2, project3]
 
     with patch.object(contributor_1_login, 'owns_object', return_value=False):
@@ -540,7 +546,7 @@ def test_ObjectAccessPermission_user_manager_user(
     validate_can_write_object(temp_user)
     validate_can_delete_object(temp_user)
 
-    obj = Mock()
+    obj = MockObj()
     obj.is_public = lambda: False
 
     # user manager user should not be able to access non user stuff

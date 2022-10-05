@@ -73,13 +73,19 @@ def test_modify_encounter(
         utils.patch_replace_op('owner', str(researcher_2.guid)),
     ]
 
+    access_error = (
+        f'You do not have permission to edit Encounter {new_encounter_1.guid}. '
+    )
+    access_error += (
+        f'To do this, you need an edit collaboration with {researcher_1.full_name}'
+    )
     enc_utils.patch_encounter(
         flask_app_client,
         new_encounter_1.guid,
         researcher_2,
         new_owner_as_res_2,
         403,
-        "You don't have the permission to access the requested resource.",
+        access_error,
     )
     assert new_encounter_1.owner == researcher_1
 

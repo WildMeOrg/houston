@@ -423,7 +423,7 @@ def test_patch(
     patch_all_members = [test_utils.patch_replace_op('members', different_members)]
 
     # should not be allowed by regular user
-    access_error = "You don't have the permission to access the requested resource."
+    access_error = f'You do not have permission to edit SocialGroup {group_guid}. '
     soc_group_utils.patch_social_group(
         flask_app_client, regular_user, group_guid, patch_all_members, 403, access_error
     )

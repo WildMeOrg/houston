@@ -416,12 +416,38 @@ class ObjectActionRule(Rule):
         ):
             message = 'You have permission to view but not edit '
             message += f'{self._obj.__class__.__name__} {self._obj.guid}. '
+            message += 'To do this, you need an edit collaboration with '
             owners = self._obj.get_all_owners()
             if len(owners) == 1:
-                message += f'You will need to upgrade your collaboration with {owners[0].full_name} to an edit collaboration to do so'
+                message += f'{owners[0].full_name}'
             else:
                 owner_names = [owner.full_name for owner in owners]
-                message += f'You will need an edit collaboration with any of {owner_names} to do so'
+                message += f'any of {owner_names}'
+
+        # Another error seen is when the user has no collaboration at all with the owners
+        # Again, make the error more helpful to the user
+        if (
+            self._user
+            and not self._user.is_anonymous
+            and self._user.is_active
+            and not self._permitted_via_collaboration(self._action)
+        ):
+            collab_operation = 'view' if self._action == AccessOperation.READ else 'edit'
+            # cos this would be annoying if wrong
+            article = 'a' if self._action == AccessOperation.READ else 'an'
+            message = 'You do not have permission to '
+            message += (
+                f'{collab_operation} {self._obj.__class__.__name__} {self._obj.guid}. '
+            )
+            owners = self._obj.get_all_owners()
+            if len(owners):
+                message += f'To do this, you need {article} {collab_operation} collaboration with '
+                if len(owners) == 1:
+                    message += f'{owners[0].full_name}'
+                else:
+                    owner_names = [owner.full_name for owner in owners]
+                    message += f'any of {owner_names}'
+
         return abort(code=HTTPStatus.FORBIDDEN, message=message)
 
     def any_table_driven_permission(self):

@@ -330,6 +330,7 @@ def send_update(data):
         client_secret = oauth_user.get('client_secret')
 
         token_url = url_for('api.auth_o_auth2_tokens', _external=True)
+        token_url = 'http://houston:5000/api/v1/auth/tokens'
 
         client = BackendApplicationClient(
             client_id=client_id, scope=['prometheus:read', 'prometheus:write']
@@ -343,5 +344,6 @@ def send_update(data):
         )
 
         update_url = url_for('api.prometheus_prometheus_update', _external=True)
+        update_url = 'http://houston:5000'  # need actual url here
         response = session.request('POST', update_url, json=data)
         return response

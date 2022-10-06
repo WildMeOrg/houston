@@ -322,13 +322,18 @@ def transfer_data_setting():
         conf_keys.remove(cfcat)
         conf_keys.insert(0, cfcat)
     for conf_key in conf_keys:
-        if not SiteSetting.is_valid_setting(conf_key):
-            print(f'{conf_key} unknown houston_setting; skipping')
+        new_key = conf_key
+        if conf_key == 'site.custom.customFields.Occurrence':
+            new_key = 'site.custom.customFields.Sighting'
+        if conf_key == 'site.custom.customFields.MarkedIndividual':
+            new_key = 'site.custom.customFields.Individual'
+        if not SiteSetting.is_valid_setting(new_key):
+            print(f'{new_key} unknown houston_setting; skipping')
             continue
         value = edm_conf[conf_key].get('value')
         if conf_key == 'site.custom.regions':
             Regions.guidify(value)  # adds a real uuid for ids, if not already
-        SiteSetting.set_key_value(conf_key, value)
+        SiteSetting.set_key_value(new_key, value)
 
 
 def transfer_data_encounter():
@@ -448,7 +453,11 @@ def transfer_data_individual():
     print('individual edm data transfer started')
     for indiv in tqdm.tqdm(indivs):
         response = app.edm.get_dict('individual.data_complete', indiv.guid)
-        assert isinstance(response, dict)
+        if not isinstance(response, dict):
+            log.warning(
+                f'individual {indiv.guid} missing from EDM: response=({response})'
+            )
+            continue
         assert response.get('success', False)
         edm_data = response['result']
         sex = edm_data.get('sex')

@@ -149,6 +149,13 @@ class Progress(db.Model, Timestamp):
 
     @property
     def ahead(self):
+        try:
+            return self._attempt_ahead()
+        except Exception as ex:
+            log.warning(f'failed getting ahead on {self} due to {ex}')
+        return None
+
+    def _attempt_ahead(self):
         import json
 
         import redis

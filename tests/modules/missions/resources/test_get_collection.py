@@ -25,7 +25,6 @@ def test_get_mission_collection_by_search(flask_app_client, admin_user, test_roo
     mission_guid = response.json['guid']
     temp_mission = Mission.query.get(mission_guid)
     assert len(temp_mission.collections) == 0
-    filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
     previous_list = mission_utils.read_all_mission_collections(
         flask_app_client, admin_user
@@ -35,7 +34,7 @@ def test_get_mission_collection_by_search(flask_app_client, admin_user, test_roo
     new_mission_collections = []
     for index in range(3):
         transaction_id = str(random_guid())
-        tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id, filename=filenames[index])
+        tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
         transaction_ids.append(transaction_id)
 
         nonce, description = mission_utils.make_name('mission collection')

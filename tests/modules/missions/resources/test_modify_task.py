@@ -239,22 +239,6 @@ def test_owner_permission(flask_app_client, admin_user, admin_user_2, test_root)
         )
         assert response.json['title'] == 'An owner modified test task, please ignore'
 
-        # anyone can update is_complete (add/replace should be same thing)
-        data = [
-            # utils.patch_test_op(admin_user_2.password_secret),
-            utils.patch_add_op('is_complete', True)
-        ]
-        mission_utils.patch_mission_task(
-            flask_app_client, mission_task_guid, admin_user_2, data
-        )
-        data = [
-            # utils.patch_test_op(admin_user_2.password_secret),
-            utils.patch_replace_op('is_complete', True)
-        ]
-        mission_utils.patch_mission_task(
-            flask_app_client, mission_task_guid, admin_user_2, data
-        )
-
         # add data manager 2 user to the task
         data = [
             utils.patch_test_op(admin_user.password_secret),

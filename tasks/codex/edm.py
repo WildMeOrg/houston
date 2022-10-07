@@ -556,3 +556,61 @@ def transfer_data(context, section=None, refresh=True):
         elif sect == 'user':
             UserDataSync.edm_sync_all(refresh=refresh)
         # TODO Organisations at some point
+
+
+# this essentially does the same data-transfer changes (for removal of EDM) but _within_ the
+#    .config data of AssetGroupSightings (as they are not yet proper Encounters and Sightings)
+@app_context_task()
+def fix_pending_sightings(context):
+    """
+    Fix config on AssetGroupSightings which are not processed, so that they will be "EDM-free".
+    """
+    from app.modules.asset_groups.models import (
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
+    from app.modules.site_settings.models import Regions
+
+    reg = Regions()
+
+    agss = (
+        db.session.query(AssetGroupSighting)
+        .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
+        .all()
+    )
+    for ags in agss:
+        loc = ags.config['sighting'].get('locationId')
+        print(f'{ags.guid}: {loc}')
+        if loc:
+            found = reg.transfer_find(loc)
+            if found and found.get('id'):
+                ags.config['sighting']['locationId'] = found['id']
+            else:
+                raise ValueError(
+                    f'unknown locationId "{loc}" on sighting ags.config.sighting'
+                )
+        cfv = ags.config['sighting'].get('customFields')
+        if cfv:
+            for cf_id in cfv:
+                if cfv[cf_id] == '':
+                    cfv[cf_id] = None
+            ags.config['sighting']['customFields'] = cfv
+
+        encs = ags.config['sighting'].get('encounters', [])
+        for i in range(len(encs)):
+            eloc = encs[i].get('locationId')
+            print(f"+ enc {encs[i].get('guid')}: {eloc}")
+            if eloc:
+                found = reg.transfer_find(eloc)
+                if found and found.get('id'):
+                    ags.config['sighting']['encounters'][i]['locationId'] = found['id']
+                else:
+                    raise ValueError(f'unknown locationId "{loc}" on enc {encs[i]}')
+            ecfv = encs[i].get('customFields')
+            if ecfv:
+                for cf_id in ecfv:
+                    if ecfv[cf_id] == '':
+                        ecfv[cf_id] = None
+                ags.config['sighting']['encounters'][i]['customFields'] = ecfv
+        ags.config = ags.config
+    db.session.flush()

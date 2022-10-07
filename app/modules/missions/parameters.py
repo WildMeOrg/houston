@@ -311,7 +311,7 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
             # Only task owners or privileged users can add users
             user = User.query.get(value)
             if rules.owner_or_privileged(current_user, obj) and user:
-                obj.add_user_in_context(user, current_user)
+                obj.add_user_in_context(user)
                 ret_val = True
         elif field == 'asset':
             asset = Asset.query.get(value)

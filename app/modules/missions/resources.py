@@ -419,7 +419,7 @@ class MissionTasksForMission(Resource):
 
         with context:
             db.session.add(mission_task)
-            mission_task.add_user_in_context(current_user, current_user)
+            mission_task.add_user_in_context(current_user)
             for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
                 mission_task.add_asset_in_context(asset)
 

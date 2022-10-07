@@ -171,28 +171,12 @@ class BaseMissionTaskTableSchema(ModelSchema):
         dump_only = (MissionTask.guid.key,)
 
 
-class BaseMissionTaskWithAssignerSchema(BaseMissionTaskSchema):
-    """
-    MissionTask schema, including assigner
-    """
-
-    assigner = base_fields.Nested('BaseUserSchema', many=False)
-
-    class Meta(BaseMissionTaskSchema.Meta):
-        fields = BaseMissionTaskSchema.Meta.fields + ('assigner',)
-        dump_only = BaseMissionTaskSchema.Meta.dump_only
-
-
 class DetailedMissionTaskSchema(BaseMissionTaskSchema):
     """
     Detailed MissionTask schema exposes all useful fields.
     """
 
-    # assigned_users = base_fields.Nested('BaseUserSchema', many=True)
-    assigned_users = base_fields.Function(
-        lambda t: t.get_assigned_users_with_assigner_json()
-    )
-    # def get_assigned_users_with_assigner_json(self):
+    assigned_users = base_fields.Nested('BaseUserSchema', many=True)
 
     assets = base_fields.Nested(
         'BaseAssetSchema',

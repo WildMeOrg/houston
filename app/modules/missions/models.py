@@ -479,7 +479,6 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
     )
 
     notes = db.Column(db.UnicodeText, nullable=True)
-    is_complete = db.Column(db.Boolean, default=False, nullable=False)
 
     __table_args__ = (db.UniqueConstraint(mission_guid, title),)
 

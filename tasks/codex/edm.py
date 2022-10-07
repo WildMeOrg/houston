@@ -381,7 +381,19 @@ def transfer_data_encounter():
             enc.taxonomy_guid = tx_id
 
         edm_custom_fields = edm_data.get('customFields', {})
-        enc.set_custom_field_values(edm_custom_fields)
+        try:
+            enc.set_custom_field_values(edm_custom_fields)
+        except ValueError as ve:
+            if str(ve).startswith('Value "" is not valid for'):
+                log.info(f'attempting to repair: {edm_custom_fields}')
+                for key in edm_custom_fields:
+                    if edm_custom_fields[key] == '':
+                        edm_custom_fields[key] = None
+                log.info(f'repaired candidate: {edm_custom_fields}')
+                enc.set_custom_field_values(edm_custom_fields)
+            else:
+                log.error(f'unrepairable fail on {edm_custom_fields} for {enc}')
+                raise ve
     db.session.flush()
     print('encounter edm data transfer complete')
 
@@ -437,7 +449,19 @@ def transfer_data_sighting():
             sighting.set_taxonomies(taxonomies)
 
         edm_custom_fields = edm_data.get('customFields', {})
-        sighting.set_custom_field_values(edm_custom_fields)
+        try:
+            sighting.set_custom_field_values(edm_custom_fields)
+        except ValueError as ve:
+            if str(ve).startswith('Value "" is not valid for'):
+                log.info(f'attempting to repair: {edm_custom_fields}')
+                for key in edm_custom_fields:
+                    if edm_custom_fields[key] == '':
+                        edm_custom_fields[key] = None
+                log.info(f'repaired candidate: {edm_custom_fields}')
+                sighting.set_custom_field_values(edm_custom_fields)
+            else:
+                log.error(f'unrepairable fail on {edm_custom_fields} for {sighting}')
+                raise ve
     db.session.flush()
     print('sighting edm data transfer complete')
 

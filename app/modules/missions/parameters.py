@@ -192,9 +192,6 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
         'collections',
         'tasks',
         'assets',
-        # these are for identity op (passthru)
-        'users',
-        'title',
     ]
 
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
@@ -280,7 +277,6 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
         'user',
         'asset',
         MissionTask.title.key,
-        MissionTask.is_complete.key,
     ]
 
     SENSITIVE_FIELDS = ('owner',)
@@ -315,16 +311,13 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
             # Only task owners or privileged users can add users
             user = User.query.get(value)
             if rules.owner_or_privileged(current_user, obj) and user:
-                obj.add_user_in_context(user, current_user)
+                obj.add_user_in_context(user)
                 ret_val = True
         elif field == 'asset':
             asset = Asset.query.get(value)
             if rules.owner_or_privileged(current_user, obj) and user:
                 obj.add_asset_in_context(asset)
                 ret_val = True
-        elif field == MissionTask.is_complete.key and isinstance(value, bool):
-            obj.is_complete = value
-            ret_val = True
         return ret_val
 
     @classmethod
@@ -376,12 +369,8 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
         from app.modules.users.models import User
 
         ret_val = False
-        # Permissions for all fields (other than is_complete - SCT-367) are the same so have one check
-        if (
-            rules.owner_or_privileged(current_user, obj)
-            or current_user.is_admin
-            or field == MissionTask.is_complete.key
-        ):
+        # Permissions for all fields are the same so have one check
+        if rules.owner_or_privileged(current_user, obj) or current_user.is_admin:
             if field == MissionTask.title.key:
                 obj.title = value
                 ret_val = True
@@ -390,7 +379,4 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
                 if user:
                     obj.owner = user
                     ret_val = True
-            elif field == MissionTask.is_complete.key and isinstance(value, bool):
-                obj.is_complete = value
-                ret_val = True
         return ret_val

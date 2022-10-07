@@ -235,24 +235,8 @@ class MissionTusCollect(Resource):
         """
         Alias of [POST] /api/v1/missions/<uuid:mission_guid>/collections/
         """
-        from app.extensions.tus import tus_filepaths_from  # NOQA
-
         args['owner'] = current_user
         args['mission'] = mission
-        filepaths, metadatas = tus_filepaths_from(
-            transaction_id=args.get('transaction_id'),
-            paths=args.get('paths'),
-        )
-        uploaded_filenames = [md.get('filename') for md in metadatas]
-        dups = []
-        for asset in mission.get_assets():
-            if asset.get_original_filename() in uploaded_filenames:
-                dups.append(asset.get_original_filename())
-        if dups:
-            abort(
-                HTTPStatus.CONFLICT,
-                f"This Mission already contains files with these names: {', '.join(dups)}",
-            )
         mission_collection, input_filenames = MissionCollection.create_from_tus(**args)
         db.session.refresh(mission_collection)
 
@@ -381,7 +365,7 @@ class MissionTasksForMission(Resource):
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args, mission):
         """
-        Create a new instance of MissionTask.
+        Create a new instance of Mission.
         """
         from app.modules.assets.models import Asset
 
@@ -399,58 +383,43 @@ class MissionTasksForMission(Resource):
             db.session, default_error_message='Failed to create a new MissionTask'
         )
 
-        # use data (potentially) passed via op=identity
-        title = identity_dict.get('title')
-        if title is None:
-            # Pick a random title with an adjective noun structure (see here: https://github.com/imsky/wordlists)
-            if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
-                current_tasks = MissionTask.query.all()
-            else:
-                current_tasks = mission.tasks
-            titles = [task.title for task in current_tasks]
-            title = None
-            while title in titles + [None]:
-                title = randomname.get_name(
-                    adj=(
-                        'character',
-                        'colors',
-                        'emotions',
-                        'shape',
-                    ),
-                    noun=(
-                        'apex_predators',
-                        'birds',
-                        'cats',
-                        'dogs',
-                        'fish',
-                    ),
-                    sep=' ',
-                ).title()
-                title = 'New Task: {}'.format(title)
-            assert title is not None
-            assert title not in titles
+        # Pick a random title with an adjective nown structure (see here: https://github.com/imsky/wordlists)
+        if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
+            current_tasks = MissionTask.query.all()
+        else:
+            current_tasks = mission.tasks
+        titles = [task.title for task in current_tasks]
+        title = None
+        while title in titles + [None]:
+            title = randomname.get_name(
+                adj=(
+                    'character',
+                    'colors',
+                    'emotions',
+                    'shape',
+                ),
+                noun=(
+                    'apex_predators',
+                    'birds',
+                    'cats',
+                    'dogs',
+                    'fish',
+                ),
+                sep=' ',
+            ).title()
+            title = 'New Task: {}'.format(title)
+        assert title is not None
+        assert title not in titles
 
-        users_to_assign = {current_user}  # always assign current_user
-        if isinstance(identity_dict.get('users'), list):
-            from app.modules.users.models import User
-
-            for user_guid in identity_dict.get('users'):
-                user = User.query.get(user_guid)
-                if not user:
-                    abort(409, message=f'wanting to assign invalid user guid={user_guid}')
-                users_to_assign.add(user)
-
-        task_args = {}
-        task_args['title'] = title
-        task_args['owner'] = current_user
-        task_args['mission'] = mission
-        mission_task = MissionTask(**task_args)
+        args = {}
+        args['title'] = title
+        args['owner'] = current_user
+        args['mission'] = mission
+        mission_task = MissionTask(**args)
 
         with context:
             db.session.add(mission_task)
-            log.debug(f'created {mission_task}, assigning: {users_to_assign}')
-            for user in users_to_assign:
-                mission_task.add_user_in_context(user, current_user)
+            mission_task.add_user_in_context(current_user)
             for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
                 mission_task.add_asset_in_context(asset)
 

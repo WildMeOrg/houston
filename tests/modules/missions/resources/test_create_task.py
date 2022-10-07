@@ -28,7 +28,6 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
     transaction_ids = []
     transaction_ids.append(transaction_id)
     mission_guid = None
-    filenames = ['zebra.jpg', 'zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
     try:
         response = mission_utils.create_mission(
@@ -44,16 +43,11 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
         )
 
         new_mission_collections = []
-        for index in range(4):
+        for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(
-                test_root, transaction_id=transaction_id, filename=filenames[index]
-            )
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
-            exp_code = 200
-            # index 1 is when we test failing upon duplicate filename [SCT-105]
-            if index == 1:
-                exp_code = 409
             nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
@@ -61,16 +55,7 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
                 description,
                 transaction_id,
                 temp_mission.guid,
-                expected_status_code=exp_code,
             )
-            if index == 1:
-                assert (
-                    response.json['message']
-                    == 'This Mission already contains files with these names: zebra.jpg'
-                )
-                continue
-
-            transaction_ids.append(transaction_id)
             mission_collection_guid = response.json['guid']
             temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
 
@@ -109,11 +94,6 @@ def test_create_and_delete_mission_task(flask_app_client, admin_user, test_root,
             assert 'New Task: ' in read_mission_task.title
             assert read_mission_task.owner == admin_user
             mission_task_assets = read_mission_task.get_assets()
-            users = read_mission_task.get_assigned_users_with_assigner_json()
-            assert len(users) == 1
-            assert users[0]['guid'] == str(admin_user.guid)
-            assert 'assigner' in users[0]
-            assert users[0]['assigner']['guid'] == str(admin_user.guid)
 
             if len(mission_task_assets) != 0:
                 break
@@ -173,7 +153,6 @@ def test_mission_task_permission(
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
-        filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
         previous_list = mission_utils.read_all_mission_collections(
             flask_app_client, admin_user
@@ -182,9 +161,7 @@ def test_mission_task_permission(
         new_mission_collections = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(
-                test_root, transaction_id=transaction_id, filename=filenames[index]
-            )
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -268,114 +245,6 @@ def test_mission_task_permission(
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_mission_task_create_with_identity_op(
-    flask_app_client,
-    admin_user,
-    staff_user,
-    regular_user,
-    test_root,
-):
-    from app.modules.missions.models import Mission, MissionCollection
-
-    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    transaction_ids = []
-    transaction_ids.append(transaction_id)
-    mission_guid = None
-    filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
-
-    try:
-        response = mission_utils.create_mission(
-            flask_app_client,
-            admin_user,
-            mission_utils.make_name('mission')[1],
-        )
-        mission_guid = response.json['guid']
-        temp_mission = Mission.query.get(mission_guid)
-
-        previous_list = mission_utils.read_all_mission_collections(
-            flask_app_client, admin_user
-        )
-
-        new_mission_collections = []
-        for index in range(3):
-            transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(
-                test_root, transaction_id=transaction_id, filename=filenames[index]
-            )
-            transaction_ids.append(transaction_id)
-
-            nonce, description = mission_utils.make_name('mission collection')
-            response = mission_utils.create_mission_collection_with_tus(
-                flask_app_client,
-                admin_user,
-                description,
-                transaction_id,
-                temp_mission.guid,
-            )
-            mission_collection_guid = response.json['guid']
-            temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
-
-            new_mission_collections.append((nonce, temp_mission_collection))
-
-        current_list = mission_utils.read_all_mission_collections(
-            flask_app_client, admin_user
-        )
-        assert len(previous_list.json) + len(new_mission_collections) == len(
-            current_list.json
-        )
-
-        nonce, new_mission_collection1 = new_mission_collections[0]
-        nonce, new_mission_collection2 = new_mission_collections[1]
-        data = [
-            utils.set_union_op('assets', [str(new_mission_collection2.assets[0].guid)]),
-            # test with invalid user guid to assign (should give 409)
-            utils.set_identity_op('users', ['00000000-0000-0000-0000-000000000001']),
-        ]
-
-        # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, admin_user)
-
-        response = mission_utils.create_mission_task(
-            flask_app_client,
-            admin_user,
-            mission_guid,
-            data,
-            409,
-        )
-        assert (
-            response.json['message']
-            == 'wanting to assign invalid user guid=00000000-0000-0000-0000-000000000001'
-        )
-
-        # now fix the assigned users
-        data[1] = utils.set_identity_op('users', [str(regular_user.guid)])
-        # and add a title
-        test_title = 'TEST TITLE'
-        data.append(utils.set_identity_op('title', test_title))
-        response = mission_utils.create_mission_task(
-            flask_app_client,
-            admin_user,
-            mission_guid,
-            data,
-        )
-        mission_task_guid = response.json['guid']
-        task_resp = mission_utils.read_mission_task(
-            flask_app_client, admin_user, mission_task_guid
-        )
-        assert task_resp.json['title'] == test_title
-        assert len(task_resp.json['assigned_users']) == 2
-
-        # delete it
-        mission_utils.delete_mission_task(flask_app_client, admin_user, mission_task_guid)
-
-    finally:
-        if mission_guid:
-            mission_utils.delete_mission(flask_app_client, admin_user, mission_guid)
-        for transaction_id in transaction_ids:
-            tus_utils.cleanup_tus_dir(transaction_id)
-
-
-@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_set_operation_permission(
     flask_app_client,
     admin_user,
@@ -400,7 +269,6 @@ def test_set_operation_permission(
         )
         mission_guid_1 = response.json['guid']
         temp_mission_1 = Mission.query.get(mission_guid_1)
-        filenames = ['zebra.jpg', 'zebra2.jpg', 'zebra-flopped.jpg']
 
         previous_list = mission_utils.read_all_mission_collections(
             flask_app_client, admin_user
@@ -409,9 +277,7 @@ def test_set_operation_permission(
         new_mission_collections_1 = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(
-                test_root, transaction_id=transaction_id, filename=filenames[index]
-            )
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')
@@ -450,9 +316,7 @@ def test_set_operation_permission(
         new_mission_collections_2 = []
         for index in range(3):
             transaction_id = str(random_guid())
-            tus_utils.prep_tus_dir(
-                test_root, transaction_id=transaction_id, filename=filenames[index]
-            )
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
             nonce, description = mission_utils.make_name('mission collection')

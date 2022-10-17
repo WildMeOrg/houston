@@ -141,7 +141,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
 
     # there is a backref'd 'relationship_memberships' list of RelationshipIndividualMember accessible here
     def user_is_owner(self, user):
-        return user is not None and user in self.get_members()
+        return user is not None and user in self.get_owners()
 
     @property
     def relationships(self):
@@ -327,7 +327,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
 
-    def get_members(self):
+    def get_owners(self):
         return [encounter.owner for encounter in self.encounters]
 
     def get_names(self):

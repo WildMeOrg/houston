@@ -346,7 +346,9 @@ def transfer_data_encounter():
     print('encounter edm data transfer started')
     for enc in tqdm.tqdm(encs):
         response = app.edm.get_dict('encounter.data_complete', enc.guid)
-        assert isinstance(response, dict)
+        if not isinstance(response, dict):
+            log.warning(f'encounter {enc.guid} missing from EDM: response=({response})')
+            continue
         assert response.get('success', False)
         edm_data = response['result']
         dlat = edm_data.get('decimalLatitude')
@@ -408,7 +410,11 @@ def transfer_data_sighting():
     print('sighting edm data transfer started')
     for sighting in tqdm.tqdm(sightings):
         response = app.edm.get_dict('sighting.data_complete', sighting.guid)
-        assert isinstance(response, dict)
+        if not isinstance(response, dict):
+            log.warning(
+                f'sighting {sighting.guid} missing from EDM: response=({response})'
+            )
+            continue
         assert response.get('success', False)
         edm_data = response['result']
         dlat = edm_data.get('decimalLatitude')
@@ -558,12 +564,10 @@ def transfer_data(context, section=None, refresh=True):
         # TODO Organisations at some point
 
 
-# this essentially does the same data-transfer changes (for removal of EDM) but _within_ the
-#    .config data of AssetGroupSightings (as they are not yet proper Encounters and Sightings)
 @app_context_task()
 def fix_pending_sightings(context):
     """
-    Fix config on AssetGroupSightings which are not processed, so that they will be "EDM-free".
+    Fix config on AssetGroupSightings which are not processed
     """
     from app.modules.asset_groups.models import (
         AssetGroupSighting,

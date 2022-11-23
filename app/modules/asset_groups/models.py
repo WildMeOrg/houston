@@ -880,7 +880,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     )
                 )
 
-            asset_sage_data.sort(key=lambda data: data[0]['__UUID__'])
+            asset_sage_data.sort(
+                key=lambda data: data[0]['__UUID__'] if data and data[0] else ''
+            )
         else:
             for asset in assets:
                 asset_sage_data.append(
@@ -1179,6 +1181,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             # if only one encounter, assign all annots to it
             if (
                 self.stage == AssetGroupSightingStage.curation
+                and 'encounters' in self.sighting_config
                 and len(self.sighting_config['encounters']) == 1
             ):
                 # Only one encounter, assign all annots to it

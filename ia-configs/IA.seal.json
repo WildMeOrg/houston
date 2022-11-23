@@ -13,7 +13,7 @@
       "grey_seal_pup": "@Halichoerus.grypus.grey_seal_unknown",
       "grey_seal_unknown": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       },
       "harbour_seal": "@Halichoerus.grypus.grey_seal_unknown",
@@ -39,7 +39,7 @@
       "hawaiian_monk_seal": "@Monachus.monachus.mediterranean_monk_seal",
       "mediterranean_monk_seal": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       },
       "seal": "@Monachus.monachus.mediterranean_monk_seal",
@@ -61,7 +61,7 @@
       "harbour_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
       "hawaiian_monk_seal": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       },
       "mediterranean_monk_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
@@ -83,7 +83,7 @@
       "grey_seal_unknown": "@Phoca.vitulina.harbour_seal",
       "harbour_seal": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       },
       "hawaiian_monk_seal": "@Phoca.vitulina.harbour_seal",
@@ -110,7 +110,7 @@
       "seal": "@Pusa.hispida.seal_ringed",
       "seal_ringed": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       }
     },
@@ -131,7 +131,7 @@
       "seal": "@Pusa.hispida saimensis.seal_ringed",
       "seal_ringed": {
         "_identifiers": [
-          "@_identifiers.hotspotter"
+          "@_identifiers.hotspotter_nosv"
         ]
       }
     }
@@ -152,7 +152,7 @@
     }
   },
   "_identifiers": {
-    "hotspotter": {
+    "hotspotter_nosv": {
       "frontend": {
         "description": "HotSpotter pattern-matcher"
       },

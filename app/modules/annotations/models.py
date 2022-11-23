@@ -437,8 +437,10 @@ class Annotation(db.Model, HoustonModel, SageModel):
         # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
         parts['filter'].append({'exists': {'field': 'encounter_guid'}})
 
-        if self.encounter_guid:
-            parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
+        # removing this should keep matching-sets uniform for, say, regions
+        #
+        # if self.encounter_guid:
+        #     parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
 
         return {'bool': parts}
 

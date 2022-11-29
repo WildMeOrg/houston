@@ -618,3 +618,49 @@ def fix_pending_sightings(context):
                 ags.config['sighting']['encounters'][i]['customFields'] = ecfv
         ags.config = ags.config
     db.session.flush()
+
+
+# note: will overwrite existing value currently
+@app_context_task(
+    help={
+        'cfguid': 'GUID of the customField',
+        'filename': 'filename to read data from (tab-delimited: model_guid, value)',
+    }
+)
+def custom_field_import(context, cfclass, cfguid, filename):
+    """
+    Import customField values from a file
+    """
+    from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
+    from app.modules.sightings.models import Sighting
+    from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+    defn = SiteSettingCustomFields.get_definition(cfclass, cfguid)
+    if not defn:
+        raise ValueError(f'{cfclass}/{cfguid} invalid')
+
+    cls = None
+    if cfclass == 'Encounter':
+        cls = Encounter
+    elif cfclass == 'Sighting':
+        cls = Sighting
+    elif cfclass == 'Individual':
+        cls = Individual
+    if not cls:
+        raise ValueError('invalid class')  # snh
+
+    with open(filename) as f:
+        contents = f.readlines()
+    ct = 1
+    for line in contents:
+        val = line.strip().split('\t')
+        obj = cls.query.get(val[0])
+        if not obj:
+            print(f'>>> could not find guid={val[0]}')
+            continue
+        obj.set_custom_field_value(cfguid, val[1])
+        print(
+            f'[{ct}/{len(contents)}] Set cfguid={cfguid} on {cfclass}={val[0]}: {val[1]}'
+        )
+        ct += 1

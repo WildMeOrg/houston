@@ -229,6 +229,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
 
         from app.modules.complex_date_time.models import ComplexDateTime
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         try:
             # will raise ValueError if data no good
@@ -240,6 +241,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 obj=self,
             )
 
+        cf_dict = self.sighting_config.get('customFields', {})
+        invalid = {}
+        for cfd_id in cf_dict:
+            valid = SiteSettingCustomFields.is_valid_value_for_class(
+                'Sighting', cfd_id, cf_dict[cfd_id]
+            )
+            if not valid:
+                invalid[cfd_id] = cf_dict[cfd_id]
+        if invalid:
+            raise HoustonException(
+                log,
+                f'Problem with customFields value(s): {invalid}',
+                obj=self,
+            )
+
         sighting = Sighting(
             # asset_group_sighting=self,  -- see note below
             name=self.sighting_config.get('name', ''),
@@ -248,7 +264,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             verbatim_locality=self.sighting_config.get('verbatimLocality'),
             decimal_latitude=self.sighting_config.get('decimalLatitude'),
             decimal_longitude=self.sighting_config.get('decimalLongitude'),
-            custom_fields=self.sighting_config.get('customFields'),
+            custom_fields=cf_dict,
             time=time,
         )
 

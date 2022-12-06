@@ -206,3 +206,39 @@ def ags_details(context, guid):
 
     if ags.progress_preparation and ags.progress_preparation.active:
         print(ags.progress_preparation)
+
+
+@app_context_task
+def check_bulk_customfields(context):
+    """
+    Find invalid customField data in bulk-uploaded sightings. Outputs a data format that requires further processing/action.
+    """
+    import json
+
+    from app.modules.asset_groups.models import AssetGroup
+    from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+    all_ags = AssetGroup.query.all()
+    for ag in all_ags:
+        if not ag.bulk_upload:
+            continue
+        for ags in ag.asset_group_sightings:
+            cf = ags.sighting and ags.sighting[0].custom_fields
+            if not cf:
+                continue
+            broken = []
+            for cfd_id in cf:
+                valid = SiteSettingCustomFields.is_valid_value_for_class(
+                    'Sighting', cfd_id, cf[cfd_id]
+                )
+                if not valid:
+                    broken.append(cfd_id)
+            if broken:
+                print(
+                    'FIX\t'
+                    + str(ags.sighting[0].guid)
+                    + '\t'
+                    + json.dumps(cf)
+                    + '\t'
+                    + '\t'.join(broken)
+                )

@@ -198,7 +198,7 @@ class Progress(db.Model, Timestamp):
                     pass
 
         if self.sage_guid:
-            passthrough_kwargs = {'timeout': 5}
+            passthrough_kwargs = {'timeout': 15}
             jobs = current_app.sage.request_passthrough_result(
                 'engine.list',
                 'get',

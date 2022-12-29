@@ -37,10 +37,15 @@ models = Gauge(
     ['cls'],
 )
 
-taxonomies = Gauge(
-    'taxonomies',
-    'Number of taxonomies by metric',
-    ['taxonomy', 'metric'],
+taxonomies_individuals = Gauge(
+    'codex_individuals_total',
+    'Number of individuals by taxonomy',
+    ['species'],
+)
+taxonomies_encounters = Gauge(
+    'codex_encounters_total',
+    'Number of encounters by taxonomy',
+    ['species'],
 )
 
 logins = Gauge(
@@ -84,9 +89,7 @@ def _init_models(*args, **kwargs):
 
 
 def _init_taxonomies(*args, **kwargs):
-    pass
-    # This function can take a long time, so do not call on init, wait for the background worker to update
-    # _update_taxonomies(*args, **kwargs)
+    _update_taxonomies_fast(*args, **kwargs)
 
 
 def _init_logins(*args, **kwargs):
@@ -116,36 +119,39 @@ def _update_models(*args, **kwargs):
         models.labels(cls=cls_str).set(value)
 
 
-def _update_taxonomies(*args, **kwargs):
-    import tqdm
+def _update_taxonomies_fast(*args, **kwargs):
+    from app.extensions import db
+    from app.modules.site_settings.models import Taxonomy
 
-    from app.modules.encounters.models import Encounter
-    from app.modules.individuals.models import Individual
+    res = db.session.execute(
+        'SELECT taxonomy_guid, COUNT(*) FROM encounter WHERE taxonomy_guid IS NOT NULL GROUP BY taxonomy_guid'
+    )
+    total = 0
+    for row in res:
+        try:
+            tx = Taxonomy(row[0])
+        except ValueError:
+            log.warning(f'could not find Taxonomy for guid={row[0]}; skipping')
+            continue
+        total += row[1]
+        species = tx.scientificName.replace(' ', '_')
+        taxonomies_encounters.labels(species=species).set(row[1])
+    taxonomies_encounters.labels(species='*').set(total)
 
-    collector = []
-
-    individuals = Individual.query.all()
-    for individual in tqdm.tqdm(individuals, desc='Individuals Taxonomy'):
-        collector += individual.get_taxonomy_names()
-
-    individuals_taxonomies = set(collector)
-    for taxonomy in sorted(individuals_taxonomies):
-        value = collector.count(taxonomy)
-        taxonomies.labels(taxonomy=taxonomy, metric='individuals').set(value)
-
-    collector = []
-
-    encounters = Encounter.query.all()
-    for encounter in tqdm.tqdm(encounters, desc='Encounters Taxonomy'):
-        collector += encounter.get_taxonomy_names()
-
-    encounters_taxonomies = set(collector)
-    for taxonomy in sorted(encounters_taxonomies):
-        taxonomies.labels(taxonomy=taxonomy, metric='encounters').set(value)
-
-    all_taxonomies = individuals_taxonomies | encounters_taxonomies
-    value = len(all_taxonomies)
-    taxonomies.labels(taxonomy=None, metric='total').set(value)
+    total = 0
+    res = db.session.execute(
+        'SELECT taxonomy_guid, COUNT(*) FROM individual WHERE taxonomy_guid IS NOT NULL GROUP BY taxonomy_guid'
+    )
+    for row in res:
+        try:
+            tx = Taxonomy(row[0])
+        except ValueError:
+            log.warning(f'could not find Taxonomy for guid={row[0]}; skipping')
+            continue
+        total += row[1]
+        species = tx.scientificName.replace(' ', '_')
+        taxonomies_individuals.labels(species=species).set(row[1])
+    taxonomies_individuals.labels(species='*').set(total)
 
 
 def _update_logins(*args, **kwargs):
@@ -276,7 +282,7 @@ def update(*args, **kwargs):
     _update_info(*args, **kwargs)
 
     _update_models(*args, **kwargs)
-    _update_taxonomies(*args, **kwargs)
+    _update_taxonomies_fast(*args, **kwargs)
     _update_logins(*args, **kwargs)
 
     _update_celery(*args, **kwargs)

@@ -75,6 +75,11 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     except ValueError as ve:
         assert 'at least 1' in str(ve)
 
+    try:
+        indiv1.merge_from(indiv1)  # fail cuz no merging with self
+    except ValueError as ve:
+        assert 'with self' in str(ve)
+
     indiv1.merge_from(indiv2)
 
     assert len(indiv1.encounters) == 2

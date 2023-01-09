@@ -563,6 +563,9 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
             'parameters': parameters,
         }
         for indiv in source_individuals:
+            # we verify that we dont have self-individual in here, which turns out to be "bad"
+            if indiv.guid == self.guid:
+                raise ValueError(f'attempt to merge individual {indiv.guid} with self')
             data['sourceIndividualIds'].append(str(indiv.guid))
 
         # this replicates what edm used to return
@@ -820,6 +823,11 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
             msg = f'merge request passed invalid individuals: {individuals}'
             AuditLog.frontend_fault(log, msg, self)
             raise ValueError(msg)
+        for indiv in individuals:
+            if indiv.guid == self.guid:
+                msg = f'attempt to merge individual {indiv.guid} with self'
+                AuditLog.frontend_fault(log, msg, self)
+                raise ValueError(msg)
         if not parameters:
             parameters = {}
         parameters['checksum'] = Individual.merge_request_hash([self] + individuals)

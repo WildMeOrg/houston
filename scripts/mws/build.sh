@@ -5,9 +5,6 @@
 # Install the package
 ./scripts/mws/install.sh
 
-# Build and deploy frontend
-./scripts/mws/build.frontend.sh
-
 # Build and deploy Swagger UI
 ./scripts/swagger/build.sh
 

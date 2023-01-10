@@ -2,3 +2,6 @@
 	path = _frontend.codex
 	url = https://github.com/WildMeOrg/codex-frontend.git
 	branch = develop
+[submodule "_frontend.mws"]
+	path = _frontend.mws
+	url = https://github.com/WildMeOrg/mws-frontend

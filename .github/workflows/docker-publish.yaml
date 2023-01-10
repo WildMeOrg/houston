@@ -20,16 +20,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-        if: github.event_name == 'schedule'
-        with:
-          submodules: true
-          ref: main
+      # - uses: actions/checkout@v2
+      #   if: github.event_name == 'schedule'
+      #   with:
+      #     submodules: true
+      #     ref: main
 
-      - uses: actions/checkout@v2
-        if: github.event_name != 'schedule'
-        with:
-          submodules: true
+      # - uses: actions/checkout@v2
+      #   if: github.event_name != 'schedule'
+      #   with:
+      #     submodules: true
 
       - uses: docker/setup-qemu-action@v1
         name: Set up QEMU

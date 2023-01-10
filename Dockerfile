@@ -91,7 +91,7 @@ ENTRYPOINT [ "/docker-entrypoint.sh" ]
 
 
 FROM node:lts as frontend
-# "mws" or "codex"
+# only "codex"
 ARG PROJECT
 # Copy the necessary source items
 RUN mkdir /code

@@ -14,10 +14,6 @@ rm -rf _frontend.codex/node_modules/
 rm -rf _frontend.codex/swagger_static/
 rm -rf _frontend.codex/package-lock.json
 
-rm -rf _frontend.mws/node_modules/
-rm -rf _frontend.mws/swagger_static/
-rm -rf _frontend.mws/package-lock.json
-
 rm -rf _swagger-ui/node_modules/
 rm -rf _swagger-ui/swagger_static/
 rm -rf _swagger-ui/package-lock.json

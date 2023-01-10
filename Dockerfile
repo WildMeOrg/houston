@@ -97,12 +97,12 @@ ARG PROJECT
 RUN mkdir /code
 COPY ./scripts /code/scripts
 # Build the frontend
-RUN set -x \
-    && cd /code \
-    && git clone https://github.com/WildMeOrg/${PROJECT}-frontend.git _frontend.${PROJECT} \
-    && export DEBUG=1 \
-    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
+# RUN set -x \
+#     && cd /code \
+#     && git clone https://github.com/WildMeOrg/${PROJECT}-frontend.git _frontend.${PROJECT} \
+#     && export DEBUG=1 \
+#     && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && build" \
+#     && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
 
 
 FROM main as with_frontend

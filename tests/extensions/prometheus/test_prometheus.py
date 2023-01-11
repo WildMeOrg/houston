@@ -3,16 +3,7 @@ import datetime
 import re
 from unittest import mock
 
-import pytest
-
-from app.extensions.prometheus import (
-    _update_celery,
-    _update_info,
-    _update_logins,
-    _update_taxonomies,
-    init,
-)
-from tests.utils import module_unavailable
+from app.extensions.prometheus import _update_celery, _update_info, _update_logins, init
 
 
 def test_update_info(request):
@@ -25,65 +16,6 @@ def test_update_info(request):
     info_dict = info.info.call_args[0][0]
     assert re.match('[0-9a-f.+]+$', info_dict['version'])
     assert re.match('[0-9a-f.]+$', info_dict['git_revision'])
-
-
-@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
-def test_update_taxonomies(request):
-    taxonomies_patch = mock.patch('app.extensions.prometheus.taxonomies')
-    taxonomies = taxonomies_patch.start()
-    request.addfinalizer(taxonomies_patch.stop)
-
-    individual_patch = mock.patch('app.modules.individuals.models.Individual')
-    Individual = individual_patch.start()
-    request.addfinalizer(individual_patch.stop)
-
-    encounter_patch = mock.patch('app.modules.encounters.models.Encounter')
-    Encounter = encounter_patch.start()
-    request.addfinalizer(encounter_patch.stop)
-
-    individuals = [mock.Mock(), mock.Mock(), mock.Mock()]
-    individuals[0].get_taxonomy_names.return_value = []
-    individuals[1].get_taxonomy_names.return_value = [
-        'Hybrid zebra',
-        'Equus grevyi',
-        'Equus grevyi',
-    ]
-    individuals[2].get_taxonomy_names.return_value = [
-        'Equus grevyi',
-        'Plains zebra',
-    ]
-    Individual.query.all.return_value = individuals
-
-    encounters = [mock.Mock()]
-    encounters[0].get_taxonomy_names.return_value = ['Hybrid zebra', 'Other']
-    Encounter.query.all.return_value = encounters
-
-    taxonomy_mocks = {}
-
-    def taxonomies_labels(**kwargs):
-        sorted_args = str({k: kwargs[k] for k in sorted(kwargs)})
-        return taxonomy_mocks.setdefault(sorted_args, mock.Mock(**kwargs))
-
-    taxonomies.labels.side_effect = taxonomies_labels
-
-    _update_taxonomies()
-
-    for i, (taxonomy, metric, count) in enumerate(
-        [
-            ('Equus grevyi', 'individuals', 3),
-            ('Hybrid zebra', 'individuals', 1),
-            ('Plains zebra', 'individuals', 1),
-            ('Hybrid zebra', 'encounters', 1),
-            ('Other', 'encounters', 1),
-            (None, 'total', 4),
-        ]
-    ):
-        assert taxonomies.labels.call_args_list[i] == mock.call(
-            taxonomy=taxonomy, metric=metric
-        )
-        assert taxonomies.labels(taxonomy=taxonomy, metric=metric).set.call_args_list == [
-            mock.call(count)
-        ]
 
 
 def test_update_logins(request):
@@ -309,7 +241,6 @@ def test_init(request):
         'app.extensions.prometheus._attach_sqlalchemy_listeners',
         'app.extensions.prometheus._update_info',
         'app.extensions.prometheus._update_models',
-        'app.extensions.prometheus._update_taxonomies',
         'app.extensions.prometheus._update_logins',
     ):
         patches.append(mock.patch(path))
@@ -328,6 +259,5 @@ def test_init(request):
     assert functions['_update_info'].call_args == mock.call('a', b='c')
     assert functions['_update_models'].call_count == 1
     assert functions['_update_models'].call_args == mock.call('a', b='c')
-    assert not functions['_update_taxonomies'].called
     assert functions['_update_logins'].call_count == 1
     assert functions['_update_logins'].call_args == mock.call('a', b='c')

@@ -129,7 +129,7 @@ def test_get_zebra_species(flask_app_client):
 def test_get_detect_model_frontend_data(flask_app_client):
     ia_config_reader = IaConfig()
     desired_frontend_data = {
-        'seals_v0': {
+        'seals_v1': {
             'name': 'Seal detector',
             'description': 'Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals',
             'supported_species': [
@@ -145,10 +145,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -163,10 +164,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -181,10 +183,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -199,10 +202,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -217,10 +221,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -235,10 +240,11 @@ def test_get_detect_model_frontend_data(flask_app_client):
                         'harbour_seal',
                         'hawaiian_monk_seal',
                         'mediterranean_monk_seal',
-                        'ringed_seal',
+                        'seal',
+                        'seal_ringed',
                     ],
                     'id_algos': {
-                        'hotspotter': {'description': 'HotSpotter pattern-matcher'}
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
             ],
@@ -283,10 +289,11 @@ def test_get_seal_ia_classes(flask_app_client):
         'harbour_seal',
         'hawaiian_monk_seal',
         'mediterranean_monk_seal',
-        'ringed_seal',
+        'seal',
+        'seal_ringed',
     }
     ia_classes = set()
-    for species in frontend_data['seals_v0']['supported_species']:
+    for species in frontend_data['seals_v1']['supported_species']:
         ia_classes = ia_classes | set(species['ia_classes'])
     assert ia_classes == desired_ia_classes
 
@@ -300,12 +307,12 @@ def test_get_seal_species(flask_app_client):
 def test_get_seal_detectors(flask_app_client):
     ia_config_reader = IaConfig()
     desired_detector_config = {
-        '_detectors.seals_v0': {
+        '_detectors.seals_v1': {
             'config_dict': {
                 'labeler_algo': 'densenet',
-                'labeler_model_tag': 'seals_v0',
-                'model_tag': 'seals_v0',
-                'nms_aware': None,
+                'labeler_model_tag': 'seals_v1',
+                'model_tag': 'seals_v1',
+                'nms_aware': 'ispart',
                 'nms_thresh': 0.4,
                 'sensitivity': 0.63,
                 'use_labeler_species': True,
@@ -322,9 +329,9 @@ def test_get_seal_detectors(flask_app_client):
 def test_get_seal_identifiers(flask_app_client):
     ia_config_reader = IaConfig()
     desired_identifier_config = {
-        'hotspotter': {
+        'hotspotter_nosv': {
             'frontend': {'description': 'HotSpotter pattern-matcher'},
-            'sage': {'query_config_dict': {'sv_on': True}},
+            'sage': {'query_config_dict': {'sv_on': False}},
         }
     }
     # each seal species, for each supported ia_class, should use the same hotspotter config

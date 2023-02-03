@@ -104,21 +104,21 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
             obj.set_custom_field_values(value)  # does all the validation etc
             ret_val = True
         elif field == 'decimalLatitude':
-            if not util.is_valid_latitude(value):
+            if value is not None and not util.is_valid_latitude(value):
                 raise HoustonException(
                     log, f'decimalLatitude value passed ({value}) is invalid'
                 )
             obj.decimal_latitude = value
             ret_val = True
         elif field == 'decimalLongitude':
-            if not util.is_valid_longitude(value):
+            if value is not None and not util.is_valid_longitude(value):
                 raise HoustonException(
                     log, f'decimalLongitude value passed ({value}) is invalid'
                 )
             obj.decimal_longitude = value
             ret_val = True
         elif field == 'locationId':
-            if not util.is_valid_uuid_string(value):
+            if value is not None and not util.is_valid_uuid_string(value):
                 raise HoustonException(
                     log, f'locationId value passed ({value}) is not a guid'
                 )
@@ -128,14 +128,14 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
             obj.verbatim_locality = value
             ret_val = True
         elif field == 'taxonomy':
-            if not util.is_valid_uuid_string(value):
+            if value is not None and not util.is_valid_uuid_string(value):
                 raise HoustonException(
                     log, f'taxonomy value passed ({value}) is not a guid'
                 )
             obj.taxonomy_guid = value
             ret_val = True
         elif field == 'sex':
-            if not util.is_valid_sex(value):
+            if value is not None and not util.is_valid_sex(value):
                 raise HoustonException(log, f'invalid sex value passed ({value})')
             obj.sex = value
             ret_val = True

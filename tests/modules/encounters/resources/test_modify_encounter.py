@@ -57,6 +57,10 @@ def test_modify_encounter(
         utils.patch_replace_op('owner', str(researcher_1.guid)),
         utils.patch_replace_op('locationId', new_loc),
         utils.patch_replace_op('sex', new_sex),
+        # confirms we can safely have empty values for non-required (reference: no-longer-have-refs)
+        utils.patch_replace_op('taxonomy', None),
+        utils.patch_replace_op('decimalLatitude', None),
+        utils.patch_replace_op('decimalLongitude', None),
     ]
     enc_utils.patch_encounter(
         flask_app_client,

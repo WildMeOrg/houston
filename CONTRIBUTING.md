@@ -20,10 +20,10 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   git fetch -p
   git checkout <feature-branch>
   git diff origin/<feature-branch>..  # Check there's no difference between local branch and remote branch
-  git rebase -i origin/develop  # "Pick" all commits in feature branch
+  git rebase -i origin/main  # "Pick" all commits in feature branch
   # Resolve all conflicts
-  git log --graph --oneline --decorate origin/develop HEAD  # feature-branch commits should be on top of origin/develop
-  git show --reverse origin/develop..  # Check the changes in each commit if necessary
+  git log --graph --oneline --decorate origin/main HEAD  # feature-branch commits should be on top of origin/develop
+  git show --reverse origin/main..  # Check the changes in each commit if necessary
   git push --force origin <feature-branch>
   ```
 * **Ensure that the PR uses a consolidated database migration**

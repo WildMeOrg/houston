@@ -734,7 +734,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             return False
         for job_id in jobs.keys():
             job = jobs[job_id]
-            if job['active']:
+            if job.get('active', False):
                 return True
         return False
 
@@ -1561,7 +1561,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 continue
 
             q_annot_job = q_annot_jobs[-1]
-            if q_annot_job['active']:
+            if q_annot_job.get('active', False):
                 response['query_annotations'][-1]['status'] = 'pending'
                 continue
             if not q_annot_job.get('result', False) or not q_annot_job.get(
@@ -1847,7 +1847,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 == self._get_algorithm_name(config_id, algorithm_id)
                 and self.jobs[job]['annotation'] == annotation_guid_str
             ):
-                return self.jobs[job]['active']
+                return self.jobs[job].get('active', False)
         return False
 
     def _get_algorithm_name(self, config_id, algorithm_id):

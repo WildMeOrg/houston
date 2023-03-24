@@ -75,6 +75,7 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     encounter_guid = base_fields.Function(lambda ann: ann.get_encounter_guid_str())
     sighting_guid = base_fields.Function(lambda ann: ann.get_sighting_guid_str())
     time = base_fields.Function(lambda ann: ann.get_time_isoformat_in_timezone())
+    git_store_guid = base_fields.Function(lambda ann: ann.get_git_store_guid_str())
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
@@ -88,6 +89,7 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
             'taxonomy_guid',
             'encounter_guid',
             'sighting_guid',
+            'git_store_guid',
             'time',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (

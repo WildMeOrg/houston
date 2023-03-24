@@ -534,6 +534,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
             return None
         return self.encounter.get_sighting_guid_str()
 
+    def get_git_store_guid_str(self):
+        return str(self.asset.git_store.guid)
+
     def get_keyword_values(self):
         if not self.keyword_refs:
             return []

@@ -412,7 +412,11 @@ class Annotation(db.Model, HoustonModel, SageModel):
 
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration
-        parts = {'filter': []}
+        top_bool = {
+            'must': {'bool': {}},  # required for all cases
+            'should': [],  # OR'ed for: in AssetGroup (no enc/sight) || has enc/sight
+            'minimum_should_match': 1,
+        }
 
         viewpoint_list = self.get_neighboring_viewpoints()
         # TODO should we allow nulls?
@@ -420,29 +424,31 @@ class Annotation(db.Model, HoustonModel, SageModel):
             viewpoint_data = []
             for vp in viewpoint_list:
                 viewpoint_data.append({'term': {'viewpoint': vp}})
-            parts['filter'].append(
-                {
-                    'bool': {
-                        'minimum_should_match': 1,
-                        'should': viewpoint_data,
-                    }
-                }
-            )
+            top_bool['must']['bool']['minimum_should_match'] = 1
+            top_bool['must']['bool']['should'] = viewpoint_data
 
+        # for the AssetGroup (doesnt have encounter/sighting data)
+        top_bool['should'].append(
+            {'term': {'git_store_guid': self.get_git_store_guid_str()}}
+        )
+
+        # the second part of the OR for when we do have encounter/sighting data
+        bool_es = {'filter': []}
         # same, re: nulls
         tx_guid = self.get_taxonomy_guid_str()
         if tx_guid:
-            parts['filter'].append({'match': {'taxonomy_guid': tx_guid}})
+            bool_es['filter'].append({'match': {'taxonomy_guid': tx_guid}})
 
         # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
-        parts['filter'].append({'exists': {'field': 'encounter_guid'}})
+        bool_es['filter'].append({'exists': {'field': 'encounter_guid'}})
 
         # removing this should keep matching-sets uniform for, say, regions
         #
         # if self.encounter_guid:
-        #     parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
+        #     bool_es['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
+        top_bool['should'].append({'bool': bool_es})
 
-        return {'bool': parts}
+        return {'bool': top_bool}
 
     # this is to allow for manipulation of a user-provided query prior to actually using it
     #  e.g. we might want to _force_ criteria or remove certain filters, etc.

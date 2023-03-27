@@ -492,6 +492,8 @@ class Annotation(db.Model, HoustonModel, SageModel):
                             'minimum_should_match': 1,
                             'should': viewpoint_data,
                         }
+                elif macro_name == 'annotation_git_store_guid':
+                    replaced[key] = self.get_git_store_guid_str()
                 elif macro_name == 'annotation_sighting_guid':
                     replaced[key] = self.get_sighting_guid_str()
                 elif macro_name == 'annotation_encounter_guid':

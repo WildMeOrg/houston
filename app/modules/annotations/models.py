@@ -417,7 +417,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def matching_set_checksum(self, matching_set):
         import hashlib
 
-        guids = [str(a.guid) for a in matching_set]
+        guids = [
+            str(a.guid) if isinstance(a, Annotation) else str(a) for a in matching_set
+        ]
         guids.sort()
         return (
             f"{len(matching_set)}:{hashlib.sha256(''.join(guids).encode()).hexdigest()}"

@@ -408,7 +408,20 @@ class Annotation(db.Model, HoustonModel, SageModel):
         log.info(
             f'annot.get_matching_set(): finding matching set for {self} using (resolved) query {query} => {len(matching_set)} annots'
         )
+        log.info(
+            f'annot.get_matching_set() checksum: {self.matching_set_checksum(matching_set)}'
+        )
         return matching_set
+
+    # this is really just a debugging thing that is a "thumbprint" of a matchingset
+    def matching_set_checksum(self, matching_set):
+        import hashlib
+
+        guids = [str(a.guid) for a in matching_set]
+        guids.sort()
+        return (
+            f"{len(matching_set)}:{hashlib.sha256(''.join(guids).encode()).hexdigest()}"
+        )
 
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration

@@ -1186,6 +1186,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         log, annotation, 'from Sage detection response'
                     )
                     db.session.add(annotation)
+                    annotation.index()
 
                 for asset in assets:
                     db.session.merge(asset)

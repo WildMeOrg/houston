@@ -409,7 +409,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             f'annot.get_matching_set(): finding matching set for {self} using (resolved) query {query} => {len(matching_set)} annots'
         )
         log.info(
-            f'annot.get_matching_set() checksum: {self.matching_set_checksum(matching_set)}'
+            f'annot.get_matching_set() [annot {str(self.guid)}] checksum: {self.matching_set_checksum(matching_set)}'
         )
         return matching_set
 

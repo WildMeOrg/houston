@@ -887,8 +887,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         timer = ElapsedTime()
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
+        checksum_set = []
         unique_set = set()  # just to prevent duplication
         for annot in matching_set_annotations:
+            checksum_set.append(annot.guid)
             # ideally the query on matching_set annots will exclude these, but in case someone got fancy:
             if not annot.content_guid:
                 message = f'skipping {annot} due to no content_guid'
@@ -896,13 +898,11 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 log.warning(message)
                 continue
 
-            if annot.content_guid == annotation.content_guid:
-                continue
-
             # this *does* assume the sighting exists due to elasticsearch constraints, in order to improve performance.
             #   it previously was this, which took longer as it needed to load two objects from db:
             #          if annot.encounter and annot.encounter.sighting:
-            if annot.encounter_guid and annot.content_guid not in unique_set:
+
+            if annot.content_guid not in unique_set:
                 unique_set.add(annot.content_guid)
 
                 individual_guid = annot.get_individual_guid()
@@ -915,9 +915,14 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 matching_set_annot_uuids.append(annot.content_guid)
                 matching_set_individual_uuids.append(individual_guid)
 
+        checksum_pre = annotation.matching_set_checksum(checksum_set)
+        checksum_post = annotation.matching_set_checksum(matching_set_annot_uuids)
         # Ensure that the annotation we are querying on is in the database list as well
         matching_set_annot_uuids = list(
             map(to_sage_uuid, sorted(set(matching_set_annot_uuids)))
+        )
+        log.debug(
+            f'sighting.get_matching_set_data() [annot {str(annotation.guid)}] checksums: {checksum_pre} / {checksum_post}'
         )
         log.debug(
             f'sighting.get_matching_set_data(): [{timer.elapsed()} sec] Built matching set individuals {matching_set_individual_uuids}, '

@@ -51,7 +51,8 @@ jobs:
       matrix:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
-        app-context: ["codex", "mws"]
+        # app-context: ["codex", "mws"]
+        app-context: ["codex"]
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}

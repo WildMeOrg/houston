@@ -76,7 +76,7 @@ def test_get_identifiers_zebras(flask_app_client):
     # copy/pasted from the config and pythonified (vs json)
     desired_identifiers = {
         'hotspotter_nosv': {
-            'sage': {'query_config_dict': {'sv_on': False}},
+            'sage': {'query_config_dict': {'sv_on': True}},
             'frontend': {'description': 'HotSpotter pattern-matcher'},
         }
     }
@@ -331,7 +331,7 @@ def test_get_seal_identifiers(flask_app_client):
     desired_identifier_config = {
         'hotspotter_nosv': {
             'frontend': {'description': 'HotSpotter pattern-matcher'},
-            'sage': {'query_config_dict': {'sv_on': False}},
+            'sage': {'query_config_dict': {'sv_on': True}},
         }
     }
     # each seal species, for each supported ia_class, should use the same hotspotter config

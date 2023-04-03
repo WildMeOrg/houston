@@ -414,6 +414,7 @@ services:
       - intranet
     environment:
       HOUSTON_APP_CONTEXT: codex
+      NODE_OPTIONS: "--openssl-legacy-provider"
       # See port served by 'www' component (i.e. the reverse proxy)
       HOST: "0.0.0.0"
       PORT: "84"

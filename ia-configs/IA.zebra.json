@@ -45,7 +45,7 @@
       },
       "sage": {
         "query_config_dict": {
-          "sv_on": false
+          "sv_on": true
         }
       }
     }

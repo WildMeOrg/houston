@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# i guess we need this now due to this "recent" change:
+# https://github.blog/2022-04-12-git-security-vulnerability-announced/
+git config --global --add safe.directory /code/_frontend.codex
+
 set -ex
 
 # If the submodule directory name exists, move to it.

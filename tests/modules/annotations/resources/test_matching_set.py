@@ -139,9 +139,9 @@ def test_annotation_matching_set(
 
     query = annotation.get_matching_set_default_query()
     assert 'bool' in query
-    assert 'filter' in query['bool']
+    assert 'must' in query['bool']
     # omg this is tedious so just cutting to the chase (9 viewpoint/neighbors)
-    assert len(query['bool']['filter'][0]['bool']['should']) == 9
+    assert len(query['bool']['must']['bool']['should']) == 9
 
     # will just use default (as above)
     matching_set = annotation.get_matching_set()

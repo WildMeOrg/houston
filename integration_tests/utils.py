@@ -101,7 +101,7 @@ def wait_for(
     url,
     response_checker,
     status_code=200,
-    timeout=20 * 60,
+    timeout=10 * 60,
     *args,
     **kwargs,
 ):

@@ -44,4 +44,4 @@ def test_verify_account(flask_app_client, researcher_1):
     email = send.call_args[0][0]
     assert email.recipients == [researcher_1.email]
     code = Code.get(researcher_1, CodeTypes.email, create=False)
-    assert f'action=http://localhost:84/api/v1/auth/code/{code.accept_code}' in email.html
+    assert f'href=http://localhost:84/api/v1/auth/code/{code.accept_code}' in email.html

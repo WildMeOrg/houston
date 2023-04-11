@@ -1,18 +1,18 @@
 
-brunette
-codecov >= 2.0.15
-coverage >= 4.3.4
-IPython
-line_profiler
-mock
+brunette ==  0.2.8
+codecov == 2.1.12
+coverage ==  7.2.3
+IPython == 8.12.0
+line_profiler == 4.0.3
+mock ==  5.0.1
 
-pre-commit
-pytest >= 3.3.1
-pytest-benchmark[histogram]
-pytest-cov
-pytest-profiling
-pytest-random-order
-pytest-sugar
-pytest-xdist
-swagger_spec_validator
-xdoctest >= 0.3.0
+pre-commit == 3.2.2
+pytest == 7.2.2
+pytest-benchmark[histogram] == 4.0.0
+pytest-cov ==  4.0.0
+pytest-profiling == 1.7.0
+pytest-random-order == 1.1.0
+pytest-sugar ==  0.9.6
+pytest-xdist == 3.2.1
+swagger_spec_validator == 3.0.3
+xdoctest == 1.1.1

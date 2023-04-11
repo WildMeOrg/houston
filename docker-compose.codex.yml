@@ -31,7 +31,7 @@ services:
       HOUSTON_DB_PASSWORD: "${HOUSTON_DB_PASSWORD}"
 
   redis:
-    image: redis:latest
+    image: redis:7.0.10
     command: ["redis-server", "/redis.conf"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -397,7 +397,7 @@ services:
 
   dev-frontend:
     # this component is intended to only be used in development
-    image: node:lts
+    image: node:19.8.1
     working_dir: /code
     entrypoint: "/docker-entrypoint.sh"
     healthcheck:
@@ -420,7 +420,7 @@ services:
       PORT: "84"
 
   localhost:
-    image: nginx:latest
+    image: nginx:1.23.4
     depends_on:
       #edm:
       #  condition: service_healthy

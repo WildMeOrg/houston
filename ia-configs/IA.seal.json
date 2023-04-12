@@ -114,6 +114,69 @@
         ]
       }
     },
+    "hispida botnica": {
+      "_common_name": "Baltic ringed seal",
+      "_default": "@Pusa.hispida botnica.seal_ringed",
+      "_detectors": [
+        "@_detectors.seals_v1"
+      ],
+      "_itis_id": 622062,
+      "grey_seal_femaleyoung": "@Pusa.hispida botnica.seal_ringed",
+      "grey_seal_male": "@Pusa.hispida botnica.seal_ringed",
+      "grey_seal_pup": "@Pusa.hispida botnica.seal_ringed",
+      "grey_seal_unknown": "@Pusa.hispida botnica.seal_ringed",
+      "harbour_seal": "@Pusa.hispida botnica.seal_ringed",
+      "hawaiian_monk_seal": "@Pusa.hispida botnica.seal_ringed",
+      "mediterranean_monk_seal": "@Pusa.hispida botnica.seal_ringed",
+      "seal": "@Pusa.hispida botnica.seal_ringed",
+      "seal_ringed": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "hispida hispida": {
+      "_common_name": "Arctic ringed seal",
+      "_default": "@Pusa.hispida hispida.seal_ringed",
+      "_detectors": [
+        "@_detectors.seals_v1"
+      ],
+      "_itis_id": 622061,
+      "grey_seal_femaleyoung": "@Pusa.hispida hispida.seal_ringed",
+      "grey_seal_male": "@Pusa.hispida hispida.seal_ringed",
+      "grey_seal_pup": "@Pusa.hispida hispida.seal_ringed",
+      "grey_seal_unknown": "@Pusa.hispida hispida.seal_ringed",
+      "harbour_seal": "@Pusa.hispida hispida.seal_ringed",
+      "hawaiian_monk_seal": "@Pusa.hispida hispida.seal_ringed",
+      "mediterranean_monk_seal": "@Pusa.hispida hispida.seal_ringed",
+      "seal": "@Pusa.hispida hispida.seal_ringed",
+      "seal_ringed": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "hispida ochontensis": {
+      "_common_name": "Okhotsk ringed seal",
+      "_default": "@Pusa.hispida ochontensis.seal_ringed",
+      "_detectors": [
+        "@_detectors.seals_v1"
+      ],
+      "_itis_id": 622065,
+      "grey_seal_femaleyoung": "@Pusa.hispida ochontensis.seal_ringed",
+      "grey_seal_male": "@Pusa.hispida ochontensis.seal_ringed",
+      "grey_seal_pup": "@Pusa.hispida ochontensis.seal_ringed",
+      "grey_seal_unknown": "@Pusa.hispida ochontensis.seal_ringed",
+      "harbour_seal": "@Pusa.hispida ochontensis.seal_ringed",
+      "hawaiian_monk_seal": "@Pusa.hispida ochontensis.seal_ringed",
+      "mediterranean_monk_seal": "@Pusa.hispida ochontensis.seal_ringed",
+      "seal": "@Pusa.hispida ochontensis.seal_ringed",
+      "seal_ringed": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
     "hispida saimensis": {
       "_common_name": "Saimaa seal",
       "_default": "@Pusa.hispida saimensis.seal_ringed",

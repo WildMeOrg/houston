@@ -229,6 +229,69 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     },
                 },
                 {
+                    'common_name': 'Baltic ringed seal',
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                        'seal',
+                        'seal_ringed',
+                    ],
+                    'id_algos': {
+                        'hotspotter_nosv': {
+                            'description': 'HotSpotter ' 'pattern-matcher'
+                        }
+                    },
+                    'itis_id': 622062,
+                    'scientific_name': 'Pusa hispida botnica',
+                },
+                {
+                    'common_name': 'Arctic ringed seal',
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                        'seal',
+                        'seal_ringed',
+                    ],
+                    'id_algos': {
+                        'hotspotter_nosv': {
+                            'description': 'HotSpotter ' 'pattern-matcher'
+                        }
+                    },
+                    'itis_id': 622061,
+                    'scientific_name': 'Pusa hispida hispida',
+                },
+                {
+                    'common_name': 'Okhotsk ringed seal',
+                    'ia_classes': [
+                        'grey_seal_femaleyoung',
+                        'grey_seal_male',
+                        'grey_seal_pup',
+                        'grey_seal_unknown',
+                        'harbour_seal',
+                        'hawaiian_monk_seal',
+                        'mediterranean_monk_seal',
+                        'seal',
+                        'seal_ringed',
+                    ],
+                    'id_algos': {
+                        'hotspotter_nosv': {
+                            'description': 'HotSpotter ' 'pattern-matcher'
+                        }
+                    },
+                    'itis_id': 622065,
+                    'scientific_name': 'Pusa hispida ' 'ochontensis',
+                },
+                {
                     'scientific_name': 'Pusa hispida saimensis',
                     'common_name': 'Saimaa seal',
                     'itis_id': 622064,

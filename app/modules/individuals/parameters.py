@@ -71,9 +71,8 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         elif field == 'sex':
             obj.sex = None
             ret_val = True
-        elif field == 'taxonomy':
-            obj.taxonomy_guid = None
-            ret_val = True
+        # cdx-7 says we cannot be without taxonomy
+        # elif field == 'taxonomy':
         elif field == 'timeOfBirth':
             obj.time_of_birth = None
             ret_val = True
@@ -305,5 +304,13 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             if 'value' in value:
                 name.value = value['value']
             ret_val = True
+
+        # via cdx-7, we force user to set taxonomy during any patch they do
+        if not obj.taxonomy_guid:
+            raise HoustonException(
+                log,
+                'you must set taxonomy on this individual',
+                obj=obj,
+            )
 
         return ret_val

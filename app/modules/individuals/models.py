@@ -129,6 +129,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     time_of_death = db.Column(db.DateTime, index=True, default=None, nullable=True)
 
     # Matches guid in site.species
+    # FIXME there will be a follow-up task to cdx-7 which makes this nullable=False ... later
     taxonomy_guid = db.Column(db.GUID, index=True, nullable=True)
 
     custom_fields = db.Column(db.JSON, default=lambda: {}, nullable=True)

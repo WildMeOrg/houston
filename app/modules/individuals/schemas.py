@@ -141,6 +141,7 @@ class DetailedIndividualSchema(NamedIndividualSchema):
         many=True,
     )
     sex = base_fields.Function(lambda ind: ind.get_sex())
+    taxonomy = base_fields.Function(lambda ind: ind.get_taxonomy_guid())
     timeOfBirth = base_fields.DateTime(attribute='time_of_birth')
     timeOfDeath = base_fields.DateTime(attribute='time_of_death')
 
@@ -156,6 +157,7 @@ class DetailedIndividualSchema(NamedIndividualSchema):
             'timeOfBirth',
             'timeOfDeath',
             'sex',
+            'taxonomy',
             'encounters',
         )
         dump_only = NamedIndividualSchema.Meta.dump_only + (

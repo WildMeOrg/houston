@@ -116,7 +116,9 @@ class Individuals(Resource):
         if in_tod and not util.is_valid_datetime_string(in_tod):
             error_messages.append(f'"{in_tod}" not a valid value for timeOfDeath')
         in_tx = request_in.get('taxonomy')
-        if in_tx:
+        if not in_tx:
+            error_messages.append('a taxonomy guid is required')
+        else:
             try:
                 Taxonomy(in_tx)
             except ValueError:

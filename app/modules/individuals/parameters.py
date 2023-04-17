@@ -46,6 +46,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         '/names',
         '/encounters',
         '/sex',
+        '/taxonomy',
         '/timeOfBirth',
         '/timeOfDeath',
         '/comments',
@@ -69,6 +70,9 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             ret_val = True
         elif field == 'sex':
             obj.sex = None
+            ret_val = True
+        elif field == 'taxonomy':
+            obj.taxonomy_guid = None
             ret_val = True
         elif field == 'timeOfBirth':
             obj.time_of_birth = None
@@ -232,6 +236,19 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     obj=obj,
                 )
             obj.sex = value
+            ret_val = True
+        elif field == 'taxonomy':
+            from app.modules.site_settings.models import Taxonomy
+
+            try:
+                Taxonomy(value)
+            except ValueError as ve:
+                raise HoustonException(
+                    log,
+                    f'{value} invalid taxonomy for {obj}: {str(ve)}',
+                    obj=obj,
+                )
+            obj.taxonomy_guid = value
             ret_val = True
         elif field == 'timeOfBirth':
             if not util.is_valid_datetime_string(value):

@@ -28,6 +28,13 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 # Caller must populate the encounter info in the data in
 def create_individual(flask_app_client, user, expected_status_code=200, data_in={}):
+
+    if not data_in.get('taxonomy'):
+        from tests.modules.site_settings.resources import utils as setting_utils
+
+        taxonomy = setting_utils.get_some_taxonomy_dict(flask_app_client, user)
+        data_in['taxonomy'] = taxonomy['id']
+
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
         response = flask_app_client.post(
             PATH,

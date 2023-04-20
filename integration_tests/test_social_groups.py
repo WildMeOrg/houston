@@ -99,9 +99,15 @@ def test_social_groups(session, login, codex_url):
     encounter_ids = uuids['encounters']
 
     # Create individuals
+    response = utils.add_site_species(
+        session,
+        codex_url,
+        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
+    )
+    tx_id = response[-1]['id']
     responses = []
     for i in range(3):
-        data = {'encounters': [{'id': encounter_ids[i]}]}
+        data = {'encounters': [{'id': encounter_ids[i]}], 'taxonomy': tx_id}
         responses.append(session.post(codex_url('/api/v1/individuals/'), json=data))
         assert responses[-1].status_code == 200
 

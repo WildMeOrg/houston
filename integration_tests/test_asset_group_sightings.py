@@ -448,9 +448,17 @@ def create_individual(
     sight_json = session.get(sight_url).json()
     assert sight_json['stage'] in ['identification', 'un_reviewed']
 
+    response = utils.add_site_species(
+        session,
+        codex_url,
+        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
+    )
+    tx_id = response[-1]['id']
+
     encounter_guid = [enc['guid'] for enc in sight_json['encounters']][0]
     indiv_data = {
         'encounters': [{'id': encounter_guid}],
+        'taxonomy': tx_id,
         'names': [
             {'context': default_name_context, 'value': default_name_val},
         ],

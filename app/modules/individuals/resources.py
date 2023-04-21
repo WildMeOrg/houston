@@ -318,6 +318,10 @@ class IndividualByID(Resource):
                 status_code = ex.status_code if ex.status_code == 422 else 409
                 abort(status_code, ex.message)
 
+        # via cdx-7, we force user to set taxonomy during any patch they do
+        if not self.taxonomy_guid:
+            abort(409, 'you must set taxonomy on this individual')
+
         db.session.merge(individual)
         AuditLog.patch_object(log, individual, args, duration=timer.elapsed())
         return individual

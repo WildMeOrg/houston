@@ -266,6 +266,14 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         # we use get_taxonomies() as it will validate taxonomy guid
         return [tx.guid for tx in self.get_taxonomies()]
 
+    # this basically gives a superset of (unique) taxonomy guids
+    def get_taxonomy_guids_with_encounters(self):
+        txs = self.get_taxonomy_guids()
+        for enc in self.encounters:
+            if enc.taxonomy_guid and enc.taxonomy_guid not in txs:
+                txs.append(enc.taxonomy_guid)
+        return txs
+
     # Taxonomy objects, so we "can trust the guids"  :/
     def set_taxonomies(self, txs):
         with db.session.begin(subtransactions=True):
@@ -362,6 +370,9 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
     def get_encounters(self):
         return self.encounters
 
+    def get_number_encounters(self):
+        return len(self.encounters)
+
     def add_encounter(self, encounter):
         if encounter not in self.encounters:
             with db.session.begin(subtransactions=True):
@@ -403,12 +414,18 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         assets.update(self.get_encounter_assets())
         return assets
 
+    def get_number_assets(self):
+        return len(self.get_all_assets())
+
     def get_annotations(self):
         annots = []
         for enc in self.encounters:
             if enc.annotations:
                 annots += enc.annotations
         return annots
+
+    def get_number_annotations(self):
+        return len(self.get_annotations())
 
     def add_asset(self, asset):
         if asset not in self.get_assets():
@@ -534,6 +551,16 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
     def is_migrated_data(self):
         return self.asset_group_sighting_guid is None
+
+    # returns the furthest pipeline got that is not complete
+    def get_pipeline_state(self):
+        status = self.get_pipeline_status()
+        for st in ['preparation', 'detection', 'curation', 'identification']:
+            if not (
+                status[st].get('complete', False) or status[st].get('skipped', False)
+            ):
+                return st
+        return None
 
     def get_pipeline_status(self):
         db.session.refresh(self)

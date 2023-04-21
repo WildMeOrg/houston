@@ -305,12 +305,4 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 name.value = value['value']
             ret_val = True
 
-        # via cdx-7, we force user to set taxonomy during any patch they do
-        if not obj.taxonomy_guid:
-            raise HoustonException(
-                log,
-                'you must set taxonomy on this individual',
-                obj=obj,
-            )
-
         return ret_val

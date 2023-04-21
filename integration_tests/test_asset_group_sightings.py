@@ -376,6 +376,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'pipeline_status': response.json()['pipeline_status'],
+        'pipeline_state': response.json()['pipeline_state'],
         'verbatimLocality': None,
     }
     # due to task timing, both are valid

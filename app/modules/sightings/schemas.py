@@ -69,9 +69,15 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
         attribute='get_owners',
         many=True,
     )
-    taxonomy_guids = base_fields.Function(lambda s: s.get_taxonomy_guids())
+    taxonomy_guids = base_fields.Function(
+        lambda s: s.get_taxonomy_guids_with_encounters()
+    )
     customFields = base_fields.Function(lambda s: s.get_custom_fields())
     submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
+    pipelineState = base_fields.Function(lambda s: s.get_pipeline_state())
+    numberEncounters = base_fields.Function(lambda s: s.get_number_encounters())
+    numberImages = base_fields.Function(lambda s: s.get_number_assets())
+    numberAnnotations = base_fields.Function(lambda s: s.get_number_annotations())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -93,6 +99,11 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'taxonomy_guids',
             'customFields',
             'submissionTime',
+            'stage',
+            'pipelineState',
+            'numberEncounters',
+            'numberImages',
+            'numberAnnotations',
         )
         dump_only = (
             Sighting.guid.key,
@@ -176,6 +187,7 @@ class DetailedSightingSchema(TimedSightingSchema):
     locationId_value = base_fields.Function(lambda s: s.get_location_id_value())
     locationId_keyword = base_fields.Function(lambda s: s.get_location_id_keyword())
     pipeline_status = base_fields.Function(lambda s: s.get_pipeline_status())
+    pipeline_state = base_fields.Function(lambda s: s.get_pipeline_state())
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -207,6 +219,7 @@ class DetailedSightingSchema(TimedSightingSchema):
             'locationId',
             'locationId_keyword',
             'pipeline_status',
+            'pipeline_state',
         )
 
 

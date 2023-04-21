@@ -319,7 +319,7 @@ class IndividualByID(Resource):
                 abort(status_code, ex.message)
 
         # via cdx-7, we force user to set taxonomy during any patch they do
-        if not self.taxonomy_guid:
+        if not individual.taxonomy_guid:
             abort(409, 'you must set taxonomy on this individual')
 
         db.session.merge(individual)

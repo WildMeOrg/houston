@@ -1045,3 +1045,19 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
                 }
             )
         return es
+
+    def get_relationships_elasticsearch(self):
+        rels = []
+        for mem in self.relationship_memberships:
+            rel = mem.relationship
+            rels.append(
+                {
+                    'guid': str(rel.guid),
+                    'type_guid': str(rel.type_guid),
+                    'type_label': rel.type_label,
+                    'role_label': mem.individual_role_label,
+                    'role_guid': str(mem.individual_role_guid),
+                    'other_individual_guid': str(rel.other_individual(self.guid).guid),
+                }
+            )
+        return rels

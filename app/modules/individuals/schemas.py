@@ -181,6 +181,9 @@ class ElasticsearchIndividualSchema(ModelSchema):
     social_groups = base_fields.Function(
         lambda ind: ind.get_social_groups_elasticsearch()
     )
+    relationships = base_fields.Function(
+        lambda ind: ind.get_relationships_elasticsearch()
+    )
     sex = base_fields.Function(lambda ind: ind.get_sex())
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())
@@ -214,6 +217,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'adoptionName',
             'taxonomy_guid',
             'social_groups',
+            'relationships',
             'sex',
             'encounters',
             'birth',

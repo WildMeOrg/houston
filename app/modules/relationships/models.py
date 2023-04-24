@@ -162,6 +162,14 @@ class Relationship(db.Model, HoustonModel):
             return True
         return False
 
+    def other_individual(self, individual_guid):
+        if not self.has_individual(individual_guid):
+            return None
+        for individual_member in self.individual_members:
+            if individual_member.individual_guid != individual_guid:
+                return individual_member.individual
+        return None
+
     def get_relationship_role_for_individual(self, individual_guid):
         membership = self._get_membership_for_guid(individual_guid)
         if membership:

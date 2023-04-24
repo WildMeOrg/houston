@@ -328,6 +328,15 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
 
+    def get_sightings(self):
+        sightings = set()  # force unique
+        for enc in self.encounters:
+            sightings.add(enc.sighting)
+        return sightings
+
+    def get_number_sightings(self):
+        return len(self.get_sightings())
+
     def get_owners(self):
         return [encounter.owner for encounter in self.encounters]
 
@@ -1013,3 +1022,26 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
             social_group_schema.dump(social_group).data for social_group in social_groups
         ]
         return social_groups
+
+    def get_social_groups_elasticsearch(self):
+        from app.modules.social_groups.models import SocialGroup
+
+        social_groups = {
+            soc_group_memship.social_group for soc_group_memship in self.social_groups
+        }
+        es = []
+        for sg in social_groups:
+            mem = sg.get_member(str(self.guid))
+            role_names = []
+            for role_guid in mem.roles:
+                role_data = SocialGroup.get_role_data(role_guid)
+                role_names.append(role_data.get('label'))
+            es.append(
+                {
+                    'guid': str(sg.guid),
+                    'name': sg.name,
+                    'role_guids': mem.roles,
+                    'role_names': role_names,
+                }
+            )
+        return es

@@ -178,23 +178,25 @@ class ElasticsearchIndividualSchema(ModelSchema):
     firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
     adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
     encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
-    # see DEX-1457 for why this was (temporarily?) disabled
-    # social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    social_groups = base_fields.Function(
+        lambda ind: ind.get_social_groups_elasticsearch()
+    )
     sex = base_fields.Function(lambda ind: ind.get_sex())
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())
     comments = base_fields.Function(lambda ind: ind.get_comments())
     customFields = base_fields.Function(lambda ind: ind.get_custom_fields())
-    taxonomy_guid = base_fields.Function(
-        lambda ind: ind.get_taxonomy_guid_inherit_encounters()
-    )
+    taxonomy_guid = base_fields.Function(lambda ind: ind.get_taxonomy_guid())
     has_annotations = base_fields.Function(lambda ind: ind.has_annotations())
     num_encounters = base_fields.Function(lambda ind: ind.num_encounters())
     last_seen = base_fields.Function(lambda ind: ind.get_last_seen_time_isoformat())
     last_seen_specificity = base_fields.Function(
         lambda ind: ind.get_last_seen_time_specificity()
     )
-    taxonomy_names = base_fields.Function(lambda ind: ind.get_taxonomy_names())
+    taxonomy_names = base_fields.Function(
+        lambda ind: ind.get_taxonomy_names(inherit_encounters=False)
+    )
+    numberSightings = base_fields.Function(lambda s: s.get_number_sightings())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -223,6 +225,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'last_seen',
             'last_seen_specificity',
             'taxonomy_names',
+            'numberSightings',
         )
         dump_only = (
             Individual.guid.key,
@@ -241,8 +244,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     firstName = base_fields.Function(lambda ind: ind.get_first_name())
     firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
     adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
-    # see DEX-1457 for why this was (temporarily?) disabled
-    # social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
     sex = base_fields.Function(lambda ind: ind.get_sex())
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())

@@ -215,6 +215,22 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     def get_custom_fields(self):
         return self.custom_fields
 
+    def get_custom_fields_strict(self):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        cf = self.custom_fields
+        cf_strict = {}
+        for cfd_id in cf:
+            if not SiteSettingCustomFields.is_valid_value_for_class(
+                'Individual', cfd_id, cf[cfd_id]
+            ):
+                log.warning(
+                    f'skipping custom field definition {cfd_id} with invalid value "{cf[cfd_id]}" on {self}'
+                )
+            else:
+                cf_strict[cfd_id] = cf[cfd_id]
+        return cf_strict
+
     def get_taxonomy_guid(self):
         return self.taxonomy_guid
 

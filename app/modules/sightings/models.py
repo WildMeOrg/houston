@@ -148,6 +148,16 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
         return ElasticsearchSightingSchema
 
+    @classmethod
+    def patch_elasticsearch_mappings(cls, mappings):
+        mappings = super(Sighting, cls).patch_elasticsearch_mappings(mappings)
+
+        mappings['location_geo_point'] = {
+            'type': 'geo_point',
+        }
+
+        return mappings
+
     # when we index this sighting, lets (re-)index annotations
     def index_hook_obj(self, *args, **kwargs):
         kwargs['force'] = True
@@ -241,6 +251,13 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             location_id_value = MAX_UNICODE_CODE_POINT_CHAR
         location_id_keyword = location_id_value.strip().lower()
         return location_id_keyword
+
+    # primarly for elasticsearch; see: https://www.elastic.co/guide/en/elasticsearch/reference/current/geo-point.html
+    def get_geo_point(self):
+        if self.decimal_latitude is None or self.decimal_longitude is None:
+            return None
+        # we might consider validating these; but for now we trust the data (ha!)
+        return {'lat': self.decimal_latitude, 'lon': self.decimal_longitude}
 
     def get_locality(self):
         return self.verbatim_locality

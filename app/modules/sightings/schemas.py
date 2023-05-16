@@ -64,6 +64,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     locationId = base_fields.UUID(attribute='location_guid')
     locationId_value = base_fields.Function(lambda s: s.get_location_id_value())
     locationId_keyword = base_fields.Function(lambda s: s.get_location_id_keyword())
+    location_geo_point = base_fields.Function(lambda s: s.get_geo_point())
     owners = base_fields.Nested(
         'PublicUserSchema',
         attribute='get_owners',
@@ -95,6 +96,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'locationId',
             'locationId_value',
             'locationId_keyword',
+            'location_geo_point',
             'owners',
             'taxonomy_guids',
             'customFields',

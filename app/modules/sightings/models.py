@@ -155,6 +155,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         mappings['location_geo_point'] = {
             'type': 'geo_point',
         }
+        if 'customFields' in mappings:
+            mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
+                mappings['customFields']
+            )
 
         return mappings
 

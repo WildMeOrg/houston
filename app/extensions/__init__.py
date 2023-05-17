@@ -605,6 +605,28 @@ class CustomFieldMixin(object):
                 cf_strict[cfd_id] = cf[cfd_id]
         return cf_strict
 
+    @classmethod
+    def custom_field_elasticsearch_mappings(cls, mapping):
+        from app.modules.site_settings.models import SiteSetting
+
+        if not mapping or 'properties' not in mapping:
+            return mapping
+
+        es_type_map = {
+            'date': 'date',
+            'float': 'float',
+            'feetmeters': 'float',
+            'integer': 'integer',
+            'geo': 'geo_point',
+            'boolean': 'boolean',
+        }
+        data = SiteSetting.get_value(f'site.custom.customFields.{cls.__name__}') or {}
+        definitions = data.get('definitions', [])
+        for defn in definitions:
+            es_type = es_type_map.get(defn['type'], 'text')
+            mapping['properties'][defn['id']] = {'type': es_type}
+        return mapping
+
 
 ##########################################################################################
 

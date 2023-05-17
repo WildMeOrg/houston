@@ -606,8 +606,16 @@ class CustomFieldMixin(object):
                     self.__class__.__name__, cfd_id
                 )
                 val = cf[cfd_id]
-                if defn['type'] == 'geo' and val:
-                    val = {'lat': val[0], 'lon': val[1]}
+                if defn['type'] == 'geo':
+                    if (
+                        isinstance(val, list)
+                        and len(val) == 2
+                        and val[0] is not None
+                        and val[1] is not None
+                    ):
+                        val = {'lat': val[0], 'lon': val[1]}
+                    else:
+                        val = None
                 cf_es[cfd_id] = val
         return cf_es
 

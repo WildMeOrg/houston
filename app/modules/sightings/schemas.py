@@ -73,7 +73,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     taxonomy_guids = base_fields.Function(
         lambda s: s.get_taxonomy_guids_with_encounters()
     )
-    customFields = base_fields.Function(lambda s: s.get_custom_fields_strict())
+    customFields = base_fields.Function(lambda s: s.get_custom_fields_elasticsearch())
     submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
     pipelineState = base_fields.Function(lambda s: s.get_pipeline_state())
     numberEncounters = base_fields.Function(lambda s: s.get_number_encounters())

@@ -188,7 +188,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
     birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
     death = base_fields.Function(lambda ind: ind.get_time_of_death())
     comments = base_fields.Function(lambda ind: ind.get_comments())
-    customFields = base_fields.Function(lambda ind: ind.get_custom_fields_strict())
+    customFields = base_fields.Function(lambda ind: ind.get_custom_fields_elasticsearch())
     taxonomy_guid = base_fields.Function(lambda ind: ind.get_taxonomy_guid())
     has_annotations = base_fields.Function(lambda ind: ind.has_annotations())
     num_encounters = base_fields.Function(lambda ind: ind.num_encounters())

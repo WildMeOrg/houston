@@ -174,6 +174,10 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         }
         mappings['firstName'] = {'type': 'keyword'}
         mappings['comments'] = {'type': 'text'}
+        if 'customFields' in mappings:
+            mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
+                mappings['customFields']
+            )
         return mappings
 
     def __repr__(self):

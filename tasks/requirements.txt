@@ -1,4 +1,4 @@
 invoke==2.0.0
 lockfile== 0.12.2
-requests== 2.28.2
+requests== 2.31.0
 rich==13.3.3

@@ -589,6 +589,21 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         if parameters and parameters.get('override') and 'sex' in parameters['override']:
             self.sex = parameters['override']['sex']
         rtn['targetSex'] = self.sex
+
+        from app.modules.site_settings.models import Taxonomy
+
+        # cdx-8 behavior will mimic above but for taxonomy, except we *require* to have something
+        if (
+            parameters
+            and parameters.get('override')
+            and 'taxonomy_guid' in parameters['override']
+        ):
+            self.taxonomy_guid = parameters['override']['taxonomy_guid']
+        if not self.taxonomy_guid:
+            raise ValueError('target individual must have a taxonomy set')
+        Taxonomy(self.taxonomy_guid)  # will raise ValueError if bad
+        rtn['targetTaxonomyGuid'] = self.taxonomy_guid
+
         self.merge_names(
             source_individuals,
             parameters
@@ -832,6 +847,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     # NOTE: this does not do any notification of users; see merge_request_from()
     def _merge_request_init(self, individuals, parameters=None):
         from app.modules.individuals.tasks import execute_merge_request
+        from app.modules.site_settings.models import Taxonomy
 
         if not individuals or not isinstance(individuals, list) or len(individuals) < 1:
             msg = f'merge request passed invalid individuals: {individuals}'
@@ -844,6 +860,17 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
                 raise ValueError(msg)
         if not parameters:
             parameters = {}
+
+        # cdx-8 requires us to have a taxonomy (via target/self or override)
+        try_tx = self.taxonomy_guid
+        if parameters.get('override') and 'taxonomy_guid' in parameters['override']:
+            try_tx = parameters['override']['taxonomy_guid']
+        if not try_tx:
+            raise ValueError(
+                'target individual must have a taxonomy set or override value'
+            )
+        Taxonomy(try_tx)  # will raise ValueError if bad
+
         parameters['checksum'] = Individual.merge_request_hash([self] + individuals)
         delta = datetime.timedelta(days=Individual.get_merge_request_deadline_days())
         # allow us to override deadline delta; mostly good for testing
@@ -984,12 +1011,13 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     def find_merge_conflicts(self, individuals):
         if len(individuals) < 2:
             raise ValueError('not enough individuals')
-        values = {'sex': set()}
+        values = {'sex': set(), 'taxonomy_guid': set()}
         name_contexts = {}
         for individual in individuals:
             for name in individual.names:
                 name_contexts[name.context] = name_contexts.get(name.context, 0) + 1
             values['sex'].add(individual.get_sex())
+            values['taxonomy_guid'].add(individual.get_taxonomy_guid())
         conflicts = {'name_contexts': []}
         for key in values.keys():
             if len(values[key]) > 1:

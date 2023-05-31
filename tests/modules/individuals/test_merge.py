@@ -5,6 +5,7 @@ import datetime
 
 import pytest
 
+import tests.modules.site_settings.resources.utils as site_setting_utils
 from tests import utils as test_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -236,10 +237,12 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     from app.modules.individuals.models import Individual
     from app.modules.notifications.models import Notification, NotificationType
 
+    conf_tx = site_setting_utils.get_some_taxonomy_dict(flask_app_client, researcher_1)
     # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
     Notification.query.delete()
     individual = Individual()
+    individual.taxonomy_guid = conf_tx['id']  # tests cdx-8 "default" behavior
     enc = Encounter()
     enc.owner = researcher_1
     individual.add_encounter(enc)
@@ -251,6 +254,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     individual2.add_encounter(enc)
     request.addfinalizer(enc.delete_cascade)
     request.addfinalizer(individual2.delete)
+    # test cdx-8 first with taxonomy override param
     params = {
         'deadline_delta_seconds': 3,
         'test': True,
@@ -287,6 +291,48 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_request_init_taxonomy(
+    db, flask_app_client, researcher_1, researcher_2, request
+):
+    from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
+    from app.modules.notifications.models import Notification
+
+    Notification.query.delete()
+    individual = Individual()
+    enc = Encounter()
+    enc.owner = researcher_1
+    individual.add_encounter(enc)
+    request.addfinalizer(enc.delete_cascade)
+    request.addfinalizer(individual.delete)
+    individual2 = Individual()
+    enc = Encounter()
+    enc.owner = researcher_2
+    individual2.add_encounter(enc)
+    request.addfinalizer(enc.delete_cascade)
+    request.addfinalizer(individual2.delete)
+    # test cdx-8 first with taxonomy override param
+    params = {
+        'deadline_delta_seconds': 3,
+        'test': True,
+    }
+    # should fail as no taxonomy present
+    with pytest.raises(ValueError) as verr:
+        res = individual.merge_request_from([individual2], params)
+    assert 'must have a taxonomy set or override value' in str(verr.value)
+    # now test it with override, which should pass
+    conf_tx = site_setting_utils.get_some_taxonomy_dict(flask_app_client, researcher_1)
+    params['override'] = {'taxonomy_guid': conf_tx['id']}
+    res = individual.merge_request_from([individual2], params)
+    assert res
+    assert 'async' in res
+    assert res['async'].id
 
 
 @pytest.mark.skipif(

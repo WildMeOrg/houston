@@ -1659,31 +1659,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         return response
 
     def get_matched_annotation_guids(self):
-        annotation_guids = []
-        if self.jobs:
-            for job_id in self.jobs.keys():
-                job = self.jobs[job_id]
-
-                # Get all query annotations
-                query_annotation_guid = job.get('annotation', None)
-                if query_annotation_guid is not None:
-                    annotation = Annotation.query.get(query_annotation_guid)
-                    if annotation:
-                        annotation_guids.append(annotation.guid)
-
-                # Get all result annotations
-                result = job.get('result', {})
-                scores_by_annotation = result.get('scores_by_annotation', [])
-                scores_by_individual = result.get('scores_by_individual', [])
-                for score in scores_by_annotation + scores_by_individual:
-                    for annotation_guid in score.keys():
-                        # Ensure exists in DB
-                        annotation = Annotation.query.get(annotation_guid)
-                        if annotation:
-                            annotation_guids.append(annotation.guid)
-
-        annotation_guids = sorted(set(annotation_guids))
-        return annotation_guids
+        res = self.get_id_result()
+        if not res or 'annotation_data' not in res:
+            return []
+        return [uuid.UUID(q) for q in res['annotation_data']]
 
     def set_asset_group_sighting(self, ags):
         self.asset_group_sighting = ags

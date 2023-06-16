@@ -81,6 +81,7 @@ class BaseCodexConfig(
         'audit_logs',
         'integrity',
         'progress',
+        'account_requests',
     )
     # fmt: on
 

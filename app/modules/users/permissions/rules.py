@@ -319,6 +319,10 @@ class ModuleActionRule(ModuleActionBaseMixin, Rule):
             from app.modules.sightings.models import Sighting
 
             enabled_modules.append(Sighting)
+        if is_module_enabled('account_requests'):
+            from app.modules.account_requests.models import AccountRequest
+
+            enabled_modules.append(AccountRequest)
 
         if is_module_enabled('missions'):
             from app.modules.missions.models import MissionCollection

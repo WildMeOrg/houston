@@ -125,6 +125,7 @@ def test_merge_permissions(
     assert response['blocking_encounters'] == [encounter1_id]
     # check that the celery task is there and contains what it should
     assert response['request_id']
+    test_utils.wait_for_celery_task(response['request_id'])
     try:
         req_data = Individual.get_merge_request_data(response['request_id'])
         assert req_data
@@ -501,6 +502,7 @@ def test_decline_voting(
     assert len(voters) == 1
     assert voters[0] == researcher_2
     # now this get-data should work
+    test_utils.wait_for_celery_task(request_id)
     response = individual_utils.get_merge_request(
         flask_app_client,
         researcher_1,

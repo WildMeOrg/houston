@@ -725,6 +725,19 @@ def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
     return status
 
 
+def wait_for_celery_task(task_id):
+    # from app.utils import get_celery_tasks_scheduled
+    from app.utils import get_celery_data
+
+    trial = 7
+    while trial > 0:
+        data = get_celery_data(task_id)
+        if data and data[0]:
+            return
+        time.sleep(3)
+        trial -= 1
+
+
 def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     from app.extensions import elasticsearch as es
 

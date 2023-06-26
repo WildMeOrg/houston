@@ -575,6 +575,21 @@ class CustomFieldMixin(object):
             self.custom_fields = cf
             db.session.merge(self)
 
+    # does above, but assumes values are serialized, so deserializes first
+    def set_custom_field_values_json(self, set_dict):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        assert isinstance(set_dict, dict), 'must pass dict'
+        for cfd_id in set_dict:
+            value = set_dict[cfd_id]
+            if value is not None:
+                defn = SiteSettingCustomFields.get_definition(
+                    self.__class__.__name__, cfd_id
+                )
+                assert defn
+                set_dict[cfd_id] = SiteSettingCustomFields.deserialize_value(defn, value)
+        self.set_custom_field_values(set_dict)
+
     def reset_custom_field_value(self, cfd_id):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 

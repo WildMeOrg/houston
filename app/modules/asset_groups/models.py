@@ -244,8 +244,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         cf_dict = self.sighting_config.get('customFields', {})
         invalid = {}
         for cfd_id in cf_dict:
+            defn = SiteSettingCustomFields.get_definition('Sighting', cfd_id)
+            deser_value = SiteSettingCustomFields.deserialize_value(defn, cf_dict[cfd_id])
             valid = SiteSettingCustomFields.is_valid_value_for_class(
-                'Sighting', cfd_id, cf_dict[cfd_id]
+                'Sighting', cfd_id, deser_value
             )
             if not valid:
                 invalid[cfd_id] = cf_dict[cfd_id]

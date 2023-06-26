@@ -729,12 +729,12 @@ def wait_for_celery_task(task_id):
     # from app.utils import get_celery_tasks_scheduled
     from app.utils import get_celery_data
 
-    trial = 7
+    trial = 6
     while trial > 0:
         data = get_celery_data(task_id)
         if data and data[0]:
             return
-        time.sleep(3)
+        time.sleep(2)
         trial -= 1
 
 

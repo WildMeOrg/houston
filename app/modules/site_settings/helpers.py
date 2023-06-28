@@ -351,6 +351,27 @@ class SiteSettingCustomFields(object):
             log.debug(f'needed choices for {cf_defn} but failed due to: {str(verr)}')
             return False
 
+        # because daterange sets multiple=T we need to do this multi-value checking *before* we recurse for multiple... i guess?
+        #  BUT we only test this when we are passed a *list value* (cuz otherwise we have recursed! wtf)
+        if dtype == 'daterange' and isinstance(value, list):
+            if len(value) != 2:
+                log.debug(f'daterange must be a list of length 2: {value}')
+                return False
+            if value[0] is None and value[1] is None:
+                return True  # ok(ish)
+            if not isinstance(value[0], datetime.datetime):
+                log.debug(f'daterange value0={value[0]} must a datetime')
+                return False
+            if not isinstance(value[1], datetime.datetime):
+                log.debug(f'daterange value1={value[1]} must a datetime')
+                return False
+            delta = value[1] - value[0]
+            if delta.total_seconds() < 0:
+                log.debug(
+                    f'daterange {value[0]} > {value[1]} older datetime must come first'
+                )
+                return False
+
         if cf_defn.get('multiple', False):
             if value is None and not cf_defn.get('required', False):
                 return True  # seems legit?
@@ -367,6 +388,8 @@ class SiteSettingCustomFields(object):
             cf_defn_single['multiple'] = False
             if dtype == 'multiselect':  # bonus hackery
                 cf_defn_single['schema']['displayType'] = 'select'
+            if dtype == 'daterange':  # bonus bonus hackery
+                cf_defn_single['schema']['displayType'] = 'date'
             for val in value:
                 val_ok = cls.is_valid_value(cf_defn_single, val)
                 if not val_ok:
@@ -475,23 +498,7 @@ class SiteSettingCustomFields(object):
                 # from_data() logs plenty, so none here
                 return False
 
-        if dtype == 'daterange':
-            if len(value) != 2:
-                log.debug(f'daterange value={value} must contain exactly 2 items')
-                return False
-            if not isinstance(value[0], datetime.datetime):
-                log.debug(f'daterange value0={value[0]} must a datetime')
-                return False
-            if not isinstance(value[1], datetime.datetime):
-                log.debug(f'daterange value1={value[1]} must a datetime')
-                return False
-            delta = value[1] - value[0]
-            if delta.total_seconds() < 0:
-                log.debug(
-                    f'daterange {value[0]} > {value[1]} older datetime must come first'
-                )
-                return False
-
+        # for whatever reason, latlong is multiple=F (whereas daterange is multiple=T) so this needs to be done here
         if dtype == 'latlong':
             if len(value) != 2:
                 log.debug(f'latlong value={value} must contain exactly 2 items')
@@ -539,6 +546,9 @@ class SiteSettingCustomFields(object):
         if defn.get('multiple', False):
             import copy
 
+            if not isinstance(value, list):
+                log.error(f'multiple=T but value not list: value={value} defn={defn}')
+                raise ValueError('multiple=T but value is not list')
             # recursive hackery
             defn_single = copy.deepcopy(defn)
             defn_single['multiple'] = False
@@ -548,10 +558,11 @@ class SiteSettingCustomFields(object):
             return arr
 
         dtype = defn['schema']['displayType']
-        if dtype == 'date':
+        # daterange *should* have multiple=T so it will have recursed to single values here
+        if dtype == 'date' or dtype == 'daterange':
             return value.isoformat()
-        if dtype == 'daterange':
-            return [value[0].isoformat(), value[1].isoformat()]
+        # if dtype == 'daterange':
+        # return [value[0].isoformat(), value[1].isoformat()]
         if cls.DISPLAY_TYPES[dtype] == uuid.UUID:
             return str(value)
         return value
@@ -565,6 +576,9 @@ class SiteSettingCustomFields(object):
         if defn.get('multiple', False):
             import copy
 
+            if not isinstance(raw_value, list):
+                log.error(f'multiple=T but value not list: value={raw_value} defn={defn}')
+                raise ValueError('multiple=T but value is not list')
             # recursive hackery
             defn_single = copy.deepcopy(defn)
             defn_single['multiple'] = False
@@ -574,13 +588,11 @@ class SiteSettingCustomFields(object):
             return arr
 
         dtype = defn['schema']['displayType']
-        if dtype == 'date' and not isinstance(raw_value, datetime.datetime):
+        # daterange *should* have multiple=T so it will have recursed to single values here
+        if (dtype == 'date' or dtype == 'daterange') and not isinstance(
+            raw_value, datetime.datetime
+        ):
             return datetime.datetime.fromisoformat(raw_value)
-        if dtype == 'daterange' and not isinstance(raw_value[0], datetime.datetime):
-            return [
-                datetime.datetime.fromisoformat(raw_value[0]),
-                datetime.datetime.fromisoformat(raw_value[1]),
-            ]
         if cls.DISPLAY_TYPES[dtype] == uuid.UUID and isinstance(raw_value, str):
             return uuid.UUID(raw_value, version=4)
         return raw_value

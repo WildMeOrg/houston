@@ -517,6 +517,7 @@ def test_set_and_reset_values(
         admin_user,
         'test_cfd_daterange',
         displayType='daterange',
+        multiple=True,
     )
     assert _set_and_reset_test(db, sight, cfd_id, [dt_old, dt]) == 0
 

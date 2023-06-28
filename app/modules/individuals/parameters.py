@@ -274,7 +274,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             # see explanation on encounter patch
             assert isinstance(value, dict), 'customFields must be passed a json object'
             if value.get('id'):
-                assert value.get('value'), 'customFields id/value format needs both'
+                assert 'value' in value, 'customFields id/value format needs both'
                 value = {value['id']: value['value']}
             obj.set_custom_field_values_json(value)  # does all the validation etc
             ret_val = True

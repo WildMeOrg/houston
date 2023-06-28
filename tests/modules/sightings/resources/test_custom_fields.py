@@ -42,6 +42,15 @@ def test_custom_fields_on_sighting(
         flask_app_client, admin_user, 'test_multi_cfd', multiple=True, cls='Sighting'
     )
     assert cfd_multi_id is not None
+    cfd_daterange_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'test_daterange_cfd',
+        displayType='daterange',
+        multiple=True,
+        cls='Sighting',
+    )
+    assert cfd_daterange_id is not None
 
     timestamp = test_utils.isoformat_timestamp_now()
     # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
@@ -191,6 +200,7 @@ def test_custom_fields_on_sighting(
         researcher_1,
         sighting_id,
     )
+
     # make sure customFields value has been altered
     assert 'customFields' in full_sighting.json
     assert cfd_id in full_sighting.json['customFields']
@@ -201,6 +211,96 @@ def test_custom_fields_on_sighting(
     assert full_sighting.json['customFields'][cfd_int_id] == new_cfd_int_value
     assert cfd_date_id in full_sighting.json['customFields']
     assert full_sighting.json['customFields'][cfd_date_id] == new_cfd_date_value
+
+    # this tests a few other complex customField things, like multi-value (daterange) etc.
+    new_cfd_daterange_value = ['2000-01-02T12:34:56+00:00', '2023-01-02T12:34:56+00:00']
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # pass only single value, should fail
+                'value': {'id': cfd_daterange_id, 'value': new_cfd_daterange_value[0]},
+            },
+        ],
+        expected_status_code=409,
+    )
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # None for entire range should be fine
+                'value': {'id': cfd_daterange_id, 'value': None},
+            },
+        ],
+    )
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # [None, None] should be fine
+                'value': {'id': cfd_daterange_id, 'value': [None, None]},
+            },
+        ],
+    )
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # a single None should fail
+                'value': {
+                    'id': cfd_daterange_id,
+                    'value': [new_cfd_daterange_value[0], None],
+                },
+            },
+        ],
+        expected_status_code=409,
+    )
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # a backward/invalid range should fail
+                'value': {
+                    'id': cfd_daterange_id,
+                    'value': [new_cfd_daterange_value[1], new_cfd_daterange_value[0]],
+                },
+            },
+        ],
+        expected_status_code=409,
+    )
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                # finally this should work and set it
+                'value': {'id': cfd_daterange_id, 'value': new_cfd_daterange_value},
+            },
+        ],
+    )
 
     # now since we have some values in use, lets make sure we cannot delete the definition
     res = setting_utils.patch_main_setting(

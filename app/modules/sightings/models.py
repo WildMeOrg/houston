@@ -1372,6 +1372,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 obj=self,
             )
 
+        if 'cm_dict' in json_result and str(sage_uuid) in json_result['cm_dict']:
+            result['extern_ref'] = json_result['cm_dict'][str(sage_uuid)].get(
+                'dannot_extern_reference'
+            )
         # Now it's reasonably valid, let's extract the bits we need
         for target_annot_data in json_result['summary_annot']:
             sage_uuid = from_sage_uuid(target_annot_data['duuid'])
@@ -1497,7 +1501,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
     # Helper to build the annotation score data from the job result
     def _get_annotation_id_data_from_job(self, t_annot_result, q_annot_job):
-
         data = {}
         assert len(t_annot_result.keys()) == 1
         t_annot_guid = list(t_annot_result.keys())[0]
@@ -1508,9 +1511,23 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 'guid': t_annot_guid,
                 'score': t_annot_result[t_annot_guid],
                 'id_finish_time': str(q_annot_job['end']),
+                'heatmap_src': Sighting._heatmap_src(
+                    q_annot_job['result'].get('extern_ref'),
+                    q_annot_job.get('annotation'),
+                    t_annot_guid,
+                ),
             }
 
         return t_annot, data
+
+    #  https://kaiju.dyn.wildme.io:5005/api/query/graph/match/thumb/?extern_reference=jxwuntrvqevmtgkd&query_annot_uuid=97c7ba81-930d-4152-a9d1-cbd8e27f9a8b&database_annot_uuid=bd389f7e-eb9b-4acb-a2a5-4e54b805c0a9&version=heatmask
+    @classmethod
+    def _heatmap_src(cls, extern_ref, q_annot_uuid, d_annot_uuid):
+        # uris = current_app.config.get(f'{self.NAME}_URIS', {})
+        if not extern_ref:
+            return None
+        uri = current_app.config['SAGE_URIS']['default']  # FIXME this sucks for localhost
+        return f'{uri}/api/query/graph/match/thumb?extern_reference={extern_ref}&query_annot_uuid={q_annot_uuid}&database_annot_uuid={d_annot_uuid}&version=heatmask'
 
     # Helper to ensure that the required annot and individual data is present
     def _ensure_annot_data_in_response(self, annot, response):

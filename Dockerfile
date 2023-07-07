@@ -39,7 +39,7 @@ RUN apt update \
         # Needed for profiling
         graphviz \
         #: required by wait-for
-        netcat \
+        netcat-traditional \
         #: required for downloading 'wait-for'
         curl \
  && rm -rf /var/lib/apt/lists/*

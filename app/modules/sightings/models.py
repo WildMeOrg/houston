@@ -1505,6 +1505,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         assert len(t_annot_result.keys()) == 1
         t_annot_guid = list(t_annot_result.keys())[0]
         t_annot = Annotation.query.get(t_annot_guid)
+        q_annot = Annotation.query.get(q_annot_job.get('annotation'))
         # If no annot, assume that annot has been deleted since the job was run and use None
         if t_annot:
             data = {
@@ -1513,21 +1514,49 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 'id_finish_time': str(q_annot_job['end']),
                 'heatmap_src': Sighting._heatmap_src(
                     q_annot_job['result'].get('extern_ref'),
-                    q_annot_job.get('annotation'),
-                    t_annot_guid,
+                    str(q_annot.content_guid),
+                    str(t_annot.content_guid),
                 ),
             }
 
         return t_annot, data
 
-    #  https://kaiju.dyn.wildme.io:5005/api/query/graph/match/thumb/?extern_reference=jxwuntrvqevmtgkd&query_annot_uuid=97c7ba81-930d-4152-a9d1-cbd8e27f9a8b&database_annot_uuid=bd389f7e-eb9b-4acb-a2a5-4e54b805c0a9&version=heatmask
     @classmethod
-    def _heatmap_src(cls, extern_ref, q_annot_uuid, d_annot_uuid):
-        # uris = current_app.config.get(f'{self.NAME}_URIS', {})
+    def _heatmap_src(cls, extern_ref, q_annot_content_uuid, d_annot_content_uuid):
         if not extern_ref:
             return None
-        uri = current_app.config['SAGE_URIS']['default']  # FIXME this sucks for localhost
-        return f'{uri}/api/query/graph/match/thumb?extern_reference={extern_ref}&query_annot_uuid={q_annot_uuid}&database_annot_uuid={d_annot_uuid}&version=heatmask'
+        import os
+
+        import requests
+
+        # uri will not work when localhost, so we kinda gotta cache this anyway and let have a "real" houston url
+        #   FIXME this should be smarter in the future
+        uri = current_app.config['SAGE_URIS']['default']
+        filename = (
+            f'sage-heatmap-{extern_ref}-{q_annot_content_uuid}-{d_annot_content_uuid}.jpg'
+        )
+        filepath = os.path.join(
+            current_app.config.get('FILEUPLOAD_BASE_PATH', '/tmp'),
+            'sage-heatmaps',
+            filename,
+        )
+        if not os.path.exists(filepath):  # not already cached
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            sage_src = f'{uri}api/query/graph/match/thumb/?extern_reference={extern_ref}&query_annot_uuid={q_annot_content_uuid}&database_annot_uuid={d_annot_content_uuid}&version=heatmask'
+            resp = requests.get(sage_src)
+            if not resp.headers['content-type'].lower().startswith('image/'):
+                log.error(
+                    f'non-image on fetching {sage_src} to {filepath}; contents in {filepath}.err'
+                )
+                open(filepath + '.err', 'wb').write(resp.content)
+                return
+            try:
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as err:
+                log.error(f'error {str(err)} on fetching {sage_src} to {filepath}')
+                return
+            open(filepath, 'wb').write(resp.content)
+        return f'/api/v1/annotations/sage-heatmaps/{filename}'
 
     # Helper to ensure that the required annot and individual data is present
     def _ensure_annot_data_in_response(self, annot, response):

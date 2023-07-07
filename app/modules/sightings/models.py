@@ -1556,7 +1556,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
                 log.error(f'error {str(err)} on fetching {sage_src} to {filepath}')
                 return
             open(filepath, 'wb').write(resp.content)
-        return f'/api/v1/annotations/sage-heatmaps/{filename}'
+        return f'/api/v1/annotations/sage-heatmaps/src/{filename}'
 
     # Helper to ensure that the required annot and individual data is present
     def _ensure_annot_data_in_response(self, annot, response):

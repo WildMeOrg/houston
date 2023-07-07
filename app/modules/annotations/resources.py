@@ -394,3 +394,21 @@ class AnnotationDebugByID(Resource):
         Get Annotation debug details by ID.
         """
         return annotation.get_debug_json()
+
+
+@api.route('/sage-heatmaps/src/<string:filename>')
+class AnnotationSageHeatmap(Resource):
+    def get(self, filename):
+        import os
+
+        from flask import current_app, send_file
+
+        # TODO make this a path in sightings (or etc) cuz it is duplicated there
+        filepath = os.path.join(
+            current_app.config.get('FILEUPLOAD_BASE_PATH', '/tmp'),
+            'sage-heatmaps',
+            filename,
+        )
+        if not os.path.exists(filepath):
+            abort(code=HTTPStatus.NOT_FOUND)
+        return send_file(filepath, 'image/jpeg')

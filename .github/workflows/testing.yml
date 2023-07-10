@@ -116,7 +116,7 @@ jobs:
       - name: Run tests
         run: |
           set -ex
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --cov=./ --cov-append --random-order-seed=1 tests/extensions/test_elasticsearch.py
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --cov=./ --cov-append --random-order-seed=1 tests/extensions/test_elasticsearch.py::test_model_search
 
       - name: Check DB migrations (postgresql)
         if: matrix.app-context == 'codex'

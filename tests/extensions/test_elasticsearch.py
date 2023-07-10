@@ -728,6 +728,8 @@ def test_model_search(flask_app_client, staff_user):
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')
 
+    wait_for_elasticsearch_status(flask_app_client, staff_user)
+
     # Initial search to setup the oauth user
     elasticsearch(flask_app_client, staff_user, 'users')
 

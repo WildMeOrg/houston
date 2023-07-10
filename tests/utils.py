@@ -725,6 +725,42 @@ def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
     return status
 
 
+def wait_for_elasticsearch_startup(flask_app_client, user, force=True):
+    log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
+
+    trial = 0
+    status = {}
+    while True:
+        try:
+            status = get_elasticsearch_status(flask_app_client, user)
+        except json.decoder.JSONDecodeError:
+            status = {'error': 'decoding problem'}
+        log.info('Elasticsearch status: {}'.format(status))
+
+        # Remove any outdated, disabled, health flags
+        remove_keys = [
+            'elasticsearch:enabled',
+            'status',
+        ]
+        keys = list(status.keys())
+        for key in keys:
+            if key.endswith(':outdated') or key in remove_keys:
+                if key == 'status' and status[key] != 'green':
+                    log.warning(f'status {status[key]} != green; waiting: {trial}')
+                else:
+                    status.pop(key, None)
+
+        if len(status) == 0:
+            break
+
+        if trial > 10:
+            raise RuntimeError('wait_for_elasticsearch_startup trials maxed out')
+
+        trial += 1
+        time.sleep(1)
+    log.info('wait_for_elasticsearch_startup completed')
+
+
 def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     from app.extensions import elasticsearch as es
 

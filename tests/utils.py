@@ -750,7 +750,10 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
         keys = list(status.keys())
         for key in keys:
             if key.endswith(':outdated') or key in remove_keys:
-                status.pop(key, None)
+                if key == 'status' and status[key] != 'green':
+                    log.warning(f'status {status[key]} != green; waiting: {trial}')
+                else:
+                    status.pop(key, None)
 
         if len(status) == 0:
             break

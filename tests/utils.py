@@ -746,7 +746,9 @@ def wait_for_elasticsearch_startup(flask_app_client, user, force=True):
         for key in keys:
             if key.endswith(':outdated') or key in remove_keys:
                 if key == 'status' and status[key] != 'green':
-                    log.warning(f'status {status[key]} != green; waiting: {trial}')
+                    log.warning(
+                        f'status {status[key]} != green; waiting: {trial} {status}'
+                    )
                 else:
                     status.pop(key, None)
 
@@ -757,7 +759,7 @@ def wait_for_elasticsearch_startup(flask_app_client, user, force=True):
             raise RuntimeError('wait_for_elasticsearch_startup trials maxed out')
 
         trial += 1
-        time.sleep(1)
+        time.sleep(10)
     log.info('wait_for_elasticsearch_startup completed')
 
 

@@ -95,6 +95,8 @@ jobs:
         run: |
           set -ex
           docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync houston celery-beat celery-worker
+        env:
+          ES_THRESHOLD: false
 
       - name: Check docker-compose status
         run: |

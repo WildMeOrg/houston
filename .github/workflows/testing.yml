@@ -113,6 +113,10 @@ jobs:
             wget --tries=1 -O - --header="Host: localhost:84" http://localhost:83/houston/ && break
           done
 
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+
       - name: Run tests
         run: |
           set -ex

@@ -76,7 +76,7 @@ services:
       - discovery.seed_hosts=elasticsearch2,elasticsearch3
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
-      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=${ES_THRESHOLD:-true}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   elasticsearch2:
@@ -103,7 +103,7 @@ services:
       - discovery.seed_hosts=elasticsearch,elasticsearch3
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
-      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=${ES_THRESHOLD:-true}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   elasticsearch3:
@@ -130,7 +130,7 @@ services:
       - discovery.seed_hosts=elasticsearch,elasticsearch2
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
-      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=${ES_THRESHOLD:-true}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   kibana:

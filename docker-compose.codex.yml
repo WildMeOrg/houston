@@ -77,6 +77,7 @@ services:
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   elasticsearch2:
@@ -104,6 +105,7 @@ services:
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   elasticsearch3:
@@ -131,6 +133,7 @@ services:
       - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
   kibana:

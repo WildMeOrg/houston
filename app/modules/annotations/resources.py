@@ -403,6 +403,9 @@ class AnnotationSageHeatmap(Resource):
 
         from flask import current_app, send_file
 
+        if '/' in filename:  # prevent dir-roaming
+            abort(code=HTTPStatus.NOT_FOUND)
+
         # TODO make this a path in sightings (or etc) cuz it is duplicated there
         filepath = os.path.join(
             current_app.config.get('FILEUPLOAD_BASE_PATH', '/tmp'),

@@ -138,6 +138,7 @@ else:
         ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
         ('Keyword', AccessOperation.READ): ['is_active'],
         ('Keyword', AccessOperation.WRITE): ['is_active'],
+        ('AccountRequest', AccessOperation.READ): ['is_admin'],
         ('AuditLog', AccessOperation.READ): ['is_admin'],
         ('SocialGroup', AccessOperation.READ): ['is_researcher'],
         ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],

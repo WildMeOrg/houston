@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 def test_create(
     flask_app_client,
 ):
+    from app.modules.account_requests.models import AccountRequest
+
     data = {
         'name': None,
         'email': 'test@example.com',
@@ -32,12 +34,15 @@ def test_create(
     result = req_utils.create_account_request(flask_app_client, data)
     assert result.json['name'] == data['name']
     assert result.json['email'] == data['email']
+    AccountRequest.query.delete()
 
 
 @pytest.mark.skipif(
     module_unavailable('account_requests'), reason='AccountRequest module disabled'
 )
 def test_read_all(flask_app_client, staff_user, regular_user):
+    from app.modules.account_requests.models import AccountRequest
+
     data = {
         'name': 'test name',
         'email': 'test@example.com',
@@ -50,3 +55,4 @@ def test_read_all(flask_app_client, staff_user, regular_user):
     test = reqs.json.pop()
     assert test['name'] == data['name']
     assert test['email'] == data['email']
+    AccountRequest.query.delete()

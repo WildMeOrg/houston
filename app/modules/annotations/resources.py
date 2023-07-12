@@ -403,6 +403,7 @@ class AnnotationSageHeatmap(Resource):
 
         from flask import current_app, send_file
 
+        filename = os.path.normpath(filename)
         if '/' in filename:  # prevent dir-roaming
             abort(code=HTTPStatus.NOT_FOUND)
 

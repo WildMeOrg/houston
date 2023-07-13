@@ -1542,7 +1542,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         )
         if not os.path.exists(filepath):  # not already cached
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            sage_src = f'{uri}api/query/graph/match/thumb/?extern_reference={extern_ref}&query_annot_uuid={q_annot_content_uuid}&database_annot_uuid={d_annot_content_uuid}&version=heatmask'
+            sage_src = f'{uri}/api/query/graph/match/thumb/?extern_reference={extern_ref}&query_annot_uuid={q_annot_content_uuid}&database_annot_uuid={d_annot_content_uuid}&version=heatmask'
             resp = requests.get(sage_src)
             if not resp.headers['content-type'].lower().startswith('image/'):
                 log.error(

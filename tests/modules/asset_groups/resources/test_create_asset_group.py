@@ -840,7 +840,7 @@ def test_create_asset_group_international(
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    second_filename = 'zebra_?_.jpg'
+    second_filename = 'zebra_🦓_.jpg'
     tus_utils.prep_tus_dir(test_root, filename=second_filename)
 
     asset_group_uuid = None

@@ -237,6 +237,8 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             obj.sex = value
             ret_val = True
         elif field == 'taxonomy':
+            from flask_login import current_user
+
             from app.modules.site_settings.models import Taxonomy
 
             try:
@@ -247,7 +249,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     f'{value} invalid taxonomy for {obj}: {str(ve)}',
                     obj=obj,
                 )
+            old_guid = obj.taxonomy_guid
             obj.taxonomy_guid = value
+            if old_guid != value:
+                obj.update_autogen_names(current_user, 'autogen_species')
             ret_val = True
         elif field == 'timeOfBirth':
             if not util.is_valid_datetime_string(value):

@@ -11,7 +11,7 @@ def create_autogen_name(
 ):
     existing_data = read_all_autogen_names(flask_app_client, user)
     existing_data.update(data)
-    setting_utils.modify_main_settings(
+    return setting_utils.modify_main_settings(
         flask_app_client,
         user,
         existing_data,

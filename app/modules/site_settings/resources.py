@@ -155,7 +155,7 @@ class MainDataByPath(Resource):
                         message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
                     else:
                         site_setting = SiteSetting.set_key_value(path, data['value'])
-                        message = f'Setting path:{path} to {data}'
+                        message = f'Setting path: {path} to {data}'
                     AuditLog.audit_log(log, message, duration=timer.elapsed())
                     return site_setting
                 else:

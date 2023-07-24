@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '4b70e9af2070'
-down_revision = '07655219aea3'
+down_revision = '8083ed5f8d4f'
 
 
 def upgrade():

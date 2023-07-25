@@ -227,7 +227,11 @@ def test_config(
         admin_user,
         data,
     )
+    agns = auto_name_utils.read_all_autogen_names(flask_app_client, admin_user)
     # now lets add a new taxonomy to the mix
+    #  note: this does nothing with AGN so it should reset above AGN to enabled=False
+    assert agn_guid in agns
+    assert agns[agn_guid]['enabled']
     vals = [
         {
             'id': tx1_guid,
@@ -247,4 +251,7 @@ def test_config(
         vals,
         'site.species',
     )
-    # breakpoint()
+    # test disabled
+    agns = auto_name_utils.read_all_autogen_names(flask_app_client, admin_user)
+    assert agn_guid in agns
+    assert not agns[agn_guid]['enabled']

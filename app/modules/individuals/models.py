@@ -646,6 +646,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         Taxonomy(self.taxonomy_guid)  # will raise ValueError if bad
         rtn['targetTaxonomyGuid'] = self.taxonomy_guid
 
+        # notably, self.taxonomy_guid has already been set (as merge_names() uses it)
         self.merge_names(
             source_individuals,
             parameters
@@ -804,7 +805,10 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
 
     # note: this will destructively remove names from source_individuals
     #  override looks like:  { context: value } and will replace any/all names with context
+    #    in the case of autogen names, value will be name-guid
     #  currently, override-context will only replace an existing one, not add to names when it does not exist
+    #  NOTE: self.taxonomy_guid should be set (as result of merge) prior to this, as we need it here
+    #  NOTE 2: taxonomy may have changed since initial request, so need to be thorough here (not trust initial validation)
     def merge_names(self, source_individuals, override=None, fail_on_conflict=False):
         override_contexts = set(override.keys()) if isinstance(override, dict) else set()
         contexts_on_self = {name.context for name in self.names}

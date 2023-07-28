@@ -76,6 +76,12 @@ class Name(db.Model, HoustonModel, Timestamp):
 
         return DetailedNameSchema
 
+    def __eq__(self, other):
+        return other and (str(other.guid) == str(self.guid))
+
+    def __hash__(self):
+        return hash(self.guid)
+
     def __repr__(self):
         return (
             '<{class_name}('

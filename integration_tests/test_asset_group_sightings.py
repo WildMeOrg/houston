@@ -9,7 +9,6 @@ DEFAULT_NAME_CONTEXT = 'firstName'
 
 
 def test_asset_group_sightings(session, login, codex_url, test_root):
-    return
     login(session)
 
     response = session.get(codex_url('/api/v1/users/me'))

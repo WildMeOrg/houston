@@ -14,6 +14,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       DOCKER_BUILDKIT: 1
+      BROWSER: "firefox"
       HOUSTON_APP_CONTEXT: "codex"
     steps:
       # Checkout and env setup

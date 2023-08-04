@@ -54,7 +54,8 @@ jobs:
         # app-context: ["codex", "mws"]
         app-context: ["codex"]
     env:
-      OS: ubuntu-latest
+      # OS: ubuntu-latest
+      OS: ubuntu-22.04
       PYTHON: ${{ matrix.python-version }}
       TEST_DATABASE_URI: "postgresql://houston:development@db/houston_test"
       DOCKER_BUILDKIT: 1

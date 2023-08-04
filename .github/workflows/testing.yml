@@ -59,8 +59,6 @@ jobs:
       TEST_DATABASE_URI: "postgresql://houston:development@db/houston_test"
       DOCKER_BUILDKIT: 1
       HOUSTON_APP_CONTEXT: ${{ matrix.app-context }}
-      AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
-      RUNNER_TOOL_CACHE: /opt/hostedtoolcache
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2

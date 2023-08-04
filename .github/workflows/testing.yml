@@ -45,7 +45,7 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --statistics
 
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:

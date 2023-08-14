@@ -393,7 +393,7 @@ def test_config(
         expected_status_code=400,
     )
     assert 'must use only characters a-z' in rtn.json['message']
-    agn2_prefix = 'FUBAR'
+    agn2_prefix = 'FU8AR'
     data[agn2_guid]['prefix'] = agn2_prefix
     rtn = auto_name_utils.create_autogen_name(
         flask_app_client,

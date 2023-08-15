@@ -1,0 +1,665 @@
+{
+  "_README": "Notes here",
+  "Achatinella": {
+    "apexfulva": {
+      "_common_name": "Oahu Treesnail",
+      "_common_names": [
+        "Oahu Treesnail"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 7342715,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "bulimoides": {
+      "_common_name": "Achatinella bulimoides",
+      "_common_names": [
+        "Achatinella bulimoides"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 7342713,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "byronii": {
+      "_common_name": "Achatinella byronii",
+      "_common_names": [
+        "Achatinella byronii"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782908,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "concavospira": {
+      "_common_name": "Achatinella concavospira",
+      "_common_names": [
+        "Achatinella concavospira"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782925,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "decipiens": {
+      "_common_name": "Achatinella decipiens",
+      "_common_names": [
+        "Achatinella decipiens"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782913,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "fulgens": {
+      "_common_name": "Achatinella fulgens",
+      "_common_names": [
+        "Achatinella fulgens"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782902,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "fuscobasis": {
+      "_common_name": "Achatinella fuscobasis",
+      "_common_names": [
+        "Achatinella fuscobasis"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782923,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "lila": {
+      "_common_name": "Achatinella lila",
+      "_common_names": [
+        "Achatinella lila"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782904,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "livida": {
+      "_common_name": "Achatinella livida",
+      "_common_names": [
+        "Achatinella livida"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782929,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "mustelina": {
+      "_common_name": "Achatinella mustelina",
+      "_common_names": [
+        "Achatinella mustelina"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782912,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "sowerbyana": {
+      "_common_name": "Achatinella sowerbyana",
+      "_common_names": [
+        "Achatinella sowerbyana"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782930,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Auriculela": {
+    "ambusta": {
+      "_common_name": "Auriculela ambusta",
+      "_common_names": [
+        "Auriculela ambusta"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": -9999375494,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Laminella": {
+    "sanguinea": {
+      "_common_name": "Laminella sanguinea",
+      "_common_names": [
+        "Laminella sanguinea"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5783136,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "venusta": {
+      "_common_name": "Laminella venusta",
+      "_common_names": [
+        "Laminella venusta"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 8912654,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Newcombia": {
+    "canaliculata": {
+      "_common_name": "Newcombia canaliculata",
+      "_common_names": [
+        "Newcombia canaliculata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 8997851,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "cumingi": {
+      "_common_name": "Newcombia cumingi",
+      "_common_names": [
+        "Newcombia cumingi"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782948,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Partlulina": {
+    "species": {
+      "_common_name": "Partlulina species",
+      "_common_names": [
+        "Partlulina species"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": -9999201464,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Partula": {
+    "gibba": {
+      "_common_name": "Fat Guam Partula",
+      "_common_names": [
+        "Fat Guam Partula",
+        "Tree Snail"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5783059,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "lutaensis_rota": {
+      "_common_name": "Partula lutaensis (Rota)",
+      "_common_names": [
+        "Partula lutaensis (Rota)"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": -9999457578,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "radiolata": {
+      "_common_name": "Radiolate Partula",
+      "_common_names": [
+        "Radiolate Partula",
+        "Tree Snail"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782998,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Partulina": {
+    "anceyana": {
+      "_common_name": "Partulina anceyana",
+      "_common_names": [
+        "Partulina anceyana"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 11146968,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "crocea": {
+      "_common_name": "Partulina crocea",
+      "_common_names": [
+        "Partulina crocea"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 10681979,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "fusoidea": {
+      "_common_name": "Partulina fusoidea",
+      "_common_names": [
+        "Partulina fusoidea"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782880,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "induta": {
+      "_common_name": "Partulina induta",
+      "_common_names": [
+        "Partulina induta"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 9145302,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "marmorata": {
+      "_common_name": "Partulina marmorata",
+      "_common_names": [
+        "Partulina marmorata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 9049386,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "mighelsiana": {
+      "_common_name": "Partulina mighelsiana",
+      "_common_names": [
+        "Partulina mighelsiana"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782887,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "perdix": {
+      "_common_name": "Partulina perdix",
+      "_common_names": [
+        "Partulina perdix"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782890,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "physa": {
+      "_common_name": "Partulina physa",
+      "_common_names": [
+        "Partulina physa"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782886,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "porcellana": {
+      "_common_name": "Partulina porcellana",
+      "_common_names": [
+        "Partulina porcellana"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782884,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "proxima": {
+      "_common_name": "Partulina proxima",
+      "_common_names": [
+        "Partulina proxima"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782895,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "redfieldi": {
+      "_common_name": "Partulina redfieldi",
+      "_common_names": [
+        "Partulina redfieldi"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782883,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "semicarinata": {
+      "_common_name": "Partulina semicarinata",
+      "_common_names": [
+        "Partulina semicarinata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782894,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "splendida": {
+      "_common_name": "Splendid Partulina",
+      "_common_names": [
+        "Splendid Partulina"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782877,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "tappaniana": {
+      "_common_name": "Partulina tappaniana",
+      "_common_names": [
+        "Partulina tappaniana"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782893,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "tesselata": {
+      "_common_name": "Partulina tesselata",
+      "_common_names": [
+        "Partulina tesselata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": -9999671394,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "variabilis": {
+      "_common_name": "Partulina variabilis",
+      "_common_names": [
+        "Partulina variabilis"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782891,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "virgulata": {
+      "_common_name": "Partulina virgulata",
+      "_common_names": [
+        "Partulina virgulata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 4597942,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Perdicella": {
+    "helena": {
+      "_common_name": "Perdicella helena",
+      "_common_names": [
+        "Perdicella helena"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782859,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "ornata": {
+      "_common_name": "Perdicella ornata",
+      "_common_names": [
+        "Perdicella ornata"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782853,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    },
+    "zebra": {
+      "_common_name": "Perdicella zebra",
+      "_common_names": [
+        "Perdicella zebra"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5782852,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Samoana": {
+    "fragilis": {
+      "_common_name": "Fragile tree snail",
+      "_common_names": [
+        "Fragile tree snail",
+        "Tree Snail"
+      ],
+      "_detectors": [
+        "@_detectors.snail_v0"
+      ],
+      "_itis_id": 5783090,
+      "snail": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "_detectors": {
+    "snail_v0": {
+      "config_dict": {
+        "labeler_algo": "efficientnet",
+        "labeler_model_tag": "snail_effnet_v0",
+        "model_tag": "snail_v0",
+        "nms_thresh": 0.4,
+        "orienter_algo": "plugin:orientation",
+        "orienter_model_tag": "snail_v0",
+        "sensitivity": 0.65,
+        "use_labeler_species": false
+      },
+      "description": "Snail detector (v0) with orientation plugin",
+      "name": "snail_v0 detector"
+    }
+  },
+  "_identifiers": {
+    "hotspotter_nosv": {
+      "frontend": {
+        "description": "Hot-spotter"
+      },
+      "sage": {
+        "query_config_dict": {}
+      }
+    }
+  }
+}

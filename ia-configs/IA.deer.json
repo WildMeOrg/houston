@@ -109,9 +109,9 @@
   },
   "Rucervis": {
     "eldii": {
-      "_common_name": "Eld\u2019s deer",
+      "_common_name": "Eld's deer",
       "_common_names": [
-        "Eld\u2019s deer",
+        "Eld's deer",
         "Rucervis eldii"
       ],
       "_detectors": [
@@ -136,7 +136,7 @@
         "Sambar",
         "Sambar manchado de Filipinas",
         "Visayan spotted deer",
-        "Prince Alfred\u2019s Spotted Deer"
+        "Prince Alfred's Spotted Deer"
       ],
       "_detectors": [
         "@_detectors.deer_model_v0"

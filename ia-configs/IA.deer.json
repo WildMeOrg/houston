@@ -1,0 +1,176 @@
+{
+  "_README": null,
+  "Axis": {
+    "axis": {
+      "_common_name": "Chital deer",
+      "_common_names": [
+        "Chital deer",
+        "Aksis",
+        "Aksishirv",
+        "Aksishirvi",
+        "Aksishjort",
+        "Axis",
+        "Axis Deer",
+        "Axis indick\u00fd",
+        "Axishert",
+        "Axishirsch",
+        "Axishjort"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": 2440934,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Cervus": {
+    "nippon": {
+      "_common_name": "Sika deer",
+      "_common_names": [
+        "Cerf sika",
+        "Cervo sika",
+        "Ciervo Sika",
+        "Japaninpeura",
+        "Sika",
+        "Sika Deer"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": 2440954,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Dama": {
+    "dama": {
+      "_common_name": "Fallow deer",
+      "_common_names": [
+        "Alageyik",
+        "Common Fallow Deer",
+        "Fallow Deer",
+        "Daamhirv",
+        "Daim",
+        "Daim d'Europe",
+        "Daim europ\u00e9en",
+        "Daino",
+        "Dambhirsch",
+        "Dambriedis",
+        "Damhert",
+        "Damhirsch",
+        "Damjak",
+        "Daniel",
+        "Daniel \u0161kvrnit\u00fd",
+        "Danielius",
+        "Dovhjort"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": 5220136,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Odocoileus": {
+    "virginianus": {
+      "_common_name": "White-tailed deer",
+      "_common_names": [
+        "Cerf De Virginie",
+        "Ciervo",
+        "Ciervo De Cola Blanca",
+        "Florida Key Deer (Clavium)",
+        "Venado cola blanca",
+        "WeilRwedelhirsch",
+        "Wei\u00dfwedelhirsch",
+        "Wei\u00dfwedelhirsch",
+        "White-Tailed Deer"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": 2440965,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Rucervis": {
+    "eldii": {
+      "_common_name": "Eld\u2019s deer",
+      "_common_names": [
+        "Eld\u2019s deer",
+        "Rucervis eldii"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": -999996223,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "Rusa": {
+    "alfredi": {
+      "_common_name": "Visayan spotted deer",
+      "_common_names": [
+        "Cerf d'Alfred",
+        "Philippine Spotted Deer",
+        "Prince Alfred's Sambar",
+        "Prinz-Alfred-Hirsch",
+        "Sambar",
+        "Sambar manchado de Filipinas",
+        "Visayan spotted deer",
+        "Prince Alfred\u2019s Spotted Deer"
+      ],
+      "_detectors": [
+        "@_detectors.deer_model_v0"
+      ],
+      "_itis_id": 4262394,
+      "deer_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      }
+    }
+  },
+  "_detectors": {
+    "deer_model_v0": {
+      "config_dict": {
+        "labeler_algo": "efficientnet",
+        "labeler_model_tag": "deer_effnet_v0",
+        "model_tag": "deer_v0",
+        "nms_thresh": 0.4,
+        "sensitivity": 0.65,
+        "use_labeler_species": false
+      },
+      "description": "Deer detector v0 using efficientnet",
+      "name": "Deer model v0 detector"
+    }
+  },
+  "_identifiers": {
+    "hotspotter_nosv": {
+      "frontend": {
+        "description": "HotSpotter for deer"
+      },
+      "sage": {
+        "query_config_dict": {}
+      }
+    }
+  }
+}

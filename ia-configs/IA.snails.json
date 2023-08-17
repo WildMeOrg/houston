@@ -655,7 +655,7 @@
   "_identifiers": {
     "hotspotter_nosv": {
       "frontend": {
-        "description": "Hot-spotter"
+        "description": "HotSpotter pattern-matcher"
       },
       "sage": {
         "query_config_dict": {}

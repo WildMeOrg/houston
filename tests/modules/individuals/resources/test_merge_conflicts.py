@@ -24,6 +24,7 @@ def test_get_conflicts(
     from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
+    request.addfinalizer(lambda: test_utils.cleanup_autogen())
     # make sure anon gets 401
     res = individual_utils.merge_conflicts(
         flask_app_client, None, [], expected_status_code=401
@@ -130,6 +131,7 @@ def test_overrides(
     from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
+    request.addfinalizer(lambda: test_utils.cleanup_autogen())
     indiv1_data = {'sex': 'male'}
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
@@ -295,6 +297,7 @@ def test_merge_names(
     from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
+    request.addfinalizer(lambda: test_utils.cleanup_autogen())
     indiv1_data = {'sex': 'male'}
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,

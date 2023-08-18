@@ -299,7 +299,7 @@ def test_merge_names(
 
     request.addfinalizer(lambda: test_utils.cleanup_autogen())
     indiv1_data = {'sex': 'male'}
-    individual1_uuids = individual_utils.create_individual_and_sighting(
+    individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
@@ -307,15 +307,13 @@ def test_merge_names(
         individual_data=indiv1_data,
     )
     indiv2_data = {'sex': 'female'}
-    individual2_uuids = individual_utils.create_individual_and_sighting(
+    individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
         individual_data=indiv2_data,
     )
-    individual1_guid = individual1_uuids['individual']
-    individual2_guid = individual2_uuids['individual']
 
     indivs = Individual.query.all()
     tx1_guid = str(indivs[0].taxonomy_guid)
@@ -353,7 +351,6 @@ def test_merge_names(
         'site.species',
     )
     assert rtn
-    # tx2_guid = rtn.json['value'][1]['id']
 
     # now at this point, both have same taxonomy
     assert indivs[0].names[0].value_resolved == f'{agn1_prefix}-001'
@@ -364,14 +361,18 @@ def test_merge_names(
         'bad_context': 'fubar',
     }
     indivs[0].merge_names([indivs[1]], override, fail_on_conflict=True)
-    return
-    data = [individual2_guid]
-    res = individual_utils.merge_individuals(
-        flask_app_client,
-        researcher_1,
-        individual1_guid,
-        data_in=data,
-    )
-    assert res
-    assert res.get('targetId') == individual1_guid
-    assert res.get('targetSex') == 'male'
+    assert indivs[0].names[0].value_resolved == f'{agn1_prefix}-001'
+    assert indivs[0].names[1].context == 'Historical Codex ID'
+    assert indivs[0].names[1].value == f'{agn1_prefix}-002'
+
+    # now we get override to favor second individual autogen name
+    override = {
+        indivs[0].names[0].context: str(indivs[1].names[0].guid),
+    }
+    indivs[0].merge_names([indivs[1]], override, fail_on_conflict=True)
+    assert (
+        indivs[0].names[0].value_resolved == f'{agn1_prefix}-002'
+    )  # 002 won, via override
+    # names[1] is holdover from previous, hence our ID1 here
+    assert indivs[0].names[2].context == 'Historical Codex ID1'
+    assert indivs[0].names[2].value == f'{agn1_prefix}-001'  # 001 becomes historical now

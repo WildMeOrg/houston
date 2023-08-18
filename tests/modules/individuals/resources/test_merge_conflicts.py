@@ -348,6 +348,14 @@ def test_merge_names(
     assert indivs[0].names[0].value_resolved == f'{agn1_prefix}-001'
     assert indivs[1].names[0].value_resolved == f'{agn1_prefix}-002'
 
+    mc_res = individual_utils.merge_conflicts(
+        flask_app_client,
+        researcher_1,
+        [str(indivs[0].guid), str(indivs[1].guid)],
+    )
+    assert 'name_contexts' in mc_res
+    assert indivs[0].names[0].context in mc_res['name_contexts']
+
     # we dont really do merging cuz we only wanna test merge_names() here
     override = {
         'bad_context': 'fubar',

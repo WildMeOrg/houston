@@ -4,6 +4,7 @@ import logging
 
 import pytest
 
+from app.modules.individuals.models import Individual
 from tests import utils as test_utils
 
 log = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ def test_get_conflicts(
     request,
     test_root,
 ):
-    from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
     request.addfinalizer(lambda: test_utils.cleanup_autogen())
@@ -128,7 +128,6 @@ def test_overrides(
     admin_user,
 ):
     import tests.modules.site_settings.resources.utils as setting_utils
-    from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
     request.addfinalizer(lambda: test_utils.cleanup_autogen())
@@ -285,7 +284,6 @@ def test_merge_names(
     admin_user,
 ):
     import tests.modules.site_settings.resources.utils as setting_utils
-    from app.modules.individuals.models import Individual
     from tests.modules.individuals.resources import utils as individual_utils
 
     request.addfinalizer(lambda: test_utils.cleanup_autogen())
@@ -394,3 +392,11 @@ def test_merge_names(
     with pytest.raises(ValueError) as verr:
         indivs[0].merge_names([indivs[1]], override, fail_on_conflict=True)
     assert 'but does not match individual.taxonomy' in str(verr.value)
+
+    # these historical names all should resolve themselves nicely
+    indivs[1].add_name('Historical Codex ID', 'fubar', admin_user)
+    indivs[0].merge_names([indivs[1]], None)
+    test_ind = Individual.query.get(indivs[0].guid)
+    assert len(test_ind.names) == 5
+    indivs[1].add_name('Historical Codex ID2', 'foobar', admin_user)
+    indivs[0].merge_names([indivs[1]], None)

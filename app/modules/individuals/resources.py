@@ -445,8 +445,8 @@ class IndividualByIDMerge(Resource):
             and 'override' in parameters
             and isinstance(parameters['override'], dict)
         ):
-            tx_guid = individual.taxonomy_guid or parameters['override'].get(
-                'taxonomy_guid'
+            tx_guid = (
+                parameters['override'].get('taxonomy_guid') or individual.taxonomy_guid
             )
             if tx_guid:
                 # see indiv.merge_names() for more on this override

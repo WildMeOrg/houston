@@ -122,9 +122,8 @@ def test_get_named_detector_config_african_terrestrial(flask_app_client):
 def test_get_zebra_species(flask_app_client):
     ia_config_reader = IaConfig()
     species = ia_config_reader.get_configured_species()
-    desired_species = ['Equus grevyi', 'Equus quagga']
-    return
-    assert desired_species <= species
+    assert 'Equus grevyi' in species
+    assert 'Equus quagga' in species
 
 
 def test_get_detect_model_frontend_data(flask_app_client):

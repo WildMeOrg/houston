@@ -267,7 +267,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     #    return tx.get_all_names()
 
     def get_name_values(self):
-        name_vals = [name.value for name in self.names]
+        name_vals = [name.value_resolved for name in self.names]
         return name_vals
 
     def get_first_name(self):

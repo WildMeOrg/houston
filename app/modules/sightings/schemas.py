@@ -55,7 +55,7 @@ class CreateSightingSchema(BaseSightingSchema):
 
 class ElasticsearchSightingSchema(BaseSightingSchema):
     """
-    Base Sighting schema exposes only the most general fields.
+    Sighting schema for ElasticSearch
     """
 
     time = base_fields.Function(lambda s: s.get_time_isoformat_in_timezone())
@@ -79,6 +79,10 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     numberEncounters = base_fields.Function(lambda s: s.get_number_encounters())
     numberImages = base_fields.Function(lambda s: s.get_number_assets())
     numberAnnotations = base_fields.Function(lambda s: s.get_number_annotations())
+    individualNames = base_fields.Function(lambda s: s.get_individual_names())
+    individualNameWithContexts = base_fields.Function(
+        lambda s: s.get_individual_names_with_contexts()
+    )
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -106,6 +110,8 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'numberEncounters',
             'numberImages',
             'numberAnnotations',
+            'individualNames',
+            'individualNamesWithContexts',
         )
         dump_only = (
             Sighting.guid.key,

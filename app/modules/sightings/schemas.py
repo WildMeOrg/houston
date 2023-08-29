@@ -79,9 +79,13 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     numberEncounters = base_fields.Function(lambda s: s.get_number_encounters())
     numberImages = base_fields.Function(lambda s: s.get_number_assets())
     numberAnnotations = base_fields.Function(lambda s: s.get_number_annotations())
-    individualNames = base_fields.Function(lambda s: s.get_individual_names())
-    individualNameWithContexts = base_fields.Function(
-        lambda s: s.get_individual_names_with_contexts()
+    # apparently sets do NOT work well, so we need to name-sets to lists here
+    individualNames = base_fields.Function(lambda s: list(s.get_individual_names()))
+    individualNamesWithContexts = base_fields.Function(
+        lambda s: {
+            item: list(val)
+            for (item, val) in s.get_individual_names_with_contexts().items()
+        }
     )
 
     class Meta:

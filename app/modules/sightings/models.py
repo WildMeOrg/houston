@@ -860,6 +860,29 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
 
         return job_data
 
+    @property
+    def individuals(self):
+        indivs = set()
+        for enc in self.encounters:
+            if enc.individual_guid:
+                indivs.add(enc.individual)
+        return indivs
+
+    def get_individual_names(self):
+        names = set()
+        for indiv in self.individuals:
+            names.update(indiv.get_name_values())
+        return names
+
+    def get_individual_names_with_contexts(self):
+        nwc = {}
+        for indiv in self.individuals:
+            for name in indiv.names:
+                if name.context not in nwc:
+                    nwc[name.context] = set()
+                nwc[name.context].add(name.value_resolved)
+        return nwc
+
     def delete(self):
         AuditLog.delete_object(log, self)
         with db.session.begin(subtransactions=True):

@@ -75,6 +75,15 @@ def test_get_set_individual_names(
         flask_app_client, researcher_1, individual_id
     ).json
 
+    assert len(sighting.individuals) == 1
+    test_ind = next(iter(sighting.individuals))
+    assert individual_json['guid'] == str(test_ind.guid)
+    assert sighting.get_individual_names() == {'value-A', 'value-B'}
+    assert sighting.get_individual_names_with_contexts() == {
+        'A': {'value-A'},
+        'B': {'value-B'},
+    }
+
     # invalid value
     patch_data = [
         utils.patch_add_op('names', 'FAIL'),
@@ -145,6 +154,15 @@ def test_get_set_individual_names(
         flask_app_client, researcher_1, individual_id, patch_data
     )
     assert len(patch_individual_response.json['names']) == 4
+
+    # "test-value" is duplicated across 2 names, but only appears here once:
+    assert sighting.get_individual_names() == {'test-value', 'value-A', 'value-B'}
+    assert sighting.get_individual_names_with_contexts() == {
+        'A': {'value-A'},
+        'B': {'value-B'},
+        'test-context': {'test-value'},
+        'context2': {'test-value'},
+    }
 
     # now this should conflict (409) due to duplicate context
     patch_data = [

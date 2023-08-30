@@ -152,13 +152,23 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
     def patch_elasticsearch_mappings(cls, mappings):
         mappings = super(Sighting, cls).patch_elasticsearch_mappings(mappings)
 
-        mappings['location_geo_point'] = {
-            'type': 'geo_point',
-        }
+        # this *adds* location_geo_point - but only at top-level
+        if '_schema' in mappings:
+            mappings['location_geo_point'] = {'type': 'geo_point'}
+
         if 'customFields' in mappings:
             mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
                 mappings['customFields']
             )
+
+        if 'individualNames' in mappings:
+            mappings['individualNames'] = {'type': 'keyword'}
+
+        if 'individualNamesWithContexts' in mappings:
+            for context in mappings['individualNamesWithContexts']['properties']:
+                mappings['individualNamesWithContexts']['properties'][context] = {
+                    'type': 'keyword'
+                }
 
         return mappings
 

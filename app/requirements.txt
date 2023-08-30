@@ -91,7 +91,7 @@ sutime==1.0.1
 tqdm==4.65.0
 tweepy==4.5.0
 utool==2.1.7
-webargs==5.5.3
+webargs==6.0.0
 werkzeug>=0.15,<0.16
 wheel==0.40.0
 

@@ -166,18 +166,26 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
     @classmethod
     def patch_elasticsearch_mappings(cls, mappings):
         mappings = super(Individual, cls).patch_elasticsearch_mappings(mappings)
-        mappings['death'] = {'type': 'date'}
-        mappings['birth'] = {'type': 'date'}
-        mappings['names'] = {
-            'fields': {'keyword': {'ignore_above': 256, 'type': 'keyword'}},
-            'type': 'text',
-        }
-        mappings['firstName'] = {'type': 'keyword'}
-        mappings['comments'] = {'type': 'text'}
+
+        # ensures these get added only at top-level
+        if '_schema' in mappings:
+            mappings['death'] = {'type': 'date'}
+            mappings['birth'] = {'type': 'date'}
+            mappings['names'] = {
+                'fields': {'keyword': {'ignore_above': 256, 'type': 'keyword'}},
+                'type': 'text',
+            }
+            mappings['firstName'] = {'type': 'keyword'}
+            mappings['comments'] = {'type': 'text'}
+
         if 'customFields' in mappings:
             mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
                 mappings['customFields']
             )
+
+        if 'namesWithContexts' in mappings:
+            for context in mappings['namesWithContexts']['properties']:
+                mappings['namesWithContexts']['properties'][context] = {'type': 'keyword'}
         return mappings
 
     def __repr__(self):

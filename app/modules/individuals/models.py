@@ -270,6 +270,9 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
         name_vals = [name.value_resolved for name in self.names]
         return name_vals
 
+    def get_names_with_contexts(self):
+        return {name.context: name.value_resolved for name in self.names}
+
     def get_first_name(self):
         first_name = None
         for name in self.names:

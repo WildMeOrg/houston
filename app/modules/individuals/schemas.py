@@ -174,6 +174,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
 
     featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
     names = base_fields.Function(lambda ind: ind.get_name_values())
+    namesWithContexts = base_fields.Function(lambda ind: ind.get_names_with_contexts())
     firstName = base_fields.Function(lambda ind: ind.get_first_name())
     firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
     adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
@@ -212,6 +213,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             Individual.updated.key,
             'featuredAssetGuid',
             'names',
+            'namesWithContexts',
             'firstName',
             'firstName_keyword',
             'adoptionName',

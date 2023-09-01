@@ -53,6 +53,8 @@ marshmallow>=2.13.5,<3
 marshmallow-sqlalchemy>=0.12,<0.13
 numpy==1.24.2
 
+openpyxl
+
 passlib>=1.7.1,<2
 permission>=0.4.1,<0.5
 phonenumbers==8.13.8

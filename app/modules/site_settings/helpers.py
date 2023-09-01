@@ -256,12 +256,18 @@ class SiteSettingCustomFields(object):
                         f'customFieldCategories guid {guid} was removed but is still in use by {len(by_cat[guid])} customField definition(s)',
                     )
 
+    # returns all (by default) or just one
     @classmethod
-    def definitions_by_category(cls):
+    def definitions_by_category(cls, single=None):
         from .models import SiteSetting
 
+        all_cats = ['Encounter', 'Sighting', 'Individual']
+        if single and single not in all_cats:
+            raise ValueError(f'{single} not in {all_cats}')
+        if single:
+            all_cats = [single]
         by_cat = {}
-        for class_name in ['Encounter', 'Sighting', 'Individual']:
+        for class_name in all_cats:
             data = SiteSetting.get_value(f'site.custom.customFields.{class_name}') or {}
             definitions = data.get('definitions', [])
             for defn in definitions:

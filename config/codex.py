@@ -47,6 +47,7 @@ class BaseCodexConfig(
         'stripe',
         'sentry',
         'intelligent_agent',
+        'export',
         'prometheus',
     )
 

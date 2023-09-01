@@ -12,7 +12,7 @@ from http import HTTPStatus
 from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
-from app.extensions import CustomFieldMixin, HoustonModel, db
+from app.extensions import CustomFieldMixin, ExportMixin, HoustonModel, db
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
@@ -54,7 +54,7 @@ class SightingStage(str, enum.Enum):
     failed = 'failed'
 
 
-class Sighting(db.Model, HoustonModel, CustomFieldMixin):
+class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     """
     Sightings database model.
     """
@@ -141,6 +141,20 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
         'Progress',
         foreign_keys='Sighting.progress_identification_guid',
     )
+
+    # location_guid = db.Column(db.GUID, index=True, nullable=True)
+    # taxonomy_joins = db.relationship('SightingTaxonomies')
+    @property
+    def export_data(self):
+        data = super(Sighting, self).export_data
+        data['decimalLatitude'] = self.decimal_latitude
+        data['decimalLongitude'] = self.decimal_longitude
+        data['locationId'] = str(self.location_guid) if self.location_guid else None
+        data['locationName'] = self.get_location_id_value()
+        txs = self.get_taxonomies()
+        data['taxonomies'] = ', '.join([tx.scientificName for tx in txs]) if txs else None
+        # TODO encounters....
+        return data
 
     @classmethod
     def get_elasticsearch_schema(cls):

@@ -106,6 +106,11 @@ if is_extension_enabled('elasticsearch'):
 else:
     elasticsearch = None
 
+if is_extension_enabled('export'):
+    from . import export  # NOQA
+else:
+    export = None
+
 if is_extension_enabled('intelligent_agent'):
     from . import intelligent_agent  # NOQA
 else:
@@ -656,6 +661,38 @@ class CustomFieldMixin(object):
             mapping['properties'][defn['id']] = {'type': es_type}
         return mapping
 
+    def export_custom_fields(self, data):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        defns = SiteSettingCustomFields.definitions_by_category(self.__class__.__name__)
+        if not len(defns):
+            return
+        defns = defns[next(iter(defns))]
+        cf = self.custom_fields
+        for defn in defns:
+            val = cf.get(defn['id'])
+            # TODO twiddle val for export
+            data[f"customField.{defn.get('name', defn['id'])}"] = val
+
+
+class ExportMixin(object):
+    """
+    Mixin class for any class that has can be exported
+    """
+
+    @property
+    def export_data(self):
+        data = {}
+        data['guid'] = str(self.guid)
+        data['created'] = self.created.isoformat()[0:19] + 'Z'
+        data['updated'] = self.updated.isoformat()[0:19] + 'Z'
+        if hasattr(self, 'time'):
+            data['time'] = self.get_time_isoformat_in_timezone()
+            data['timeSpecificity'] = self.get_time_specificity().value
+        if hasattr(self, 'custom_fields'):
+            self.export_custom_fields(data)
+        return data
+
 
 ##########################################################################################
 
@@ -751,6 +788,7 @@ def init_app(app, force_enable=False, force_disable=None):
         'edm': edm,
         'gitlab': gitlab,
         'elasticsearch': elasticsearch,
+        'export': export,
         'intelligent_agent': intelligent_agent,
         'mail': mail,
         'stripe': stripe,

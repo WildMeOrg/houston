@@ -689,7 +689,7 @@ class ExportMixin(object):
         if hasattr(self, 'time'):
             data['time'] = self.get_time_isoformat_in_timezone()
             data['timeSpecificity'] = self.get_time_specificity().value
-        if hasattr(self, 'custom_fields'):
+        if issubclass(self.__class__, CustomFieldMixin):
             self.export_custom_fields(data)
         return data
 

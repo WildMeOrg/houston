@@ -99,8 +99,13 @@ class Export:
 
     @property
     def filepath(self):
+        import os
+
         udir = str(current_user.guid) if current_user else 'unknown_user'
-        return f'/tmp/export/{udir}/{self.filename}'
+        target_dir = os.path.join('/tmp', 'export', udir)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        return os.path.join(target_dir, self.filename)
 
     def save(self):
         log.info(f'{self} saving to {self.filepath}')

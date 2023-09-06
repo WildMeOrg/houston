@@ -241,6 +241,37 @@ class IndividualElasticsearch(Resource):
         return Individual.elasticsearch(search, **args)
 
 
+@api.route('/export')
+@api.login_required(oauth_scopes=['individuals:read'])
+class IndividualExport(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.READ,
+        },
+    )
+    def post(self):
+        search = request.get_json()
+        indivs = Individual.elasticsearch(search)
+        if not indivs:
+            abort(400, 'No results to export')
+        from flask import send_file
+
+        from app.extensions.export.models import Export
+
+        export = Export()
+        for indiv in indivs:
+            export.add(indiv)
+        export.save()
+        return send_file(
+            export.filepath,
+            mimetype='application/vnd.ms-excel',
+            as_attachment=True,
+            attachment_filename=export.filename,
+        )
+
+
 @api.route('/remove_all_empty')
 @api.login_required(oauth_scopes=['individuals:write'])
 class IndividualRemoveEmpty(Resource):

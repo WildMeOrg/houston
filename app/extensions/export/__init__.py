@@ -23,8 +23,3 @@ def init_app(app, **kwargs):
     """
     api_v1.add_oauth_scope('export:read', 'Provide access to Export API')
     api_v1.add_oauth_scope('export:write', 'Provide write access to Export API')
-
-    # Touch underlying modules
-    from . import resources  # NOQA
-
-    api_v1.add_namespace(resources.api)

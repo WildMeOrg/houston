@@ -151,7 +151,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         data['locationName'] = self.get_location_id_value()
         txs = self.get_taxonomies()
         data['taxonomies'] = ', '.join([tx.scientificName for tx in txs]) if txs else None
-        # TODO encounters....
         return data
 
     @classmethod

@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 def test_export_fields(
     flask_app, flask_app_client, admin_user, researcher_1, test_root, request, db
 ):
-    # from app.modules.encounters.models import Encounter
+    from app.modules.encounters.models import Encounter
     from app.modules.individuals.models import Individual
     from app.modules.sightings.models import Sighting
 
@@ -50,6 +50,13 @@ def test_export_fields(
     assert 'time' in sed
     assert 'timeSpecificity' in sed
     assert f'customField.{cf_name}' in sed
+
+    enc = Encounter.query.get(enc_guid)
+    eed = enc.export_data
+    assert eed
+    assert 'ownerGuid' in eed
+    assert 'individualGuid' in eed
+    assert 'taxonomy' in eed
 
     indiv = Individual.query.get(indiv_guid)
     request.addfinalizer(lambda: indiv.delete())

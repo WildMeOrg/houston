@@ -7,12 +7,12 @@ import logging
 import uuid
 
 import app.extensions.logging as AuditLog
-from app.extensions import CustomFieldMixin, HoustonModel, db
+from app.extensions import CustomFieldMixin, ExportMixin, HoustonModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class Encounter(db.Model, HoustonModel, CustomFieldMixin):
+class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     """
     Encounters database model.
     """
@@ -104,6 +104,23 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin):
     def user_is_owner(self, user) -> bool:
         return user is not None and user == self.owner
 
+    @property
+    def export_data(self):
+        data = super(Encounter, self).export_data
+        data['decimalLatitude'] = self.decimal_latitude
+        data['decimalLongitude'] = self.decimal_longitude
+        data['locationId'] = str(self.location_guid) if self.location_guid else None
+        data['locationName'] = self.get_location_id_value()
+        data['verbatimLocality'] = self.verbatim_locality
+        data['sex'] = self.sex
+        data['sightingGuid'] = str(self.sighting_guid) if self.sighting_guid else None
+        data['individualGuid'] = str(self.sighting_guid) if self.sighting_guid else None
+        data['ownerGuid'] = str(self.owner_guid)
+        data['submitterGuid'] = str(self.submitter_guid) if self.submitter_guid else None
+        tx = self.get_taxonomy()
+        data['taxonomy'] = tx.scientificName if tx else None
+        return data
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.encounters.schemas import ElasticsearchEncounterSchema
@@ -190,6 +207,23 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin):
             return Taxonomy(taxonomy_guid).get_all_names()
 
         return []
+
+    def get_taxonomy(self):
+        tx_guid = self.get_taxonomy_guid()
+        if not tx_guid:
+            return None
+        from app.modules.site_settings.models import Taxonomy
+
+        try:
+            return Taxonomy(tx_guid)
+        except Exception:
+            # An integrity check will be added to find (and potentially fix) these
+            AuditLog.audit_log_object_warning(
+                log,
+                self,
+                f'found invalid taxonomy_guid {tx_guid} on encounter {self.guid}',
+            )
+        return None
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
         time = self.get_time(sighting_fallback=sighting_fallback)

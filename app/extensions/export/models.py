@@ -48,40 +48,44 @@ class Export:
         self.workbook.custom_doc_props.append(
             StringProperty(name='Codex User', value=uname)
         )
-        self.worksheet = self.workbook.active
-        self.active_class = None
-        self.columns = None
+        self.sheets = {}
+        self.columns = {}
+        # self.active_class = None
+        # self.columns = None
         self.filename = self._generate_filename()
 
-    # we only let repeated addition of objects of the same class, as mixing
-    #   types *within a sheet* would be bad.  TODO we could create new sheets based on class or something?
+    # class of obj determines which sheet it gets added to
     def add(self, obj):
         from app.extensions import ExportMixin
 
         if not obj or not issubclass(obj.__class__, ExportMixin):
             raise ValueError(f'{obj} is not an ExportMixin')
 
-        if not self.active_class:
-            self.active_class = obj.__class__
-            self.worksheet.title = f'{obj.__class__.__name__} Results'
-            self.set_columns(obj)
-        if not isinstance(obj, self.active_class):
-            raise ValueError(
-                f'{obj} does not match current worksheet class {self.active_class}'
-            )
-        self.worksheet.append(self.row(obj))
+        cls = obj.__class__
+        if cls not in self.sheets:
+            title = f'{obj.__class__.__name__} Results'
+            if not len(self.sheets):
+                self.sheets[cls] = self.workbook.active
+                self.sheets[cls].title = title
+            else:
+                self.sheets[cls] = self.workbook.create_sheet(title)
+            cols = Export._get_columns(obj)
+            self.columns[cls] = cols
+            # for now we set first row to be headers by default
+            self.sheets[cls].append(cols)
+        self.sheets[cls].append(self.row(obj))
 
-    def set_columns(self, obj):
+    @classmethod
+    def _get_columns(cls, obj):
         exd = obj.export_data
-        self.columns = list(exd.keys())
-        self.columns.sort()
-        # for now we set first row to be headers by default
-        self.worksheet.append(self.columns)
+        cols = list(exd.keys())
+        cols.sort()
+        return cols
 
     def row(self, obj):
         exd = obj.export_data
         row = []
-        for col in self.columns:
+        for col in self.columns[obj.__class__]:
             row.append(exd.get(col))
         return row
 

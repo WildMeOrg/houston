@@ -87,19 +87,22 @@ def test_export_misc(
 
     from app.extensions.export.models import Export
     from app.modules.individuals.models import Individual
+    from app.modules.names.models import Name
     from app.modules.sightings.models import Sighting
 
     export = Export()
     assert export.workbook
     assert not export.columns
-    assert not export.active_class
+    assert not export.sheets
     fname = export.filename
     assert fname.startswith('codex-export-Unknown-')
 
     indiv = Individual()
     export.add(indiv)
-    assert export.active_class == Individual
-    assert export.columns == [
+    assert len(export.sheets) == 1
+    assert len(export.columns) == 1
+    assert Individual in export.columns
+    assert export.columns[Individual] == [
         'created',
         'guid',
         'sex',
@@ -109,10 +112,15 @@ def test_export_misc(
         'updated',
     ]
 
-    sight = Sighting()
+    name = Name()
     with pytest.raises(ValueError) as ve:
-        export.add(sight)
-    assert 'does not match current worksheet class' in str(ve)
+        export.add(name)
+    assert 'is not an ExportMixin' in str(ve)
+
+    sight = Sighting()
+    export.add(sight)
+    assert len(export.sheets) == 2
+    assert len(export.columns) == 2
 
     assert not os.path.exists(export.filepath)
     saved_name = export.save()

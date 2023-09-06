@@ -155,6 +155,18 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
             RelationshipIndividualMember.individual == self
         )
 
+    @property
+    def export_data(self):
+        data = super(Individual, self).export_data
+        data['sex'] = self.sex
+        tx = self.get_taxonomy_object()
+        data['taxonomy'] = tx.scientificName if tx else None
+        data['timeOfBirth'] = self.time_of_birth
+        data['timeOfDeath'] = self.time_of_death
+        for name in self.names:
+            data[f'name.{name.context}'] = name.value_resolved
+        return data
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.individuals.schemas import ElasticsearchIndividualSchema

@@ -5,6 +5,7 @@ import logging
 
 import pytest
 
+from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import extension_unavailable, module_unavailable
@@ -34,6 +35,12 @@ def test_export_fields(
         request,
         test_root,
     )
+    enc_guid = uuids['encounters'][0]
+    response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 200, {'encounters': [{'id': str(enc_guid)}]}
+    )
+    indiv_guid = response.json['guid']
+
     sight = Sighting.query.get(uuids['sighting'])
     sed = sight.export_data
     assert sed
@@ -43,10 +50,30 @@ def test_export_fields(
     assert 'time' in sed
     assert 'timeSpecificity' in sed
     assert f'customField.{cf_name}' in sed
-    # enc = Encounter.query.get(uuids['encounters'][0])
-    indiv = Individual()
-    assert indiv.export_data
+
+    indiv = Individual.query.get(indiv_guid)
+    request.addfinalizer(lambda: indiv.delete())
+    assert indiv
+    indiv.add_name('FirstName', 'firsty', admin_user)
+    indiv.add_name('test.context', 'test', admin_user)
+    ied = indiv.export_data
+    assert ied
+    assert 'guid' in ied
+    assert 'sex' in ied
+    assert 'taxonomy' in ied
     assert not indiv.export_custom_fields({})
+    assert 'name.FirstName' in ied
+    assert ied['name.FirstName'] == 'firsty'
+    assert 'name.test.context' in ied
+    assert ied['name.test.context'] == 'test'
+
+    # test that customField will now show up in export_data
+    cf_name2 = 'test_cfd2'
+    setting_utils.custom_field_create(
+        flask_app_client, admin_user, cf_name2, cls='Individual'
+    )
+    ied = indiv.export_data
+    assert f'customField.{cf_name2}' in ied
 
 
 @pytest.mark.skipif(
@@ -72,7 +99,15 @@ def test_export_misc(
     indiv = Individual()
     export.add(indiv)
     assert export.active_class == Individual
-    assert export.columns == ['created', 'guid', 'updated']
+    assert export.columns == [
+        'created',
+        'guid',
+        'sex',
+        'taxonomy',
+        'timeOfBirth',
+        'timeOfDeath',
+        'updated',
+    ]
 
     sight = Sighting()
     with pytest.raises(ValueError) as ve:

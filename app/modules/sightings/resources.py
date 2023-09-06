@@ -119,6 +119,39 @@ class SightingElasticsearch(Resource):
         return Sighting.elasticsearch(search, **args)
 
 
+@api.route('/export')
+@api.login_required(oauth_scopes=['sightings:read'])
+class SightingExport(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    def post(self):
+        search = request.get_json()
+        sights = Sighting.elasticsearch(search)
+        if not sights:
+            abort(400, 'No results to export')
+        from flask import send_file
+
+        from app.extensions.export.models import Export
+
+        export = Export()
+        for sight in sights:
+            export.add(sight)
+            for enc in sight.get_encounters():
+                export.add(enc)
+        export.save()
+        return send_file(
+            export.filepath,
+            mimetype='application/vnd.ms-excel',
+            as_attachment=True,
+            attachment_filename=export.filename,
+        )
+
+
 @api.route('/remove_all_empty')
 @api.login_required(oauth_scopes=['sightings:write'])
 class SightingRemoveEmpty(Resource):

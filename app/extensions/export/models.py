@@ -65,7 +65,7 @@ class Export:
             self.active_class = obj.__class__
             self.worksheet.title = f'{obj.__class__.__name__} Results'
             self.set_columns(obj)
-        if not type(obj) == self.active_class:
+        if not isinstance(obj, self.active_class):
             raise ValueError(
                 f'{obj} does not match current worksheet class {self.active_class}'
             )

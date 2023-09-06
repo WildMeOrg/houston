@@ -142,8 +142,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         foreign_keys='Sighting.progress_identification_guid',
     )
 
-    # location_guid = db.Column(db.GUID, index=True, nullable=True)
-    # taxonomy_joins = db.relationship('SightingTaxonomies')
     @property
     def export_data(self):
         data = super(Sighting, self).export_data

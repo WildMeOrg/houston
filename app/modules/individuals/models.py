@@ -172,10 +172,19 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
             mappings['death'] = {'type': 'date'}
             mappings['birth'] = {'type': 'date'}
             mappings['names'] = {
-                'fields': {'keyword': {'ignore_above': 256, 'type': 'keyword'}},
+                'fields': {
+                    'keyword': {
+                        'ignore_above': 256,
+                        'type': 'keyword',
+                        'normalizer': 'codex_keyword_normalizer',
+                    }
+                },
                 'type': 'text',
             }
-            mappings['firstName'] = {'type': 'keyword'}
+            mappings['firstName'] = {
+                'type': 'keyword',
+                'normalizer': 'codex_keyword_normalizer',
+            }
             mappings['comments'] = {'type': 'text'}
 
         if 'customFields' in mappings:
@@ -185,7 +194,10 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
 
         if 'namesWithContexts' in mappings:
             for context in mappings['namesWithContexts']['properties']:
-                mappings['namesWithContexts']['properties'][context] = {'type': 'keyword'}
+                mappings['namesWithContexts']['properties'][context] = {
+                    'type': 'keyword',
+                    'normalizer': 'codex_keyword_normalizer',
+                }
         return mappings
 
     def __repr__(self):

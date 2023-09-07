@@ -56,7 +56,18 @@ class ElasticsearchModel(object):
 
     @classmethod
     def get_elasticsearch_settings(cls):
-        return None
+        settings = {
+            'analysis': {
+                'normalizer': {
+                    'codex_keyword_normalizer': {
+                        'type': 'custom',
+                        'char_filter': [],
+                        'filter': ['lowercase', 'asciifolding'],
+                    }
+                }
+            }
+        }
+        return settings
 
     @classmethod
     def patch_elasticsearch_mappings(cls, mappings):

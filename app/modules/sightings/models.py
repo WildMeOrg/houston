@@ -162,12 +162,16 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin):
             )
 
         if 'individualNames' in mappings:
-            mappings['individualNames'] = {'type': 'keyword'}
+            mappings['individualNames'] = {
+                'type': 'keyword',
+                'normalizer': 'codex_keyword_normalizer',
+            }
 
         if 'individualNamesWithContexts' in mappings:
             for context in mappings['individualNamesWithContexts']['properties']:
                 mappings['individualNamesWithContexts']['properties'][context] = {
-                    'type': 'keyword'
+                    'type': 'keyword',
+                    'normalizer': 'codex_keyword_normalizer',
                 }
 
         return mappings

@@ -192,7 +192,10 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin):
                 mappings['customFields']
             )
 
-        if 'namesWithContexts' in mappings:
+        if (
+            'namesWithContexts' in mappings
+            and 'properties' in mappings['namesWithContexts']
+        ):
             for context in mappings['namesWithContexts']['properties']:
                 mappings['namesWithContexts']['properties'][context] = {
                     'type': 'keyword',

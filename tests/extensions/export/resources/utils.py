@@ -26,3 +26,11 @@ def export_search(
         expected_error=expected_error,
     )
     return resp
+
+
+def clear_files():
+    import glob
+    import os
+
+    for f in glob.glob('/tmp/export/*/codex-export-Unknown-*.xls'):
+        os.remove(f)

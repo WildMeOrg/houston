@@ -487,6 +487,17 @@ def researcher_1(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def exporter(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='exporter@localhost',
+            is_exporter=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def admin_user_2(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(

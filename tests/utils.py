@@ -185,6 +185,7 @@ def generate_user_instance(
     is_researcher=False,
     is_contributor=True,
     is_user_manager=False,
+    is_exporter=False,
     in_alpha=True,
 ):
     """
@@ -217,6 +218,7 @@ def generate_user_instance(
         is_researcher=is_researcher,
         is_contributor=is_contributor,
         is_user_manager=is_user_manager,
+        is_exporter=is_exporter,
         in_alpha=in_alpha,
     )
     user_instance.password_secret = password

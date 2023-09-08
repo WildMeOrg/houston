@@ -53,3 +53,4 @@ def test_export_api(
     # ok, cuz... exporter
     resp = export_utils.export_search(flask_app_client, exporter, query)
     assert resp.content_type == 'application/vnd.ms-excel'
+    export_utils.clear_files()

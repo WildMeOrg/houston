@@ -56,6 +56,7 @@ class ElasticsearchModel(object):
 
     @classmethod
     def get_elasticsearch_settings(cls):
+        return None
         settings = {
             'analysis': {
                 'normalizer': {

@@ -242,7 +242,7 @@ class IndividualElasticsearch(Resource):
 
 
 @api.route('/export')
-@api.login_required(oauth_scopes=['individuals:read'])
+@api.login_required(oauth_scopes=['export:write'])
 class IndividualExport(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,

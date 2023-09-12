@@ -18,7 +18,7 @@ def export_search(
     resp = test_utils.post_via_flask(
         flask_app_client,
         user,
-        'sightings:export',
+        'export:write',
         f'/api/v1/{class_name}/export',
         data,
         expected_status_code,

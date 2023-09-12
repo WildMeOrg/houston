@@ -110,8 +110,10 @@ def test_export_misc(
     assert len(export.columns) == 1
     assert Individual in export.columns
     assert export.columns[Individual] == [
+        'comments',
         'created',
         'guid',
+        'numberSightings',
         'sex',
         'taxonomy',
         'timeOfBirth',

@@ -163,6 +163,8 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         data['taxonomy'] = tx.scientificName if tx else None
         data['timeOfBirth'] = self.time_of_birth
         data['timeOfDeath'] = self.time_of_death
+        data['numberSightings'] = len(self.encounters)
+        data['comments'] = self.comments
         for name in self.names:
             data[f'name.{name.context}'] = name.value_resolved
         return data

@@ -149,8 +149,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         data['decimalLongitude'] = self.decimal_longitude
         data['locationId'] = str(self.location_guid) if self.location_guid else None
         data['locationName'] = self.get_location_id_value()
+        data['verbatimLocality'] = self.verbatim_locality
         txs = self.get_taxonomies()
         data['taxonomies'] = ', '.join([tx.scientificName for tx in txs]) if txs else None
+        data['comments'] = self.comments
         return data
 
     @classmethod

@@ -436,6 +436,22 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 self.encounters.remove(encounter)
                 db.session.merge(self)
 
+    def get_encounters_elasticsearch(self):
+        from app.modules.site_settings.models import Taxonomy
+
+        enc_data = {
+            'sex': [],
+            'taxonomy': [],
+        }
+        for encounter in self.encounters:
+            if encounter.sex:
+                enc_data['sex'].append(encounter.sex)
+            if encounter.taxonomy_guid:
+                enc_data['taxonomy'].append(
+                    Taxonomy(encounter.taxonomy_guid).scientificName
+                )
+        return enc_data
+
     def reviewed(self):
         ret_val = False
         if self.stage == SightingStage.un_reviewed:

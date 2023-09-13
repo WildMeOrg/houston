@@ -77,6 +77,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
     pipelineState = base_fields.Function(lambda s: s.get_pipeline_state())
     numberEncounters = base_fields.Function(lambda s: s.get_number_encounters())
+    encounters = base_fields.Function(lambda s: s.get_encounters_elasticsearch())
     numberImages = base_fields.Function(lambda s: s.get_number_assets())
     numberAnnotations = base_fields.Function(lambda s: s.get_number_annotations())
     # apparently sets do NOT work well, so we need to name-sets to lists here
@@ -112,6 +113,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'stage',
             'pipelineState',
             'numberEncounters',
+            'encounters',
             'numberImages',
             'numberAnnotations',
             'individualNames',

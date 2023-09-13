@@ -442,6 +442,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         enc_data = {
             'sex': [],
             'taxonomy': [],
+            'customField': {},
         }
         for encounter in self.encounters:
             if encounter.sex:
@@ -450,6 +451,11 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 enc_data['taxonomy'].append(
                     Taxonomy(encounter.taxonomy_guid).scientificName
                 )
+            cf = encounter.custom_fields
+            for cfd_id in cf:
+                if cfd_id not in enc_data['customField']:
+                    enc_data['customField'][cfd_id] = []
+                enc_data['customField'][cfd_id].append(cf[cfd_id])
         return enc_data
 
     def reviewed(self):

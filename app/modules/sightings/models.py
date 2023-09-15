@@ -441,6 +441,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
 
         enc_data = {
             'sex': [],
+            'taxonomy_guid': [],
             'taxonomy': [],
             'customField': {},
         }
@@ -448,6 +449,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
             if encounter.sex:
                 enc_data['sex'].append(encounter.sex)
             if encounter.taxonomy_guid:
+                enc_data['taxonomy_guid'].append(str(encounter.taxonomy_guid))
                 enc_data['taxonomy'].append(
                     Taxonomy(encounter.taxonomy_guid).scientificName
                 )

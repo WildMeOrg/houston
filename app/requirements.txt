@@ -39,7 +39,7 @@ FuzzyWuzzy==0.18.0
 
 gevent==22.10.2
 
-gitpython==3.1.31
+gitpython==3.1.35
 
 humanize==4.6.0
 

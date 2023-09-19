@@ -643,6 +643,9 @@ class CustomFieldMixin(object):
     def custom_field_elasticsearch_mappings(cls, mapping):
         from app.modules.site_settings.models import SiteSetting
 
+        if 'type' in mapping and mapping['type'] == 'object':
+            del mapping['type']
+            mapping['properties'] = {}
         if not mapping or 'properties' not in mapping:
             return mapping
 

@@ -163,15 +163,30 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
 
     @classmethod
     def patch_elasticsearch_mappings(cls, mappings):
+        from app.modules.encounters.models import Encounter
+
         mappings = super(Sighting, cls).patch_elasticsearch_mappings(mappings)
 
-        # this *adds* location_geo_point - but only at top-level
+        # this *adds* location_geo_point - but only at top-level (due to _schema)
         if '_schema' in mappings:
             mappings['location_geo_point'] = {'type': 'geo_point'}
 
-        if 'customFields' in mappings:
+        # similarly only affects top-level (sightings) customfields
+        if 'customFields' in mappings and '_schema' in mappings:
             mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
                 mappings['customFields']
+            )
+
+        # handles encounters.customFields
+        if (
+            'encounters' in mappings
+            and 'properties' in mappings['encounters']
+            and 'customFields' in mappings['encounters']['properties']
+        ):
+            mappings['encounters']['properties'][
+                'customFields'
+            ] = Encounter.custom_field_elasticsearch_mappings(
+                mappings['encounters']['properties']['customFields']
             )
 
         if 'individualNames' in mappings:
@@ -443,7 +458,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
             'sex': [],
             'taxonomy_guid': [],
             'taxonomy': [],
-            'customField': {},
+            'customFields': {},
         }
         for encounter in self.encounters:
             if encounter.sex:
@@ -455,9 +470,9 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 )
             cf = encounter.custom_fields
             for cfd_id in cf:
-                if cfd_id not in enc_data['customField']:
-                    enc_data['customField'][cfd_id] = []
-                enc_data['customField'][cfd_id].append(cf[cfd_id])
+                if cfd_id not in enc_data['customFields']:
+                    enc_data['customFields'][cfd_id] = []
+                enc_data['customFields'][cfd_id].append(cf[cfd_id])
         return enc_data
 
     def reviewed(self):

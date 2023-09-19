@@ -662,6 +662,8 @@ class CustomFieldMixin(object):
         return mapping
 
     def export_custom_fields(self, data):
+        import datetime
+
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         defns = SiteSettingCustomFields.definitions_by_category(self.__class__.__name__)
@@ -671,7 +673,19 @@ class CustomFieldMixin(object):
         cf = self.custom_fields
         for defn in defns:
             val = cf.get(defn['id'])
-            # TODO twiddle val for export
+            if isinstance(val, list):
+                strs = []
+                for v in val:
+                    if v is not None:
+                        strs.append(str(v))
+                val = ', '.join(strs)
+            # if not "safe", we force to string and hope for the best
+            elif (
+                not isinstance(val, int)
+                and not isinstance(val, float)
+                and not isinstance(val, datetime.datetime)
+            ):
+                val = str(val)
             data[f"customField.{defn.get('name', defn['id'])}"] = val
 
 

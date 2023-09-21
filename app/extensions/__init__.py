@@ -612,7 +612,7 @@ class CustomFieldMixin(object):
     def get_custom_fields_elasticsearch(self):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
-        cf = self.custom_fields
+        cf = self.custom_fields or {}
         cf_es = {}
         for cfd_id in cf:
             if not SiteSettingCustomFields.is_valid_value_for_class(
@@ -669,11 +669,10 @@ class CustomFieldMixin(object):
 
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
-        defns = SiteSettingCustomFields.definitions_by_category(self.__class__.__name__)
+        defns = SiteSettingCustomFields.get_definitions(self.__class__.__name__)
         if not len(defns):
             return
-        defns = defns[next(iter(defns))]
-        cf = self.custom_fields
+        cf = self.custom_fields or {}
         for defn in defns:
             val = cf.get(defn['id'])
             if isinstance(val, list):
@@ -687,6 +686,7 @@ class CustomFieldMixin(object):
                 not isinstance(val, int)
                 and not isinstance(val, float)
                 and not isinstance(val, datetime.datetime)
+                and val is not None
             ):
                 val = str(val)
             data[f"customField.{defn.get('name', defn['id'])}"] = val

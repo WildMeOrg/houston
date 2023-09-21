@@ -369,6 +369,16 @@ class SiteSettingCustomFields(object):
                 return defn
         return None
 
+    @classmethod
+    def get_definitions(cls, cls_name):
+        from .models import SiteSetting
+
+        # bad cls_name will get raise HoustonException
+        data = SiteSetting.get_value(f'site.custom.customFields.{cls_name}')
+        if not data or not isinstance(data.get('definitions'), list):
+            return []
+        return data['definitions']
+
     # WARNING: this does no safety check (_drop_data etc), so really other code that
     #   wraps this should be used, e.g. patch_remove()
     @classmethod

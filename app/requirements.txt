@@ -37,7 +37,7 @@ flower==1.2.0
 
 FuzzyWuzzy==0.18.0
 
-gevent==22.10.2
+gevent==23.9.1
 
 gitpython==3.1.31
 

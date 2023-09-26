@@ -372,6 +372,21 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
 
+    def get_most_recent_encounter(self):
+        latest = None
+        latest_time = -2
+        for enc in self.encounters:
+            # note: enc.get_time() will fallback to sighting.time if needed
+            sv = enc.get_time().sort_value if enc.get_time() else -1
+            if sv > latest_time:
+                latest_time = sv
+                latest = enc
+        return latest
+
+    def get_most_recent_sighting(self):
+        enc = self.get_most_recent_encounter()
+        return enc.sighting if enc else None
+
     def get_sightings(self):
         sightings = set()  # force unique
         for enc in self.encounters:

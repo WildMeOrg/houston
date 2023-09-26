@@ -139,6 +139,53 @@ class ComplexDateTime(db.Model):
     def isoformat_in_timezone(self):
         return self.get_datetime_in_timezone().isoformat()
 
+    @property
+    def sort_value(self):
+        from datetime import datetime
+
+        ub = self.upper_bound
+        lb = self.lower_bound
+        diff = ub - lb
+        return datetime.timestamp(lb + diff / 2)
+
+    @property
+    def lower_bound(self):
+        from datetime import datetime
+
+        if self.specificity == Specificities.time:
+            return self.get_datetime_in_timezone()
+        if self.specificity == Specificities.day:
+            return datetime(
+                self.datetime.year, self.datetime.month, self.datetime.day, 0, 0, 0
+            ).astimezone(self.get_timezone_object())
+        if self.specificity == Specificities.month:
+            return datetime(
+                self.datetime.year, self.datetime.month, 1, 0, 0, 0
+            ).astimezone(self.get_timezone_object())
+        return datetime(self.datetime.year, 1, 1, 0, 0, 0).astimezone(
+            self.get_timezone_object()
+        )
+
+    @property
+    def upper_bound(self):
+        import calendar
+        from datetime import datetime
+
+        if self.specificity == Specificities.time:
+            return self.get_datetime_in_timezone()
+        if self.specificity == Specificities.day:
+            return datetime(
+                self.datetime.year, self.datetime.month, self.datetime.day, 23, 59, 59
+            ).astimezone(self.get_timezone_object())
+        if self.specificity == Specificities.month:
+            cal = calendar.monthrange(self.datetime.year, self.datetime.month)
+            return datetime(
+                self.datetime.year, self.datetime.month, cal[1], 23, 59, 59
+            ).astimezone(self.get_timezone_object())
+        return datetime(self.datetime.year, 12, 31, 23, 59, 59).astimezone(
+            self.get_timezone_object()
+        )
+
     # used from parameters.py for object which have time/timeSpecifity patches (currently encounter and sighting)
     @classmethod
     def patch_replace_helper(cls, obj, field, value):

@@ -408,8 +408,8 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         return sightings
 
     def get_most_recent_verbatim_locality(self):
-        # FIXME pending detailed definition
-        return None
+        mrs = self.get_most_recent_sighting()
+        return mrs.verbatim_locality if mrs else None
 
     def get_most_recent_location_name(self):
         mrs = self.get_most_recent_sighting()

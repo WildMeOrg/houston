@@ -42,6 +42,16 @@ def test_models(db, request):
     assert cdt
     assert cdt.datetime == dt.astimezone(tz.UTC)
     assert cdt.datetime == cdt.get_datetime_in_timezone()
+    assert cdt.lower_bound < cdt.datetime
+    assert cdt.upper_bound > cdt.datetime
+    assert (
+        cdt.sort_value
+        == (
+            datetime.datetime.timestamp(cdt.upper_bound)
+            + datetime.datetime.timestamp(cdt.lower_bound)
+        )
+        / 2
+    )
 
     with db.session.begin():
         db.session.add(cdt)

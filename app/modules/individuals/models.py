@@ -372,6 +372,7 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
 
+    # "should never be None"
     def get_most_recent_encounter(self):
         latest = None
         latest_time = -2
@@ -383,6 +384,13 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 latest = enc
         return latest
 
+    def get_encounters_chronological(self):
+        return sorted(
+            self.encounters,
+            key=lambda enc: enc.get_time().sort_value if enc.get_time() else -1,
+        )
+
+    # "should never be None"
     def get_most_recent_sighting(self):
         enc = self.get_most_recent_encounter()
         return enc.sighting if enc else None
@@ -392,6 +400,20 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         for enc in self.encounters:
             sightings.add(enc.sighting)
         return sightings
+
+    def get_sightings_chronological(self):
+        sightings = []
+        for enc in self.get_encounters_chronological():
+            sightings.append(enc.sighting)
+        return sightings
+
+    def get_most_recent_verbatim_locality(self):
+        # FIXME pending detailed definition
+        return None
+
+    def get_most_recent_location_name(self):
+        mrs = self.get_most_recent_sighting()
+        return mrs.get_location_id_value() if mrs else None
 
     def get_number_sightings(self):
         return len(self.get_sightings())

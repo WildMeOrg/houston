@@ -264,6 +264,12 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     last_seen_specificity = base_fields.Function(
         lambda ind: ind.get_last_seen_time_specificity(),
     )
+    last_seen_verbatimLocality = base_fields.Function(
+        lambda ind: ind.get_most_recent_verbatim_locality()
+    )
+    last_seen_location_name = base_fields.Function(
+        lambda ind: ind.get_most_recent_location_name()
+    )
     taxonomy_names = base_fields.Function(lambda ind: ind.get_taxonomy_names())
 
     encounters = base_fields.Function(lambda ind: ind.get_encounter_guids())
@@ -295,6 +301,8 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
             'has_annotations',
             'last_seen',
             'last_seen_specificity',
+            'last_seen_verbatimLocality',
+            'last_seen_location_name',
             'taxonomy_names',
         )
         dump_only = (

@@ -566,6 +566,12 @@ class Annotation(db.Model, HoustonModel, SageModel):
         return sorted(ref.keyword.value for ref in self.keyword_refs)
 
     def delete(self):
+        # first we remove annot from any AGS it might be in (issue houston#906)
+        for ags in self.asset.git_store.asset_group_sightings:
+            ags.remove_annotation(str(self.guid))
+            ags.config = ags.config
+            with db.session.begin():
+                db.session.merge(ags)
         with db.session.begin(subtransactions=True):
             while self.keyword_refs:
                 ref = self.keyword_refs.pop()

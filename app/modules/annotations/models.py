@@ -570,7 +570,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
         for ags in self.asset.git_store.asset_group_sightings:
             ags.remove_annotation(str(self.guid))
             ags.config = ags.config
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.merge(ags)
         with db.session.begin(subtransactions=True):
             while self.keyword_refs:

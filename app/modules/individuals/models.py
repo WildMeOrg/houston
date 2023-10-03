@@ -199,6 +199,10 @@ class Individual(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 'type': 'keyword',
                 'normalizer': 'codex_keyword_normalizer',
             }
+            mappings['adoptionName'] = {
+                'type': 'keyword',
+                'normalizer': 'codex_keyword_normalizer',
+            }
             mappings['comments'] = {'type': 'text'}
 
         if 'customFields' in mappings:

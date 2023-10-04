@@ -58,7 +58,7 @@ openpyxl
 passlib>=1.7.1,<2
 permission>=0.4.1,<0.5
 phonenumbers==8.13.8
-Pillow==9.5.0
+Pillow==10.0.1
 premailer==3.10.0
 prometheus-client==0.16.0
 psycopg2-binary==2.9.6

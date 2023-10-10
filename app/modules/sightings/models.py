@@ -54,6 +54,13 @@ class SightingStage(str, enum.Enum):
     failed = 'failed'
 
 
+class SightingMatchState(str, enum.Enum):
+    unreviewed = 'unreviewed'
+    in_progress = 'in_progress'
+    reviewed = 'reviewed'
+    unidentifiable = 'unidentifiable'
+
+
 class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     """
     Sightings database model.
@@ -67,6 +74,11 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     stage = db.Column(
         db.Enum(SightingStage),
         nullable=False,
+    )
+    match_state = db.Column(
+        db.Enum(SightingMatchState),
+        nullable=False,
+        default=SightingMatchState.unreviewed,
     )
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 

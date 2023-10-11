@@ -49,6 +49,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/locationId',
         '/taxonomies',
         '/verbatimLocality',
+        '/match_state',
     )
 
     @classmethod
@@ -161,6 +162,17 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                 ret_val = True
             elif field == 'verbatimLocality':
                 obj.verbatim_locality = value
+                ret_val = True
+            elif field == 'match_state':
+                from app.modules.sightings.models import SightingMatchState
+
+                try:
+                    SightingMatchState(value)
+                except KeyError:
+                    raise HoustonException(
+                        log, f'match_state value passed ({value}) is invalid'
+                    )
+                obj.match_state = value
                 ret_val = True
 
         return ret_val

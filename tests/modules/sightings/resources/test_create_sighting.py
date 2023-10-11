@@ -137,11 +137,13 @@ def test_create_and_modify_and_delete_sighting(
         sighting_id,
         patch_data=[
             {'op': 'replace', 'path': '/locationId', 'value': region2_id},
+            {'op': 'replace', 'path': '/match_state', 'value': 'reviewed'},
         ],
     )
     # check that change was made
     response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
     assert response.json['locationId'] == region2_id
+    assert response.json['match_state'] == 'reviewed'
 
     new_configs = [{'algorithms': ['hotspotter_nosv']}]
     sighting_utils.patch_sighting(
@@ -177,6 +179,7 @@ def test_create_and_modify_and_delete_sighting(
         'featuredAssetGuid',
         'unreviewed_start_time',
         'creator',
+        'match_state',
         'curation_start_time',
         'detection_start_time',
     }
@@ -253,6 +256,17 @@ def test_create_and_modify_and_delete_sighting(
             {'op': 'add', 'path': '/decimalLatitude', 'value': 999.9},
         ],
         expected_status_code=400,
+    )
+
+    # invalid match_state
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'add', 'path': '/match_state', 'value': 'failure'},
+        ],
+        expected_status_code=409,
     )
 
     # patch op=add will create a new (3rd) encounter

@@ -216,6 +216,7 @@ class DetailedSightingSchema(TimedSightingSchema):
             'assets',
             'featuredAssetGuid',
             'stage',
+            'match_state',
             'jobs',
             'creator',
             'time',

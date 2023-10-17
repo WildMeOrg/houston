@@ -83,6 +83,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Free Disk space
+        run: |
+             sudo swapoff -a
+             sudo rm -f /swapfile
+             sudo apt clean
+             docker rmi $(docker image ls -aq)
+             df -h 
+
       - name: Install libmagic on Ubuntu
         run: |
           sudo apt install libmagic1

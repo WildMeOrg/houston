@@ -61,10 +61,10 @@ RUN ls -lah /code/app/static
 WORKDIR /code
 
 RUN set -ex \
- && pip install --upgrade pip \
- && pip install -e . \
+ && pip install  --no-cache-dir --upgrade pip \
+ && pip install  --no-cache-dir -e . \
  #: Install developer tools
- && pip install -r app/requirements.dev.txt \
+ && pip install  --no-cache-dir -r app/requirements.dev.txt \
  #: Remove pip download cache
  && rm -rf ~/.cache/pip
 

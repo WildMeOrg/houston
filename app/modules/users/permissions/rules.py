@@ -532,6 +532,12 @@ class ObjectActionRule(Rule):
             and (
                 self._action == AccessOperation.READ
                 or self._action == AccessOperation.WRITE
+                or (
+                    # houston issue #876 allows for admin to delete individuals with public sightings
+                    self._action == AccessOperation.DELETE
+                    and self._user.is_admin
+                    and self._obj.__class__.__name__ == 'Individual'
+                )
             )
         )
 

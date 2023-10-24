@@ -1043,6 +1043,25 @@ class Taxonomy:
                 return
         raise ValueError('unknown id')
 
+    # this will return taxonomy_guid values *even if they are not* in site_settings! ymmv?
+    @classmethod
+    def usage(cls):
+        from app.extensions import db
+
+        counts = {}
+        # these are the places taxonomy_guid can be used:
+        tables = ['individual', 'encounter', 'sighting_taxonomies']
+        for table_name in tables:
+            res = db.session.execute(
+                f'SELECT taxonomy_guid, COUNT(*) FROM {table_name} GROUP BY taxonomy_guid'
+            )
+            for row in res:
+                if row[0] in counts:
+                    counts[row[0]] += row[1]
+                else:
+                    counts[row[0]] = row[1]
+        return counts
+
     @classmethod
     def get_configuration_value(cls):
         from app.modules.site_settings.models import SiteSetting

@@ -949,6 +949,9 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 indivs.add(enc.individual)
         return indivs
 
+    def get_number_individuals(self):
+        return len(self.individuals)
+
     def get_individual_names(self):
         names = set()
         for indiv in self.individuals:

@@ -41,7 +41,9 @@ def test_read_site_settings(flask_app_client, researcher_1):
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_alter_settings(flask_app_client, admin_user):
+def test_alter_settings(flask_app_client, admin_user, db):
+    from app.modules.individuals.models import Individual
+
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
     assert 'value' in response.json['site.species']
     vals = response.json['site.species']['value']
@@ -64,6 +66,22 @@ def test_alter_settings(flask_app_client, admin_user):
         vals,
         'site.species',
     )
+
+    # create a faux individual with random taxonomy_guid to test failing update site.species without it
+    indiv = Individual()
+    indiv.taxonomy_guid = '00000000-eb82-471e-b3be-000000000000'
+    with db.session.begin():
+        db.session.add(indiv)
+    with pytest.raises(ValueError) as ve:
+        response = conf_utils.modify_main_settings(
+            flask_app_client,
+            admin_user,
+            vals,
+            'site.species',
+        )
+    assert 'Missing taxonomies' in str(ve)
+    with db.session.begin():
+        db.session.delete(indiv)
 
 
 # TODO sort this out as part of DEX 1306

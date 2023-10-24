@@ -80,6 +80,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     encounters = base_fields.Function(lambda s: s.get_encounters_elasticsearch())
     numberImages = base_fields.Function(lambda s: s.get_number_assets())
     numberAnnotations = base_fields.Function(lambda s: s.get_number_annotations())
+    numberIndividuals = base_fields.Function(lambda s: s.get_number_individuals())
     # apparently sets do NOT work well, so we need to name-sets to lists here
     individualNames = base_fields.Function(lambda s: list(s.get_individual_names()))
     individualNamesWithContexts = base_fields.Function(
@@ -116,6 +117,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'encounters',
             'numberImages',
             'numberAnnotations',
+            'numberIndividuals',
             'individualNames',
             'individualNamesWithContexts',
         )

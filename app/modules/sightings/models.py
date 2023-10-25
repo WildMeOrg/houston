@@ -487,14 +487,6 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 enc_data['customFields'][cfd_id].append(cf[cfd_id])
         return enc_data
 
-    def reviewed(self):
-        ret_val = False
-        if self.stage == SightingStage.un_reviewed:
-            self.set_stage(SightingStage.processed)
-            self.review_time = datetime.datetime.utcnow()
-            ret_val = True
-        return ret_val
-
     def get_time_isoformat_in_timezone(self):
         return self.time.isoformat_in_timezone() if self.time else None
 

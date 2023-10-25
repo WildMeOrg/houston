@@ -86,6 +86,8 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     @classmethod
     def replace(cls, obj, field, value, state):
 
+        from datetime import datetime
+
         from app.modules.assets.models import Asset
         from app.modules.complex_date_time.models import ComplexDateTime
 
@@ -173,6 +175,11 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                         log, f'match_state value passed ({value}) is invalid'
                     )
                 obj.match_state = value
+                if (
+                    value == SightingMatchState.reviewed
+                    or value == SightingMatchState.unidentifiable
+                ):
+                    obj.review_time = datetime.utcnow()
                 ret_val = True
 
         return ret_val

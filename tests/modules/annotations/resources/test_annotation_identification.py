@@ -4,7 +4,6 @@ import uuid
 import pytest
 
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.sightings.resources.utils as sighting_utils
 import tests.utils as test_utils
 from tests.utils import (
     extension_unavailable,
@@ -56,9 +55,10 @@ def test_annotation_identification(
     sighting_uuid = commit_response.json['guid']
 
     # mark it as processed or it won't be valid in the matching set
-    sighting_utils.write_sighting_path(
-        flask_app_client, researcher_1, f'{sighting_uuid}/reviewed', {}
-    )
+    # NOTE this api is deprecated and doesnt seem to affect matching set
+    # sighting_utils.write_sighting_path(
+    # flask_app_client, researcher_1, f'{sighting_uuid}/reviewed', {}
+    # )
 
     # Second sighting, the one we'll use for testing, Create with annotation but don't commit.... yet
     (

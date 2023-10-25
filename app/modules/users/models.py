@@ -588,12 +588,15 @@ class User(db.Model, HoustonModel):
 
     @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):
-        from app.modules.sightings.models import SightingStage
+        from app.modules.sightings.models import SightingMatchState
 
         return [
             sighting.guid
             for sighting in self.get_sightings()
-            if not sighting.stage == SightingStage.processed
+            if not (
+                sighting.match_state == SightingMatchState.reviewed
+                or sighting.match_state == SightingMatchState.unidentifiable
+            )
         ]
 
     @module_required('sightings', resolve='warn', default=[])

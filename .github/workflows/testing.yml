@@ -15,7 +15,7 @@ jobs:
 
     steps:
       # Checkout and env setup
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
         with:
           submodules: true
 
@@ -69,14 +69,14 @@ jobs:
       HOUSTON_APP_CONTEXT: ${{ matrix.app-context }}
     steps:
       # Checkout and env setup
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}

@@ -152,6 +152,9 @@ def test_User_find_with_password(
         db.session.add(user2)
 
     assert models.User.find('user1@localhost', 'user1password') == user1
+    assert (
+        models.User.find('USeR1@locALHOst', 'user1password') == user1
+    )  # case insensitive issue #935
     assert models.User.find('user1@localhost', 'wrong-user1password') is None
     assert models.User.find('user2@localhost', 'user1password') is None
     assert models.User.find('user2@localhost', 'user2password') == user2

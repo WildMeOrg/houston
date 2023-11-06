@@ -359,6 +359,7 @@ class User(db.Model, HoustonModel):
     @classmethod
     def find(cls, email=None, password=None):
         # Look-up via email
+        from sqlalchemy import func
 
         if email is None:
             return None
@@ -369,7 +370,9 @@ class User(db.Model, HoustonModel):
         ]
         for email_candidate in email_candidates:
 
-            user = cls.query.filter(User.email == email_candidate).first()
+            user = cls.query.filter(
+                func.lower(User.email) == func.lower(email_candidate)
+            ).first()
 
             if password is None:
                 # If no password was provided to check, return any user account we find

@@ -39,14 +39,26 @@ class ElasticsearchEncounterSchema(ModelSchema):
     annotations = base_fields.Nested('AnnotationElasticsearchSchema', many=True)
     hasView = base_fields.Function(lambda enc: enc.current_user_has_view_permission())
     hasEdit = base_fields.Function(lambda enc: enc.current_user_has_edit_permission())
-    time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
-    timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
+    match_state = base_fields.Function(lambda enc: enc.get_match_state())
     owner_guid = base_fields.Function(lambda enc: enc.get_owner_guid_str())
     sighting_guid = base_fields.Function(lambda enc: enc.get_sighting_guid_str())
-    locationId = base_fields.Function(lambda enc: enc.get_location_id())
-    taxonomy_guid = base_fields.Function(lambda enc: enc.get_taxonomy_guid())
-    point = base_fields.Function(lambda enc: enc.get_point())
+    individual_guid = base_fields.Function(lambda enc: enc.get_individual_guid_str())
     customFields = base_fields.Function(lambda enc: enc.get_custom_fields())
+    individualNameValues = base_fields.Function(lambda enc: enc.individual_name_values())
+    individualNamesWithContexts = base_fields.Function(
+        lambda enc: enc.get_individual_names_with_contexts()
+    )
+    # per slack discussion, these values should all fallback to sighting-level data if not set on encounter
+    location_geo_point = base_fields.Function(lambda enc: enc.get_point_fallback())
+    verbatimLocality = base_fields.Function(lambda enc: enc.get_locality_fallback())
+    # - in particular, these have a sighting-fallback by default
+    time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
+    timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
+    locationId = base_fields.Function(lambda enc: enc.get_location_id())
+    # however, this is encounter-only value ("observational") so is used without fallback
+    taxonomy_guid = base_fields.Function(
+        lambda enc: enc.get_taxonomy_guid_no_fallback_str()
+    )
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -57,13 +69,18 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'elasticsearchable',
             Encounter.indexed.key,
             'annotations',
+            'individual_guid',
+            'individualNameValues',
+            'individualNamesWithContexts',
             'time',
             'timeSpecificity',
+            'match_state',
             'owner_guid',
             'sighting_guid',
-            'locationId',
             'taxonomy_guid',
-            'point',
+            'locationId',
+            'verbatimLocality',
+            'location_geo_point',
             'customFields',
         )
         dump_only = (Encounter.guid.key,)

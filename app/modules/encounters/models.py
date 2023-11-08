@@ -131,9 +131,31 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     def patch_elasticsearch_mappings(cls, mappings):
         mappings = super(Encounter, cls).patch_elasticsearch_mappings(mappings)
 
-        mappings['point'] = {
-            'type': 'geo_point',
-        }
+        # this *adds* location_geo_point - but only at top-level (due to _schema)
+        if '_schema' in mappings:
+            mappings['location_geo_point'] = {'type': 'geo_point'}
+
+        # similarly only affects top-level customfields
+        if 'customFields' in mappings and '_schema' in mappings:
+            mappings['customFields'] = cls.custom_field_elasticsearch_mappings(
+                mappings['customFields']
+            )
+
+        if 'individualNameValues' in mappings:
+            mappings['individualNameValues'] = {
+                'type': 'keyword',
+                'normalizer': 'codex_keyword_normalizer',
+            }
+
+        if (
+            'individualNamesWithContexts' in mappings
+            and 'properties' in mappings['individualNamesWithContexts']
+        ):
+            for context in mappings['individualNamesWithContexts']['properties']:
+                mappings['individualNamesWithContexts']['properties'][context] = {
+                    'type': 'keyword',
+                    'normalizer': 'codex_keyword_normalizer',
+                }
 
         return mappings
 
@@ -164,6 +186,23 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
     def get_sighting_guid_str(self):
         return str(self.sighting.guid)
 
+    def get_match_state(self):
+        return self.sighting.match_state
+
+    def get_individual_guid_str(self):
+        return str(self.individual_guid) if self.individual_guid else None
+
+    def individual_name_values(self):
+        return self.individual.get_name_values() if self.individual_guid else None
+
+    def get_individual_names_with_contexts(self):
+        nwc = {}
+        if not self.individual_guid:
+            return nwc
+        for name in self.individual.names:
+            nwc[name.context] = name.value_resolved
+        return nwc
+
     def get_assets(self):
         return {ann.asset for ann in self.annotations}
 
@@ -187,6 +226,15 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
         if self.decimal_latitude is None or self.decimal_longitude is None:
             return None
         return {'lat': self.decimal_latitude, 'lon': self.decimal_longitude}
+
+    def get_point_fallback(self):
+        pt = self.get_point()
+        # sigh, why cant we have consistent naming
+        return pt if pt else self.sighting.get_geo_point()
+
+    def get_locality_fallback(self):
+        loc = self.verbatim_locality
+        return loc if loc else self.sighting.get_locality()
 
     # first tries encounter.taxonomy_guid, but will use sighting.taxonomy_guids if none on encounter,
     #   unless sighting_fallback=False
@@ -224,6 +272,9 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 f'found invalid taxonomy_guid {tx_guid} on encounter {self.guid}',
             )
         return None
+
+    def get_taxonomy_guid_no_fallback_str(self):
+        return str(self.taxonomy_guid) if self.taxonomy_guid else None
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
         time = self.get_time(sighting_fallback=sighting_fallback)

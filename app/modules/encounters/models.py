@@ -222,6 +222,15 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
 
         return Regions.get_region_name(str(self.get_location_id()))
 
+    def get_location_id_keyword(self):
+        from app.extensions.elasticsearch import MAX_UNICODE_CODE_POINT_CHAR
+
+        location_id_value = self.get_location_id_value()
+        if location_id_value is None:
+            location_id_value = MAX_UNICODE_CODE_POINT_CHAR
+        location_id_keyword = location_id_value.strip().lower()
+        return location_id_keyword
+
     def get_point(self):
         if self.decimal_latitude is None or self.decimal_longitude is None:
             return None

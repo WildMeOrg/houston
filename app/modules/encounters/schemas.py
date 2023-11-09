@@ -43,7 +43,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
     owner_guid = base_fields.Function(lambda enc: enc.get_owner_guid_str())
     sighting_guid = base_fields.Function(lambda enc: enc.get_sighting_guid_str())
     individual_guid = base_fields.Function(lambda enc: enc.get_individual_guid_str())
-    customFields = base_fields.Function(lambda enc: enc.get_custom_fields())
+    customFields = base_fields.Function(lambda enc: enc.get_custom_fields_elasticsearch())
     individualNameValues = base_fields.Function(lambda enc: enc.individual_name_values())
     individualNamesWithContexts = base_fields.Function(
         lambda enc: enc.get_individual_names_with_contexts()

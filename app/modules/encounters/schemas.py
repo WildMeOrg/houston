@@ -55,6 +55,8 @@ class ElasticsearchEncounterSchema(ModelSchema):
     time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
     timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
     locationId = base_fields.Function(lambda enc: enc.get_location_id())
+    locationId_value = base_fields.Function(lambda enc: enc.get_location_id_value())
+    locationId_keyword = base_fields.Function(lambda enc: enc.get_location_id_keyword())
     # however, this is encounter-only value ("observational") so is used without fallback
     taxonomy_guid = base_fields.Function(
         lambda enc: enc.get_taxonomy_guid_no_fallback_str()
@@ -79,6 +81,8 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'sighting_guid',
             'taxonomy_guid',
             'locationId',
+            'locationId_value',
+            'locationId_keyword',
             'verbatimLocality',
             'location_geo_point',
             'customFields',

@@ -492,6 +492,8 @@ class ElasticSearchBulkOperation(object):
                 else:
                     errors.append(response)
 
+            if errors:
+                log.error(f'Bulk ES index errors: {errors}')
             assert total == len(actions)
             assert len(errors) == 0
         except (

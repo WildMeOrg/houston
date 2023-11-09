@@ -60,7 +60,7 @@ class EncounterElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseEncounterSchema(many=True))
+    @api.response(Encounter.get_elasticsearch_schema()(many=True))
     @api.paginate()
     def get(self, args):
         search = {}
@@ -74,7 +74,7 @@ class EncounterElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseEncounterSchema(many=True))
+    @api.response(Encounter.get_elasticsearch_schema()(many=True))
     @api.paginate()
     def post(self, args):
         search = request.get_json()

@@ -40,7 +40,8 @@ class ElasticsearchEncounterSchema(ModelSchema):
     hasView = base_fields.Function(lambda enc: enc.current_user_has_view_permission())
     hasEdit = base_fields.Function(lambda enc: enc.current_user_has_edit_permission())
     match_state = base_fields.Function(lambda enc: enc.get_match_state())
-    owner_guid = base_fields.Function(lambda enc: enc.get_owner_guid_str())
+    owner = base_fields.Nested('PublicUserSchema', many=False)
+    created = base_fields.DateTime(attribute='created')
     sighting_guid = base_fields.Function(lambda enc: enc.get_sighting_guid_str())
     individual_guid = base_fields.Function(lambda enc: enc.get_individual_guid_str())
     customFields = base_fields.Function(lambda enc: enc.get_custom_fields_elasticsearch())
@@ -77,7 +78,8 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'time',
             'timeSpecificity',
             'match_state',
-            'owner_guid',
+            'owner',
+            'created',
             'sighting_guid',
             'taxonomy_guid',
             'locationId',

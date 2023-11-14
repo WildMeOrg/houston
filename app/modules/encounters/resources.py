@@ -216,3 +216,37 @@ class EncounterDebugByID(Resource):
     @api.response(sighting_schemas.DebugSightingSchema())
     def get(self, encounter):
         return encounter.sighting
+
+
+@api.route('/export')
+@api.login_required(oauth_scopes=['export:write'])
+class EncounterExport(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.EXPORT,
+        },
+    )
+    def post(self):
+        search = request.get_json()
+        encs = Encounter.elasticsearch(search)
+        if not encs:
+            abort(400, 'No results to export')
+        from flask import send_file
+
+        from app.extensions.export.models import Export
+
+        export = Export()
+        for enc in encs:
+            export.add(enc)
+            export.add(enc.sighting)
+            if enc.individual_guid:
+                export.add(enc.individual)
+        export.save()
+        return send_file(
+            export.filepath,
+            mimetype='application/vnd.ms-excel',
+            as_attachment=True,
+            attachment_filename=export.filename,
+        )

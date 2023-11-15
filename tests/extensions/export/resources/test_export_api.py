@@ -53,6 +53,12 @@ def test_export_api(
     # ok, cuz... exporter
     resp = export_utils.export_search(flask_app_client, exporter, query)
     assert resp.content_type == 'application/vnd.ms-excel'
+    # now lets test encounter export too
+    resp = export_utils.export_search(
+        flask_app_client, admin_user, {}, class_name='encounters'
+    )
+    assert resp.content_type == 'application/vnd.ms-excel'
+    assert resp.content_length > 1000
     export_utils.clear_files()
 
 

@@ -121,6 +121,7 @@ else:
         ],
         ('Encounter', AccessOperation.READ): ['is_researcher'],
         ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
+        ('Encounter', AccessOperation.EXPORT): ['is_admin', 'is_exporter'],
         ('Sighting', AccessOperation.READ): ['is_researcher'],
         ('Sighting', AccessOperation.WRITE): ['is_active'],
         ('Sighting', AccessOperation.DELETE): ['is_admin'],

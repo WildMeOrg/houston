@@ -237,11 +237,15 @@ class EncounterExport(Resource):
 
         from app.extensions.export.models import Export
 
+        added = set()
         export = Export()
         for enc in encs:
             export.add(enc)
-            export.add(enc.sighting)
-            if enc.individual_guid:
+            if enc.sighting_guid not in added:
+                added.add(enc.sighting_guid)
+                export.add(enc.sighting)
+            if enc.individual_guid and enc.individual_guid not in added:
+                added.add(enc.individual_guid)
                 export.add(enc.individual)
         export.save()
         return send_file(

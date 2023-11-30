@@ -99,6 +99,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             Sighting.indexed.key,
             Sighting.created.key,
             Sighting.updated.key,
+            'hasView',
             'time',
             'timeSpecificity',
             'comments',

@@ -480,7 +480,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 enc_data['taxonomy'].append(
                     Taxonomy(encounter.taxonomy_guid).scientificName
                 )
-            cf = encounter.custom_fields
+            cf = encounter.custom_fields or {}
             for cfd_id in cf:
                 if cfd_id not in enc_data['customFields']:
                     enc_data['customFields'][cfd_id] = []

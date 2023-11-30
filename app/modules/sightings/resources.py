@@ -139,10 +139,16 @@ class SightingExport(Resource):
         from app.extensions.export.models import Export
 
         export = Export()
+        ct = 0
         for sight in sights:
+            if not sight.current_user_has_view_permission():
+                continue
+            ct += 1
             export.add(sight)
             for enc in sight.get_encounters():
                 export.add(enc)
+        if not ct:
+            abort(400, 'No results to export')
         export.save()
         return send_file(
             export.filepath,

@@ -237,16 +237,29 @@ class EncounterExport(Resource):
 
         from app.extensions.export.models import Export
 
+        ct = 0
         added = set()
         export = Export()
         for enc in encs:
+            if not enc.current_user_has_view_permission():
+                continue
             export.add(enc)
-            if enc.sighting_guid not in added:
+            ct += 1
+            if (
+                enc.sighting_guid not in added
+                and enc.sighting.current_user_has_view_permission()
+            ):
                 added.add(enc.sighting_guid)
                 export.add(enc.sighting)
-            if enc.individual_guid and enc.individual_guid not in added:
+            if (
+                enc.individual_guid
+                and enc.individual_guid not in added
+                and enc.individual.current_user_has_view_permission()
+            ):
                 added.add(enc.individual_guid)
                 export.add(enc.individual)
+        if not ct:
+            abort(400, 'No results to export')
         export.save()
         return send_file(
             export.filepath,

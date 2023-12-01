@@ -88,6 +88,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'verbatimLocality',
             'location_geo_point',
             'customFields',
+            'hasView',
         )
         dump_only = (Encounter.guid.key,)
 

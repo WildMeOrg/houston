@@ -260,9 +260,15 @@ class IndividualExport(Resource):
 
         from app.extensions.export.models import Export
 
+        ct = 0
         export = Export()
         for indiv in indivs:
+            if not indiv.current_user_has_view_permission():
+                continue
             export.add(indiv)
+            ct += 0
+        if not ct:
+            abort(400, 'No results to export')
         export.save()
         return send_file(
             export.filepath,

@@ -245,6 +245,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     ElasticsearchIndividualSchema is used for showing results to the user upon return.
     """
 
+    hasView = base_fields.Function(lambda ind: ind.current_user_has_view_permission())
     featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
     names = base_fields.Function(lambda ind: ind.get_name_values())
     firstName = base_fields.Function(lambda ind: ind.get_first_name())
@@ -304,6 +305,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
             'last_seen_verbatimLocality',
             'last_seen_location_name',
             'taxonomy_names',
+            'hasView',
         )
         dump_only = (
             Individual.guid.key,

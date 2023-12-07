@@ -501,6 +501,13 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
 
+    def user_has_view_permission(self, user):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.READ, user=user)
+        return rule.check()
+
     def get_all_owners(self):
         if hasattr(self, 'owner'):
             return [getattr(self, 'owner')]

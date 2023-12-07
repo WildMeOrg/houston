@@ -1841,7 +1841,7 @@ def es_elasticsearch(
         guid = uuid.UUID(hit['_id'])
         hit_guids.append(guid)
 
-    # Get all possible corect matches
+    # Get all possible correct matches
     all_guids = cls.query.with_entities(cls.guid).all()
     all_guids = {item[0] for item in all_guids}
 

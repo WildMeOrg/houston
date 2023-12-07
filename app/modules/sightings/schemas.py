@@ -53,9 +53,9 @@ class CreateSightingSchema(BaseSightingSchema):
         )
 
 
-class ElasticsearchSightingSchema(BaseSightingSchema):
+class ElasticsearchSightingReturnSchema(BaseSightingSchema):
     """
-    Sighting schema for ElasticSearch
+    Sighting schema for ElasticSearch Return
     """
 
     time = base_fields.Function(lambda s: s.get_time_isoformat_in_timezone())
@@ -113,7 +113,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'customFields',
             'submissionTime',
             'stage',
-            'pipelineState',
+            #'pipelineState',
             'numberEncounters',
             'encounters',
             'numberImages',
@@ -127,6 +127,13 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             Sighting.created.key,
             Sighting.updated.key,
         )
+
+
+class ElasticsearchSightingSchema(ElasticsearchSightingReturnSchema):
+    viewers = base_fields.Function(lambda s: s.viewer_guids())
+
+    class Meta(ElasticsearchSightingReturnSchema.Meta):
+        fields = ElasticsearchSightingReturnSchema.Meta.fields + ('viewers',)
 
 
 class TimedSightingSchema(CreateSightingSchema):

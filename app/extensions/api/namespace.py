@@ -135,15 +135,21 @@ class Namespace(BaseNamespace):
 
                 query = func(self_, parameters_args, *args, **kwargs)
 
+                viewable_count = -1
                 if not isinstance(query, flask_sqlalchemy.BaseQuery):
                     if query is None or len(query) == 0:
                         total_count, response = 0, []
-                    else:
-                        assert (
-                            len(query) == 2
-                        ), 'This may happen when @api.paginate is above @api.response'
+                    elif len(query) == 2:
                         total_count, response = query
                         assert isinstance(total_count, int)
+                    elif len(query) == 3:
+                        total_count, response, viewable_count = query
+                        assert isinstance(total_count, int)
+                        assert isinstance(viewable_count, int)
+                    else:
+                        raise ValueError(
+                            'This may happen when @api.paginate is above @api.response'
+                        )
                 else:
                     total_count = query.count()
                     cls = query.column_descriptions[0].get('entity')
@@ -233,7 +239,7 @@ class Namespace(BaseNamespace):
                 return (
                     response,
                     HTTPStatus.OK,
-                    {'X-Total-Count': total_count},
+                    {'X-Total-Count': total_count, 'X-Viewable-Count': viewable_count},
                 )
 
             return self.parameters(parameters, locations)(wrapper)

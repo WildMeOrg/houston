@@ -110,13 +110,29 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(Sighting.get_elasticsearch_schema()(many=True))
+    @api.response(schemas.ElasticsearchSightingReturnSchema(many=True))
     @api.paginate()
     def post(self, args):
         search = request.get_json()
-
         args['total'] = True
-        return Sighting.elasticsearch(search, **args)
+        # hacky way to skip when already querying on viewers or query is "unusual"(?)
+        if (
+            not current_user
+            or '"viewers"' in str(search)
+            or 'bool' not in search
+            or 'filter' not in search['bool']
+            or not isinstance(search['bool']['filter'], list)
+        ):
+            return Sighting.elasticsearch(search, **args)
+        from copy import deepcopy
+
+        view_search = deepcopy(search)
+        view_search['bool']['filter'].append(
+            {'match': {'viewers': str(current_user.guid)}}
+        )
+        log.debug(f'doing viewer search using {view_search}')
+        view_count, view_res = Sighting.elasticsearch(view_search, load=False, **args)
+        return Sighting.elasticsearch(search, **args) + (view_count,)
 
 
 @api.route('/export')

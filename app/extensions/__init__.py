@@ -508,6 +508,20 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.READ, user=user)
         return rule.check()
 
+    def viewer_guids(self):
+        from app.modules.users.models import User
+
+        users = User.query.all()
+        vguids = []
+        if self.is_public():
+            for user in users:
+                vguids.append(str(user.guid))
+        else:
+            for user in users:
+                if self.user_has_view_permission(user):
+                    vguids.append(str(user.guid))
+        return vguids
+
     def get_all_owners(self):
         if hasattr(self, 'owner'):
             return [getattr(self, 'owner')]

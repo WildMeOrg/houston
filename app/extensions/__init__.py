@@ -518,7 +518,7 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
                 vguids.append(str(user.guid))
         else:
             for user in users:
-                if self.user_has_view_permission(user):
+                if user.is_admin or self.user_has_view_permission(user):
                     vguids.append(str(user.guid))
         return vguids
 

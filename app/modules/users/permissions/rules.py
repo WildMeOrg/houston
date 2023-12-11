@@ -515,9 +515,9 @@ class ObjectActionRule(Rule):
                 was_table_driven, has_permission = self.any_table_driven_permission()
 
             if not has_permission:
-                has_permission = self.elevated_permission() | (
+                has_permission = self.elevated_permission() or (
                     self._permitted_via_collaboration(self._action)
-                    | self._permitted_as_public_data()
+                    or self._permitted_as_public_data()
                     # | self._permitted_via_org()
                     # | self._permitted_via_project()
                 )

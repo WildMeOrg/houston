@@ -35,6 +35,7 @@ class User(db.Model, HoustonModel):
             raise ValueError('User must have a password')
         super().__init__(*args, **kwargs)
 
+    _public_user = None
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
@@ -844,12 +845,15 @@ class User(db.Model, HoustonModel):
 
     @classmethod
     def get_public_user(cls):
-        return User.ensure_user(
+        if cls._public_user:
+            return cls._public_user
+        cls._public_user = User.ensure_user(
             email=User.PUBLIC_USER_EMAIL,
             password=User.initial_random_password(),
             full_name='Public User',
             is_internal=True,
         )
+        return cls._public_user
 
     def is_public_user(self):
         return self.email == User.PUBLIC_USER_EMAIL

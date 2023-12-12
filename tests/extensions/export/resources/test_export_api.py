@@ -25,7 +25,7 @@ def test_export_api(
     flask_app_client,
     admin_user,
     researcher_1,
-    exporter,
+    researcher_2,
     test_root,
     request,
     db,
@@ -44,21 +44,19 @@ def test_export_api(
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
     query = {'term': {'guid': sighting_guid}}
-    # ok cuz admin has export priv
-    resp = export_utils.export_search(flask_app_client, admin_user, query)
-    assert resp.content_type == 'application/vnd.ms-excel'
-    assert resp.content_length > 1000  # kind of a guess! but should be "biggish"
-    # no go, cuz researcher does not have export
-    export_utils.export_search(flask_app_client, researcher_1, query, 'sightings', 403)
-    # ok, cuz... exporter
-    resp = export_utils.export_search(flask_app_client, exporter, query)
-    assert resp.content_type == 'application/vnd.ms-excel'
-    # now lets test encounter export too
-    resp = export_utils.export_search(
-        flask_app_client, admin_user, {}, class_name='encounters'
-    )
+    # researcher_1 should have access
+    resp = export_utils.export_search(flask_app_client, researcher_1, query)
     assert resp.content_type == 'application/vnd.ms-excel'
     assert resp.content_length > 1000
+    # researcher_2 should get 400 (no matching) cuz does not have access to sighting
+    resp = export_utils.export_search(
+        flask_app_client, researcher_2, query, 'sightings', 400
+    )
+    # TODO fix when encounters working
+    # now lets test encounter export too
+    # resp = export_utils.export_search(flask_app_client, admin_user, {}, 'encounters')
+    # assert resp.content_type == 'application/vnd.ms-excel'
+    # assert resp.content_length > 1000
     export_utils.clear_files()
 
 

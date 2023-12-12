@@ -113,7 +113,7 @@ class ElasticsearchSightingReturnSchema(BaseSightingSchema):
             'customFields',
             'submissionTime',
             'stage',
-            #'pipelineState',
+            'pipelineState',
             'numberEncounters',
             'encounters',
             'numberImages',

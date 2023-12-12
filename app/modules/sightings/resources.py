@@ -136,13 +136,13 @@ class SightingElasticsearch(Resource):
 
 
 @api.route('/export')
-@api.login_required(oauth_scopes=['export:write'])
+@api.login_required(oauth_scopes=['sightings:read'])
 class SightingExport(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': Sighting,
-            'action': AccessOperation.EXPORT,
+            'action': AccessOperation.READ,
         },
     )
     def post(self):

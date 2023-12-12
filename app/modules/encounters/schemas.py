@@ -62,6 +62,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
     taxonomy_guid = base_fields.Function(
         lambda enc: enc.get_taxonomy_guid_no_fallback_str()
     )
+    viewers = base_fields.Function(lambda enc: enc.viewer_guids())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -89,6 +90,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'location_geo_point',
             'customFields',
             'hasView',
+            'viewers',
         )
         dump_only = (Encounter.guid.key,)
 

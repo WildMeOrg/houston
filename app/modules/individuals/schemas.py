@@ -200,7 +200,8 @@ class ElasticsearchIndividualSchema(ModelSchema):
     taxonomy_names = base_fields.Function(
         lambda ind: ind.get_taxonomy_names(inherit_encounters=False)
     )
-    numberSightings = base_fields.Function(lambda s: s.get_number_sightings())
+    numberSightings = base_fields.Function(lambda ind: ind.get_number_sightings())
+    viewers = base_fields.Function(lambda ind: ind.viewer_guids())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -232,6 +233,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'last_seen_specificity',
             'taxonomy_names',
             'numberSightings',
+            'viewers',
         )
         dump_only = (
             Individual.guid.key,

@@ -80,7 +80,24 @@ class EncounterElasticsearch(Resource):
         search = request.get_json()
 
         args['total'] = True
-        return Encounter.elasticsearch(search, **args)
+        # hacky way to skip when already querying on viewers or query is "unusual"(?)
+        if (
+            not current_user
+            or '"viewers"' in str(search)
+            or 'bool' not in search
+            or 'filter' not in search['bool']
+            or not isinstance(search['bool']['filter'], list)
+        ):
+            return Encounter.elasticsearch(search, **args)
+        from copy import deepcopy
+
+        view_search = deepcopy(search)
+        view_search['bool']['filter'].append(
+            {'match': {'viewers': str(current_user.guid)}}
+        )
+        log.debug(f'doing viewer search using {view_search}')
+        view_count, view_res = Encounter.elasticsearch(view_search, load=False, **args)
+        return Encounter.elasticsearch(search, **args) + (view_count,)
 
 
 @api.route('/<uuid:encounter_guid>')
@@ -219,13 +236,13 @@ class EncounterDebugByID(Resource):
 
 
 @api.route('/export')
-@api.login_required(oauth_scopes=['export:write'])
+@api.login_required(oauth_scopes=['encounters:read'])
 class EncounterExport(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': Encounter,
-            'action': AccessOperation.EXPORT,
+            'action': AccessOperation.READ,
         },
     )
     def post(self):

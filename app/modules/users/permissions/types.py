@@ -23,4 +23,3 @@ class AccessOperation(enum.Enum):
     # internal operations only (only Sage, no wetware users)
     WRITE_INTERNAL = 7
     DELETE = 8
-    EXPORT = 9

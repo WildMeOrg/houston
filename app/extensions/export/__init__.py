@@ -16,10 +16,10 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    from app.extensions.api import api_v1
 
     """
     Init Passthroughs module.
     """
-    api_v1.add_oauth_scope('export:read', 'Provide access to Export API')
-    api_v1.add_oauth_scope('export:write', 'Provide write access to Export API')
+    # issue #932 removes export permission entirely
+    # api_v1.add_oauth_scope('export:read', 'Provide access to Export API')
+    # api_v1.add_oauth_scope('export:write', 'Provide write access to Export API')

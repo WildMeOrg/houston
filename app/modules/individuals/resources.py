@@ -238,11 +238,28 @@ class IndividualElasticsearch(Resource):
         search = request.get_json()
 
         args['total'] = True
-        return Individual.elasticsearch(search, **args)
+        # hacky way to skip when already querying on viewers or query is "unusual"(?)
+        if (
+            not current_user
+            or '"viewers"' in str(search)
+            or 'bool' not in search
+            or 'filter' not in search['bool']
+            or not isinstance(search['bool']['filter'], list)
+        ):
+            return Individual.elasticsearch(search, **args)
+        from copy import deepcopy
+
+        view_search = deepcopy(search)
+        view_search['bool']['filter'].append(
+            {'match': {'viewers': str(current_user.guid)}}
+        )
+        log.debug(f'doing viewer search using {view_search}')
+        view_count, view_res = Individual.elasticsearch(view_search, load=False, **args)
+        return Individual.elasticsearch(search, **args) + (view_count,)
 
 
 @api.route('/export')
-@api.login_required(oauth_scopes=['export:write'])
+@api.login_required(oauth_scopes=['individuals:read'])
 class IndividualExport(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,

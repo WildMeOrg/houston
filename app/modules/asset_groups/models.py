@@ -367,7 +367,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.complete()
         sighting.ia_pipeline()
 
-        num_encounters = len(self.sighting_config['encounters'])
+        num_encounters = self.num_encounters()
         AuditLog.user_create_object(
             log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
         )
@@ -501,6 +501,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
         enc_json['hasView'] = self.current_user_has_view_permission()
 
         return enc_json
+
+    def num_encounters(self):
+        return (
+            len(self.sighting_config['encounters'])
+            if self.sighting_config
+            and 'encounters' in self.sighting_config
+            and isinstance(self.sighting_config['encounters'], list)
+            else 0
+        )
 
     def get_encounter_json(self, encounter_guid):
         encounters = self.sighting_config and self.sighting_config.get('encounters') or []
@@ -671,7 +680,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             # TODO i am not sure if this is the best count here, as there
             #   is config['updatedAssets'] which may actually need to be considered
             'numAssets': len(self.get_assets()),
-            'numAnnotations': len(self.get_all_annotations()),
+            'numAnnotations': self.num_annotations(),
         }
 
         if progress.skipped:
@@ -1382,6 +1391,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if asset.annotations:
                 annots += asset.annotations
         return annots
+
+    def num_annotations(self):
+        return len(self.get_all_annotations())
 
     def complete(self):
         for job_id in self.jobs:

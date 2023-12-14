@@ -93,7 +93,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_and_modify_and_delete_sighting(
-    db, flask_app_client, researcher_1, test_root, staff_user, request
+    db, flask_app_client, researcher_1, researcher_2, test_root, staff_user, request
 ):
     import tests.modules.site_settings.resources.utils as site_setting_utils
     from app.modules.complex_date_time.models import Specificities
@@ -122,6 +122,12 @@ def test_create_and_modify_and_delete_sighting(
     enc1_id = uuids['encounters'][1]
     assert enc0_id is not None
     assert enc1_id is not None
+    assert sighting.user_has_view_permission(researcher_1)
+    assert not sighting.user_has_view_permission(researcher_2)
+    viewers = sighting.viewer_guids()
+    assert str(researcher_1.guid) in viewers
+    assert not str(researcher_2.guid) in viewers
+    assert str(staff_user.guid) in viewers
 
     sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
 

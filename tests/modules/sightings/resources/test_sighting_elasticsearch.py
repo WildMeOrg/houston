@@ -56,8 +56,9 @@ def test_search(flask_app_client, researcher_1, request, test_root):
     )['sighting']
     # Force created sighting to be indexed in elasticsearch
     Sighting.query.get(sighting_guid).index()
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
-    test_utils.get_list_via_flask(
+    resp = test_utils.get_list_via_flask(
         flask_app_client,
         researcher_1,
         scopes='sightings:read',
@@ -65,6 +66,26 @@ def test_search(flask_app_client, researcher_1, request, test_root):
         expected_status_code=200,
         expected_fields=EXPECTED_KEYS,
     )
+    assert len(resp.json) == 1
+    assert resp.json[0]['guid'] == str(sighting_guid)
+    assert resp.headers['X-Total-Count'] == '1'
+    # is -1 cuz query above was "atypical" .... meh
+    assert resp.headers['X-Viewable-Count'] == '-1'
+
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        researcher_1,
+        scopes='sightings:read',
+        path='/api/v1/sightings/search',
+        data={'bool': {'filter': [], 'must_not': []}},
+        expected_status_code=200,
+        response_200=EXPECTED_KEYS,
+        returns_list=True,
+    )
+    assert len(resp.json) == 1
+    assert resp.json[0]['guid'] == str(sighting_guid)
+    assert resp.headers['X-Total-Count'] == '1'
+    assert resp.headers['X-Viewable-Count'] == '1'
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')

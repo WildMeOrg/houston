@@ -52,11 +52,10 @@ def test_export_api(
     resp = export_utils.export_search(
         flask_app_client, researcher_2, query, 'sightings', 400
     )
-    # TODO fix when encounters working
     # now lets test encounter export too
-    # resp = export_utils.export_search(flask_app_client, admin_user, {}, 'encounters')
-    # assert resp.content_type == 'application/vnd.ms-excel'
-    # assert resp.content_length > 1000
+    resp = export_utils.export_search(flask_app_client, researcher_1, {}, 'encounters')
+    assert resp.content_type == 'application/vnd.ms-excel'
+    assert resp.content_length > 1000
     export_utils.clear_files()
 
 

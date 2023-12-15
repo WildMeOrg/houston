@@ -95,6 +95,7 @@ class ElasticsearchSightingReturnSchema(BaseSightingSchema):
         model = Sighting
         fields = (
             Sighting.guid.key,
+            Sighting.match_state.key,
             'elasticsearchable',
             Sighting.indexed.key,
             Sighting.created.key,

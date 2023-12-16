@@ -711,3 +711,70 @@ def test_admin_user(db, flask_app_client, researcher_1, test_root, admin_user, r
 
     sighting_utils.read_sighting(flask_app_client, admin_user, sighting_id)
     sighting_utils.delete_sighting(flask_app_client, admin_user, sighting_id)
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_sighting_regions(
+    db, flask_app_client, researcher_1, staff_user, test_root, request
+):
+    import tests.modules.site_settings.resources.utils as site_setting_utils
+
+    regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
+    region0_id = regions[0]['id']
+    region1_id = regions[1]['id']
+
+    data_in = {
+        'encounters': [{}],
+        'time': timestamp,
+        'timeSpecificity': 'time',
+        'locationId': region0_id,
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, data_in
+    )
+    sighting_id = uuids['sighting']
+
+    # try to modify regions to set placeholderOnly on the one in-use (400 code)
+    regions[0]['placeholderOnly'] = True
+    response = site_setting_utils.modify_main_settings(
+        flask_app_client,
+        staff_user,
+        {'locationID': regions},
+        'site.custom.regions',
+        expected_status_code=400,
+    )
+    assert (
+        'cannot be set to placeholderOnly as it has data set with this value'
+        in response.json['message']
+    )
+
+    # now set another region with placeholder and make sure we cannot set it on our sighting
+    del regions[0]['placeholderOnly']
+    regions[1]['placeholderOnly'] = True
+    response = site_setting_utils.modify_main_settings(
+        flask_app_client,
+        staff_user,
+        {'locationID': regions},
+        'site.custom.regions',
+    )
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'replace', 'path': '/locationId', 'value': region1_id},
+        ],
+        expected_status_code=400,
+    )
+    assert 'is not a valid guid for a Region' in response.json['message']
+
+    # finally try removing the a region that is in-use (400 code)
+    regions.pop(0)
+    response = site_setting_utils.modify_main_settings(
+        flask_app_client,
+        staff_user,
+        {'locationID': regions},
+        'site.custom.regions',
+        expected_status_code=400,
+    )
+    assert response.json['message'] == f"Missing region guids in use: {{'{region0_id}'}}"

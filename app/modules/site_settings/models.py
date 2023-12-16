@@ -1024,7 +1024,6 @@ class Regions(dict):
                     counts[row[0]] = row[1]
         return counts
 
-    @classmethod
     def __repr__(self):
         return (
             f"<{self.__class__.__name__}(desc={self.get('description')} "

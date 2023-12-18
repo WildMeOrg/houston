@@ -101,8 +101,8 @@ class BaseAssetGroupSightingSchema(ModelSchema):
         AssetGroupSighting.config_field_getter('locationId')
     )
     submissionTime = base_fields.Function(lambda ags: ags.get_submission_time_isoformat())
-    numAnnotations = base_fields.Function(lambda ags: ags.num_annotations())
-    numEncounters = base_fields.Function(lambda ags: ags.num_encounters())
+    numberAnnotations = base_fields.Function(lambda ags: ags.num_annotations())
+    numberEncounters = base_fields.Function(lambda ags: ags.num_encounters())
 
     class Meta:
         # pylint: disable=missing-docstring

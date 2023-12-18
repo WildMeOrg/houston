@@ -116,8 +116,8 @@ class BaseAssetGroupSightingSchema(ModelSchema):
             'timeSpecificity',
             'locationId',
             'submissionTime',
-            'numAnnotations',
-            'numEncounters',
+            'numberAnnotations',
+            'numberEncounters',
         )
         dump_only = (AssetGroupSighting.guid.key,)
 

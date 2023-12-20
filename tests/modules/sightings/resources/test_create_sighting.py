@@ -264,6 +264,26 @@ def test_create_and_modify_and_delete_sighting(
         expected_status_code=400,
     )
 
+    # valid float value
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'add', 'path': '/decimalLatitude', 'value': 11.1},
+        ],
+    )
+
+    # valid int value
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'add', 'path': '/decimalLatitude', 'value': 11},
+        ],
+    )
+
     # invalid match_state
     sighting_utils.patch_sighting(
         flask_app_client,

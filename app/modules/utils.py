@@ -33,7 +33,7 @@ def is_valid_sex(value):
 
 
 def is_valid_latitude(value):
-    if not isinstance(value, float):
+    if not (isinstance(value, float) or isinstance(value, int)):
         return False
     max_latitude = 90.0
     min_latitude = -90.0
@@ -43,7 +43,7 @@ def is_valid_latitude(value):
 
 
 def is_valid_longitude(value):
-    if not isinstance(value, float):
+    if not (isinstance(value, float) or isinstance(value, int)):
         return False
     max_longitude = 180.0
     min_longitude = -180.0

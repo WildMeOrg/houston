@@ -2,33 +2,16 @@
 
 All contributions are welcome and encouraged. There are a few guidelines and styling aspects that we require and encourage you to use so that we might see this project through many years of successful development.
 
-## Development Guidelines
-
-### Pull Request Checklist
+## Pull Request Considerations
 
 To submit a pull request (PR) to Houston, we require the following standards to be enforced.  Details on how to configure and pass each of these required checks is detailed in the sections in this guideline section.
 
-* **Ensure that the PR is properly formatted**
-  * We require code formatting with Brunette (a *better* version of Black) and linted with Flake8 using the pre-commit (includes automatic checks with brunette and flake8 plus includes other general line-ending, single-quote strings, permissions, and security checks)
-  ```
-  # Command Line Example
-  pre-commit run --all-files
-  ```
-* **Ensure that the PR is properly rebased**
-  * We require new feature code to be rebased onto the latest version of the `develop` branch.
-  ```
-  git fetch -p
-  git checkout <feature-branch>
-  git diff origin/<feature-branch>..  # Check there's no difference between local branch and remote branch
-  git rebase -i origin/main  # "Pick" all commits in feature branch
-  # Resolve all conflicts
-  git log --graph --oneline --decorate origin/main HEAD  # feature-branch commits should be on top of origin/develop
-  git show --reverse origin/main..  # Check the changes in each commit if necessary
-  git push --force origin <feature-branch>
-  ```
-* **Ensure that the PR uses a consolidated database migration**
-  * We require new any database migrations (optional) with Alembic are consolidated and condensed into a single file and version.  Exceptions to this rule (allowing possibly up to 3) will be allowed after extensive discussion and justification.
-  * All database migrations should be created using a downgrade revision that matches the existing revision used on the `develop` branch.  Further,a PR should never be merged into develop that contains multiple revision heads.
+### Pre-commit
+We require code formatting with Brunette (a *better* version of Black) and linted with Flake8 using the pre-commit (includes automatic checks with brunette and flake8 plus includes other general line-ending, single-quote strings, permissions, and security checks). Pre-commit is installed once and then runs automatically.
+
+### Consolidated database migration
+Database migrations (optional) with Alembic are consolidated and condensed into a single file and version.  Exceptions to this rule (allowing possibly up to 3) will be allowed after extensive discussion and justification.
+All database migrations should be created using a downgrade revision that matches the existing revision used on the `develop` branch.  Further,a PR should never be merged into develop that contains multiple revision heads.
   ```
   invoke app.db.downgrade <develop branch revision ID>
   rm -rf migrations/versions/<new migrations>.py
@@ -37,21 +20,24 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   invoke app.db.history  # Check that the history matches
   invoke app.db.heads  # Ensure that there is only one head
   ```
-* **Ensure that the PR is properly tested**
-  * We require new feature code to be tested via Python tests and simulated REST API tests.  We use PyTest  to ensure that your code is working cohesively and that any new functionality is exercised.
-  * We require new feature code to also be fully compatible with a containerized runtime environment like Docker.
+
+### Testing
+Feature code is tested via Python tests and simulated REST API tests.  We use PyTest  to ensure that your code is working cohesively and that any new functionality is exercised.
+Feature code to also be fully compatible with a containerized runtime environment like Docker.
   ```
   pytest
   ```
-* **Ensure that the PR is properly covered**
-  * We require new feature code to be tested (previous item) and that the percentage of the code covered by tests does not decrease.  We use PyTest Coverage and CodeCov.io to ensure that your code is being properly covered by new tests.
-  * To export a HTML report of the current coverage statistics, run the following:
+  
+### Test coverage
+New feature code should have automated tests, and the percentage of the code covered by tests does not decrease with the addition of new features. We use PyTest Coverage and CodeCov.io to ensure that your code is being properly covered by new tests.
+To export a HTML report of the current coverage statistics, run the following:
   ```
   pytest -s -v --cov=./ --cov-report=html
   open _coverage/html/index.html
   ```
-* **Ensure that the PR is properly sanitized**
-  * We require the PR to not include large files (images, database files, etc) without using [GitHub Large File Store (LFS)](https://git-lfs.github.com).
+  
+### Large file sanitation
+PRs should not include large files (images, database files, etc) without using [GitHub Large File Store (LFS)](https://git-lfs.github.com).
   ```
   git lfs install
   git lfs track "*.png"
@@ -60,11 +46,7 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   git commit -m "Add new image file"
   git push
   ```
-  * We also require any sensitive code, configurations, or pre-specified values be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
-* **Ensure that the PR is properly reviewed**
-  * After the preceding checks are satisfied, the code is ready for review.  All PRs are required to be reviewed and approved by at least one registered contributor or administrator on the Houston project.
-  * When the PR is created in GitHub, make sure that the repository is specified as `WildMeOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
-
+Any sensitive code, configurations, or pre-specified values should be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
 
 ## Code Style
 

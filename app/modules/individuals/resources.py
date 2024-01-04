@@ -283,7 +283,7 @@ class IndividualExport(Resource):
             if not indiv.current_user_has_view_permission():
                 continue
             export.add(indiv)
-            ct += 0
+            ct += 1
         if not ct:
             abort(400, 'No results to export')
         export.save()

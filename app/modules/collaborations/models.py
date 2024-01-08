@@ -54,6 +54,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
     )
+    export_approval_state = db.Column(
+        db.String(length=32), default=CollaborationUserState.NOT_INITIATED, nullable=False
+    )
     edit_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.NOT_INITIATED, nullable=False
     )
@@ -63,6 +66,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
 
     def has_read(self):
         return self.collaboration.user_has_read_access(self.user_guid)
+
+    def has_export(self):
+        return self.collaboration.user_has_export_access(self.user_guid)
 
     def has_edit(self):
         return self.collaboration.user_has_edit_access(self.user_guid)
@@ -91,6 +97,12 @@ class Collaboration(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     init_req_notification_guid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
+    )
+    export_initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    export_req_notification_guid = db.Column(
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
     edit_initiator_guid = db.Column(
@@ -123,6 +135,7 @@ class Collaboration(db.Model, HoustonModel):
             )
 
         self.initiator_guid = None if manager_created else initiator_user.guid
+        self.export_initiator_guid = None
         self.edit_initiator_guid = None
 
         for user in members:
@@ -133,7 +146,8 @@ class Collaboration(db.Model, HoustonModel):
                 collaboration=self, user=user
             )
 
-            # Edit not enabled on creation
+            # Export and edit not enabled on creation
+            collab_user_assoc.export_approval_state = CollaborationUserState.NOT_INITIATED
             collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_user_assoc)
@@ -164,6 +178,12 @@ class Collaboration(db.Model, HoustonModel):
     def get_users_for_read(cls, user):
         return cls.get_users_for_approval_state(
             user, CollaborationUserAssociations.read_approval_state
+        )
+
+    @classmethod
+    def get_users_for_export(cls, user):
+        return cls.get_users_for_approval_state(
+            user, CollaborationUserAssociations.export_approval_state
         )
 
     @classmethod
@@ -226,6 +246,8 @@ class Collaboration(db.Model, HoustonModel):
 
             if (
                 collab_user_assoc.read_approval_state == CollaborationUserState.PENDING
+                or collab_user_assoc.export_approval_state
+                == CollaborationUserState.PENDING
                 or collab_user_assoc.edit_approval_state == CollaborationUserState.PENDING
             ):
                 from app.modules.notifications.models import NotificationType
@@ -242,6 +264,16 @@ class Collaboration(db.Model, HoustonModel):
                         other_user_assoc.user,
                         collab_user_assoc.user,
                         NotificationType.collab_request,
+                    )
+
+                if (
+                    collab_user_assoc.export_approval_state
+                    == CollaborationUserState.PENDING
+                ):
+                    self._notify_user(
+                        other_user_assoc.user,
+                        collab_user_assoc.user,
+                        NotificationType.collab_export_request,
                     )
 
                 if (
@@ -267,6 +299,8 @@ class Collaboration(db.Model, HoustonModel):
 
         if notification_type is NotificationType.collab_request:
             self.init_req_notification_guid = notif.guid
+        elif notification_type is NotificationType.collab_export_request:
+            self.export_req_notification_guid = notif.guid
         elif notification_type is NotificationType.collab_edit_request:
             self.edit_req_notification_guid = notif.guid
 
@@ -274,6 +308,8 @@ class Collaboration(db.Model, HoustonModel):
         fully_resolved_notification_states = {
             NotificationType.collab_edit_approved,
             NotificationType.collab_edit_revoke,
+            NotificationType.collab_export_approved,
+            NotificationType.collab_export_revoke,
             NotificationType.collab_revoke,
             NotificationType.collab_manager_revoke,
             NotificationType.collab_denied,
@@ -286,6 +322,8 @@ class Collaboration(db.Model, HoustonModel):
         elif notification_type in fully_resolved_notification_states:
             if self.init_req_notification_guid:
                 Notification.resolve(self.init_req_notification_guid)
+            if self.export_req_notification_guid:
+                Notification.resolve(self.export_req_notification_guid)
             if self.edit_req_notification_guid:
                 Notification.resolve(self.edit_req_notification_guid)
 
@@ -296,11 +334,13 @@ class Collaboration(db.Model, HoustonModel):
         for association in self.collaboration_user_associations:
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
+            assoc_data['exportState'] = association.export_approval_state
             assoc_data['editState'] = association.edit_approval_state
             user_data[str(association.user.guid)] = assoc_data
 
         return user_data
 
+    # FIXME stopped here
     def _is_state_transition_valid(self, association, new_state, is_edit=False):
         ret_val = False
         old_state = (
@@ -395,6 +435,7 @@ class Collaboration(db.Model, HoustonModel):
                 notif_type,
             )
 
+    # def set_approval_state_for_user(self, user_guid, state, collab_type='view'):
     def set_approval_state_for_user(self, user_guid, state, is_edit=False):
         assert user_guid
         success = False

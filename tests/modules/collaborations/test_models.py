@@ -132,7 +132,7 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
         if association.user_guid == collab_user_b.guid:
             assert association.edit_approval_state == CollaborationUserState.PENDING
     collab.set_approval_state_for_user(
-        collab_user_b.guid, CollaborationUserState.APPROVED, is_edit=True
+        collab_user_b.guid, CollaborationUserState.APPROVED, level='edit'
     )
 
     for association in collab.collaboration_user_associations:

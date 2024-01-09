@@ -340,12 +340,11 @@ class Collaboration(db.Model, HoustonModel):
 
         return user_data
 
-    # FIXME stopped here
-    def _is_state_transition_valid(self, association, new_state, is_edit=False):
+    def _is_state_transition_valid(self, association, new_state, level='view'):
         ret_val = False
         old_state = (
             association.edit_approval_state
-            if is_edit
+            if level == 'edit'
             else association.read_approval_state
         )
         # Only certain transitions are permitted
@@ -372,26 +371,26 @@ class Collaboration(db.Model, HoustonModel):
 
         return ret_val
 
-    def _send_notification_for_manager_change(self, association, state, is_edit):
+    def _send_notification_for_manager_change(self, association, state, level):
         from app.modules.notifications.models import NotificationType
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
             notif_type = (
                 NotificationType.collab_manager_edit_revoke
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_manager_revoke
             )
         elif state == CollaborationUserState.APPROVED:
             notif_type = (
                 NotificationType.collab_manager_edit_approved
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_manager_create
             )
         elif state == CollaborationUserState.DENIED:
             notif_type = (
                 NotificationType.collab_manager_edit_denied
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_manager_denied
             )
 
@@ -404,26 +403,26 @@ class Collaboration(db.Model, HoustonModel):
                 notif_type,
             )
 
-    def _send_notification_for_change(self, user_guid, association, state, is_edit):
+    def _send_notification_for_change(self, user_guid, association, state, level):
         from app.modules.notifications.models import NotificationType
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
             notif_type = (
                 NotificationType.collab_edit_revoke
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_revoke
             )
         elif state == CollaborationUserState.APPROVED:
             notif_type = (
                 NotificationType.collab_edit_approved
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_approved
             )
         elif state == CollaborationUserState.DENIED:
             notif_type = (
                 NotificationType.collab_edit_denied
-                if is_edit
+                if level == 'edit'
                 else NotificationType.collab_denied
             )
 
@@ -436,7 +435,7 @@ class Collaboration(db.Model, HoustonModel):
             )
 
     # def set_approval_state_for_user(self, user_guid, state, collab_type='view'):
-    def set_approval_state_for_user(self, user_guid, state, is_edit=False):
+    def set_approval_state_for_user(self, user_guid, state, level='view'):
         assert user_guid
         success = False
         if state not in CollaborationUserState.ALLOWED_STATES:
@@ -448,12 +447,12 @@ class Collaboration(db.Model, HoustonModel):
         for association in self.collaboration_user_associations:
             if association.user_guid != user_guid:
                 continue
-            if is_edit:
-                if self._is_state_transition_valid(association, state, True):
+            if level == 'edit':
+                if self._is_state_transition_valid(association, state, 'edit'):
                     association.edit_approval_state = state
                     success = True
             else:
-                if self._is_state_transition_valid(association, state, False):
+                if self._is_state_transition_valid(association, state, 'view'):
                     association.read_approval_state = state
 
                     # If a user revokes view and previously allowed edit, they automatically
@@ -470,25 +469,23 @@ class Collaboration(db.Model, HoustonModel):
                 with db.session.begin(subtransactions=True):
                     db.session.merge(association)
                 if current_user and current_user.guid != user_guid:
-                    self._send_notification_for_manager_change(
-                        association, state, is_edit
-                    )
+                    self._send_notification_for_manager_change(association, state, level)
                 else:
                     self._send_notification_for_change(
-                        user_guid, association, state, is_edit
+                        user_guid, association, state, level
                     )
 
             break
         return success
 
-    def set_approval_state_for_all(self, state, is_edit=False):
+    def set_approval_state_for_all(self, state, level='view'):
         if state not in CollaborationUserState.ALLOWED_STATES:
             raise ValueError(
                 f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
             )
         # Don't transition any user state unless all transitions are valid
         for association in self.collaboration_user_associations:
-            if not self._is_state_transition_valid(association, state, is_edit):
+            if not self._is_state_transition_valid(association, state, level):
                 raise HoustonException(
                     log,
                     f'Not permitted to move user {association.user_guid} to state {state}',
@@ -496,14 +493,14 @@ class Collaboration(db.Model, HoustonModel):
 
         changed = False
         for association in self.collaboration_user_associations:
-            if is_edit:
+            if level == 'edit':
                 if association.edit_approval_state != state:
                     changed = True
                     association.edit_approval_state = state
                     # If a user manager approves edit make sure view is not left inconsistent
                     if (
                         state == CollaborationUserState.APPROVED
-                        and self._is_state_transition_valid(association, state, False)
+                        and self._is_state_transition_valid(association, state, 'view')
                     ):
                         association.read_approval_state = state
             else:
@@ -514,7 +511,7 @@ class Collaboration(db.Model, HoustonModel):
                     # If a user manager revokes view make sure edit is not left inconsistent
                     if (
                         state == CollaborationUserState.REVOKED
-                        and self._is_state_transition_valid(association, state, True)
+                        and self._is_state_transition_valid(association, state, 'edit')
                     ):
                         association.edit_approval_state = state
 
@@ -525,7 +522,7 @@ class Collaboration(db.Model, HoustonModel):
             # If something changed both users get a notification, it doesn't matter which association we send so
             # just pick one
             self._send_notification_for_manager_change(
-                self.collaboration_user_associations[0], state, is_edit
+                self.collaboration_user_associations[0], state, level
             )
 
         return True
@@ -574,13 +571,13 @@ class Collaboration(db.Model, HoustonModel):
             and other_assoc.read_approval_state == CollaborationUserState.APPROVED
         ):
             if self._is_state_transition_valid(
-                my_assoc, CollaborationUserState.APPROVED, is_edit=True
+                my_assoc, CollaborationUserState.APPROVED, level='edit'
             ):
                 my_assoc.edit_approval_state = CollaborationUserState.APPROVED
                 with db.session.begin(subtransactions=True):
                     db.session.merge(my_assoc)
             if self._is_state_transition_valid(
-                other_assoc, CollaborationUserState.PENDING, is_edit=True
+                other_assoc, CollaborationUserState.PENDING, level='edit'
             ):
                 other_assoc.edit_approval_state = CollaborationUserState.PENDING
                 with db.session.begin(subtransactions=True):

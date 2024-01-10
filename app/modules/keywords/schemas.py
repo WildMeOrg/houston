@@ -40,7 +40,11 @@ class DetailedKeywordSchema(BaseKeywordSchema):
 
     class Meta(BaseKeywordSchema.Meta):
         fields = BaseKeywordSchema.Meta.fields + (
+            Keyword.created.key,
+            Keyword.updated.key,
             'usageCount', 
         )
         dump_only = BaseKeywordSchema.Meta.dump_only + (
+            Keyword.created.key,
+            Keyword.updated.key,
         )

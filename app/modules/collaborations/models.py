@@ -312,6 +312,7 @@ class Collaboration(db.Model, HoustonModel):
             NotificationType.collab_export_revoke,
             NotificationType.collab_revoke,
             NotificationType.collab_manager_revoke,
+            NotificationType.collab_manager_export_revoke,
             NotificationType.collab_denied,
         }
 
@@ -342,11 +343,16 @@ class Collaboration(db.Model, HoustonModel):
 
     def _is_state_transition_valid(self, association, new_state, level='view'):
         ret_val = False
-        old_state = (
-            association.edit_approval_state
-            if level == 'edit'
-            else association.read_approval_state
-        )
+        if level == 'view':
+            old_state = association.read_approval_state
+        elif level == 'export':
+            old_state = association.export_approval_state
+        elif level == 'edit':
+            old_state = association.edit_approval_state
+        else:
+            log.warning(f'invalid level "{level}"')
+            return False
+
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
             ret_val = new_state in [
@@ -376,23 +382,28 @@ class Collaboration(db.Model, HoustonModel):
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
-            notif_type = (
-                NotificationType.collab_manager_edit_revoke
-                if level == 'edit'
-                else NotificationType.collab_manager_revoke
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_revoke
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_revoke
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_revoke
+
         elif state == CollaborationUserState.APPROVED:
-            notif_type = (
-                NotificationType.collab_manager_edit_approved
-                if level == 'edit'
-                else NotificationType.collab_manager_create
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_create
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_approved
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_approved
+
         elif state == CollaborationUserState.DENIED:
-            notif_type = (
-                NotificationType.collab_manager_edit_denied
-                if level == 'edit'
-                else NotificationType.collab_manager_denied
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_denied
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_denied
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_denied
 
         if notif_type:
             # Inform the user that the manager has changed their permission
@@ -408,23 +419,28 @@ class Collaboration(db.Model, HoustonModel):
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
-            notif_type = (
-                NotificationType.collab_edit_revoke
-                if level == 'edit'
-                else NotificationType.collab_revoke
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_revoke
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_revoke
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_revoke
+
         elif state == CollaborationUserState.APPROVED:
-            notif_type = (
-                NotificationType.collab_edit_approved
-                if level == 'edit'
-                else NotificationType.collab_approved
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_approved
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_approved
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_approved
+
         elif state == CollaborationUserState.DENIED:
-            notif_type = (
-                NotificationType.collab_edit_denied
-                if level == 'edit'
-                else NotificationType.collab_denied
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_denied
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_denied
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_denied
 
         if notif_type:
             # inform the other user that their collaborator changed the permission

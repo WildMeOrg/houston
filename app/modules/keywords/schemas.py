@@ -15,10 +15,6 @@ class BaseKeywordSchema(ModelSchema):
     """
     Base Keyword schema exposes only the most general fields.
     """
-    usageCount = base_fields.Function(
-                    lambda kw: kw.number_referenced_dependencies(), 
-                    dump_only=True # This is a read-only field
-                    )
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -27,7 +23,6 @@ class BaseKeywordSchema(ModelSchema):
             Keyword.guid.key,
             Keyword.value.key,
             Keyword.source.key,
-            'usageCount', 
 
         )
         dump_only = (Keyword.guid.key,)
@@ -37,13 +32,15 @@ class DetailedKeywordSchema(BaseKeywordSchema):
     """
     Detailed Keyword schema exposes all useful fields.
     """
+    usageCount = base_fields.Function(
+                    lambda kw: kw.number_referenced_dependencies(), 
+                    dump_only=True # This is a read-only field
+                    )
+
 
     class Meta(BaseKeywordSchema.Meta):
         fields = BaseKeywordSchema.Meta.fields + (
-            Keyword.created.key,
-            Keyword.updated.key,
+            'usageCount', 
         )
         dump_only = BaseKeywordSchema.Meta.dump_only + (
-            Keyword.created.key,
-            Keyword.updated.key,
         )

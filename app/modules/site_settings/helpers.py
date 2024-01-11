@@ -196,6 +196,34 @@ class SiteSettingModules(object):
             if errors:
                 raise HoustonException(log, schema.get_error_message(errors))
 
+    @classmethod
+    def validate_regions(cls, value):
+        if value is None:
+            return True
+        if not isinstance(value, dict) or 'locationID' not in value:
+            raise HoustonException(
+                log, 'must be a dict with top-level value "locationID"'
+            )
+        from .models import Regions
+
+        existing = {str(guid) for guid in Regions.usage().keys() if guid}
+        passed_reg = Regions(data=value)
+        passed_trav = passed_reg.traverse()
+        passed_guids = [r.get('id') for r in passed_trav]
+        missing = set()
+        for exguid in existing:
+            if exguid not in passed_guids:
+                missing.add(exguid)
+        if missing:
+            raise HoustonException(log, f'Missing region guids in use: {missing}')
+        for reg in passed_trav:
+            if reg.get('placeholderOnly') and reg.get('id') in existing:
+                raise HoustonException(
+                    log,
+                    f"Region {reg['id']} ({reg.get('name')}) cannot be set to placeholderOnly as it has data set with this value",
+                )
+        return True
+
 
 class SiteSettingCustomFields(object):
     # source: Custom Fields in Wildbook EDM [sic] google doc

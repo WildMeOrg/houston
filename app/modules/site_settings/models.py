@@ -175,6 +175,7 @@ class SiteSetting(db.Model, Timestamp):
             'definition': {
                 'displayType': 'locationIds',
             },
+            'validate_function': SiteSettingModules.validate_regions,
         },
         'site.custom.customFieldCategories': {
             'type': list,
@@ -810,14 +811,19 @@ class Regions(dict):
         return self._find_path(self, loc, [], id_only)
 
     @classmethod
-    def is_region_guid_valid(cls, guid):
+    def is_region_guid_valid(cls, guid, allow_placeholders=False):
         try:
             regions = Regions()
         except ValueError:
             # No regions so this guid (and all others) are not valid
             return False
-        region_data = regions.find(guid)
-
+        region_data = regions.find(guid, id_only=False)
+        if (
+            not allow_placeholders
+            and region_data
+            and region_data[0].get('placeholderOnly', False)
+        ):
+            return False
         return True if region_data else False
 
     @classmethod
@@ -999,6 +1005,25 @@ class Regions(dict):
                 cls.guidify(loc)
         return data
 
+    # this will return region values *even if they are not* in site_settings! ymmv?
+    @classmethod
+    def usage(cls):
+        from app.extensions import db
+
+        counts = {}
+        # TODO are there other places? custom-fields? etc
+        tables = ['sighting', 'encounter']
+        for table_name in tables:
+            res = db.session.execute(
+                f'SELECT location_guid, COUNT(*) FROM {table_name} GROUP BY location_guid'
+            )
+            for row in res:
+                if row[0] in counts:
+                    counts[row[0]] += row[1]
+                else:
+                    counts[row[0]] = row[1]
+        return counts
+
     def __repr__(self):
         return (
             f"<{self.__class__.__name__}(desc={self.get('description')} "
@@ -1049,6 +1074,7 @@ class Taxonomy:
         from app.extensions import db
 
         counts = {}
+        # TODO are there other places? custom-fields? etc
         # these are the places taxonomy_guid can be used:
         tables = ['individual', 'encounter', 'sighting_taxonomies']
         for table_name in tables:

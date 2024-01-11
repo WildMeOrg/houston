@@ -141,6 +141,12 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 mappings['customFields']
             )
 
+        if 'verbatimLocality' in mappings:
+            mappings['verbatimLocality'] = {
+                'type': 'keyword',
+                'normalizer': 'codex_keyword_normalizer',
+            }
+
         if 'individualNameValues' in mappings:
             mappings['individualNameValues'] = {
                 'type': 'keyword',

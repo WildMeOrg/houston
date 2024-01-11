@@ -467,6 +467,18 @@ class Collaboration(db.Model, HoustonModel):
                 if self._is_state_transition_valid(association, state, 'edit'):
                     association.edit_approval_state = state
                     success = True
+            elif level == 'export':
+                if self._is_state_transition_valid(association, state, 'view'):
+                    association.read_approval_state = state
+                    # If a user revokes export and previously allowed edit, they automatically
+                    # revoke edit too
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and association.edit_approval_state
+                        == CollaborationUserState.APPROVED
+                    ):
+                        association.edit_approval_state = state
+                    success = True
             else:
                 if self._is_state_transition_valid(association, state, 'view'):
                     association.read_approval_state = state
@@ -479,6 +491,13 @@ class Collaboration(db.Model, HoustonModel):
                         == CollaborationUserState.APPROVED
                     ):
                         association.edit_approval_state = state
+                    # ditto for export
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and association.export_approval_state
+                        == CollaborationUserState.APPROVED
+                    ):
+                        association.export_approval_state = state
                     success = True
 
             if success:
@@ -513,23 +532,51 @@ class Collaboration(db.Model, HoustonModel):
                 if association.edit_approval_state != state:
                     changed = True
                     association.edit_approval_state = state
+                    # If a user manager approves edit make sure view and export are not left inconsistent
+                    if (
+                        state == CollaborationUserState.APPROVED
+                        and self._is_state_transition_valid(association, state, 'view')
+                    ):
+                        association.read_approval_state = state
+                    if (
+                        state == CollaborationUserState.APPROVED
+                        and self._is_state_transition_valid(association, state, 'export')
+                    ):
+                        association.export_approval_state = state
+
+            elif level == 'export':
+                if association.export_approval_state != state:
+                    changed = True
+                    association.export_approval_state = state
                     # If a user manager approves edit make sure view is not left inconsistent
                     if (
                         state == CollaborationUserState.APPROVED
                         and self._is_state_transition_valid(association, state, 'view')
                     ):
                         association.read_approval_state = state
-            else:
-                if association.read_approval_state != state:
-                    association.read_approval_state = state
-                    changed = True
-
-                    # If a user manager revokes view make sure edit is not left inconsistent
+                    # If a user manager revokes export make sure edit is not left inconsistent
                     if (
                         state == CollaborationUserState.REVOKED
                         and self._is_state_transition_valid(association, state, 'edit')
                     ):
                         association.edit_approval_state = state
+
+            else:
+                if association.read_approval_state != state:
+                    association.read_approval_state = state
+                    changed = True
+
+                    # If a user manager revokes view make sure edit and export are not left inconsistent
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and self._is_state_transition_valid(association, state, 'edit')
+                    ):
+                        association.edit_approval_state = state
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and self._is_state_transition_valid(association, state, 'export')
+                    ):
+                        association.export_approval_state = state
 
                 with db.session.begin(subtransactions=True):
                     db.session.merge(association)

@@ -72,7 +72,6 @@ def test_modify_keyword(db, flask_app_client, researcher_1, staff_user):
     assert response.json.get('value', None) == val2
     assert response.json.get('usageCount', None) == 0
 
-
     # both of these should not be allowed (403)
     response = keyword_utils.patch_keyword(
         flask_app_client, researcher_1, guid, patch, 403

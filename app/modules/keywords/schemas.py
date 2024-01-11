@@ -6,7 +6,7 @@ Serialization schemas for Keywords resources RESTful API
 
 
 from flask_restx_patched import ModelSchema
-from flask_marshmallow import base_fields 
+from flask_marshmallow import base_fields
 
 from .models import Keyword
 
@@ -32,17 +32,14 @@ class DetailedKeywordSchema(BaseKeywordSchema):
     """
     Detailed Keyword schema exposes all useful fields.
     """
-    usageCount = base_fields.Function(
-                    lambda kw: kw.number_referenced_dependencies(), 
-                    dump_only=True # This is a read-only field
-                    )
-
+    usageCount = base_fields.Function(lambda kw: kw.number_referenced_dependencies(),
+                                      dump_only=True)
 
     class Meta(BaseKeywordSchema.Meta):
         fields = BaseKeywordSchema.Meta.fields + (
             Keyword.created.key,
             Keyword.updated.key,
-            'usageCount', 
+            'usageCount',  # This is a read-only field
         )
         dump_only = BaseKeywordSchema.Meta.dump_only + (
             Keyword.created.key,

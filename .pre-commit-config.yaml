@@ -25,7 +25,7 @@ repos:
         name: pyupgrade
         description: Run PyUpgrade on Python code.
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 5.13.2
     hooks:
       - id: isort
         args: [--settings-path setup.cfg]
@@ -39,7 +39,7 @@ repos:
         entry: brunette --config=setup.cfg
         language: system
         types: [python]
-  - repo: https://gitlab.com/pycqa/flake8
+  - repo: https://github.com/pycqa/flake8
     rev: 3.8.3
     hooks:
       - id: flake8

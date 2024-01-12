@@ -11,18 +11,12 @@ For a high-level explanation of the application in relation to other CODEX appli
 
 ## About this implementation
 
-This project showcases my vision on how the RESTful API server should be
-implemented.
-
-The goals that were achieved in this example:
-
 * RESTful API server should be self-documented using OpenAPI (fka Swagger) specifications, so interactive documentation UI is in place
 * Authentication is handled with OAuth2 and using Resource Owner Password Credentials Grant (Password Flow) for first-party clients makes it usable not only for third-party "external" apps
 * Permissions are handled (and automaticaly documented)
 * PATCH method can be handled accordingly to [RFC 6902](http://tools.ietf.org/html/rfc6902)
 * Extensive testing with good code coverage.
-
-The package Flask-RESTX has been patched (see `flask_restx_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
+* The package Flask-RESTX has been patched (see `flask_restx_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
 
 ## Pull Request Workflow
 
@@ -30,10 +24,11 @@ The package Flask-RESTX has been patched (see `flask_restx_patched` folder), so 
 To start, you will need to be signed in to your GitHub account, have admin access to your OS's terminal, and have Git installed.
 1. From your browser, in the top right corner of the [Houston repo](https://github.com/WildMeOrg/houston), click the **Fork** button. Confirm to be redirected to your own fork (check the url for your USERNAME in the namespace).
 1. In your terminal, enter the command `git clone --recurse-submodules https://github.com/USERNAME/houston`
-1. Once the Houston directory become available in your working directory, move to it with the command `cd Houston`
+1. Once the houston directory become available in your working directory, move to it with the command `cd houston`
 1. Add a reference to the original repo, denoting it as the upstream repo.
 `git remote add upstream https://github.com/WildMeOrg/houston`
 `git fetch upstream`
+
 
 ### Create Local Branch
 You will want to work in a branch when doing any feature development you want to provide to the original project.
@@ -44,7 +39,7 @@ You will want to work in a branch when doing any feature development you want to
 1. Change to your feature branch so your changes are grouped together.
 `git checkout ISSUENUMBER-FEATUREBRANCHNAME`
 1. Update your branch (this is not needed if you just created new branch, but is a good habit to get into).
-` git pull --rebase upstream main`
+` git pull upstream main`
 
 ### Making Local Changes
 Make the code changes necessary for the issue you're working on. The following git commands may prove useful.
@@ -54,6 +49,32 @@ Make the code changes necessary for the issue you're working on. The following g
 * `git diff --staged`:  the differences between the staging area and the last commit
 * `git add <filename>: add files that have changes to staging in preparation for commit
 * `git commit`: commits the stagged files, opens a text editor for you to write a commit log
+
+#### Using Docker for your Dev Environment
+Set up the tools needed:
+1. Ensure that you are in the `houston` directory
+1. If you have not already, install docker ex: `sudo apt install docker`
+1. If you have not already, install docker-compose ex: `sudo apt install docker-compose`
+1. Install pre-commit to set up your linter. This will run automatically for any PR.
+`pip install pre-commit`
+1. Enter command `./scripts/codex/activate.sh`
+1. `sudo sysctl -w vm.max_map_count=262144`
+
+Manage your container:
+1. Enter `docker-compose up` to bring up the container.
+1. In your browser, visit any of the following ports to confirm your system is running.
+  * Sage (Wildbook-IA) - http://localhost:82/
+  * Houston - http://localhost:83/houston/
+  * CODEX (frontend) - http://localhost:84/
+  * CODEX (api docs) - http://localhost:84/api/v1/
+1. Enter `docker-compose down` to bring down the container.
+1. To rebuild your docker image, enter `docker-compose up -build`
+
+#### App Setup
+1. At http://localhost:84, work through the admin initial setup.
+1. Navigate to Site Settings > Custom Fields
+1. Add Species
+1. Add Regions
 
 ### Submit PR
 Up to this point, all changes have been done to your local copy of Houston. You need to push the new commits to a remote branch to start the PR process.
@@ -68,8 +89,15 @@ Up to this point, all changes have been done to your local copy of Houston. You 
 1. Click **Create a pull request**. 
  
 ### Respond to feedback
-At this point, it's on us to get you feedback on your submission! Someone from the Wild Me team will review the project and provide any feedback that may be necessary. If changes are recommended, you'll need to checkout the branch you were working from, update the branch, and make these changes locally. If no changes are needed, we'll take care of the final merge.
+At this point, it's on us to get you feedback on your submission! Someone from the Wild Me team will review the project and provide any feedback that may be necessary. If changes are recommended, you'll need to checkout the branch you were working from, update the branch, and make these changes locally.
 
+1. `git checkout ISSUENUMBER-FEATUREBRANCHNAME`
+1. `git pull upstream main`
+1. Make required changes
+1. `git add <filename>` for all files impacted by changes
+1. Determine which method would be most appropriate for updating your PR  
+  * `git commit --ammend` if the changes are small stylistic changes
+  * `git commit` if the changes involved significant rework and require additional details
 
 See [Contributing to Houston](CONTRIBUTING.md) for code styles and other information.
 
@@ -81,83 +109,10 @@ See [Project Structure](docs/project_file_structure.md)
 
 See [Background and Periodic Tasks](docs/background_tasks.md)
 
-## Installation
 
-### Using docker-compose (recommended)
+## Documentation
 
-#### Setup
-
-```bash
-git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
-
-# Option 1 - Activate Codex App
-./scripts/codex/activate.sh
-docker-compose up
-
-# Option 2 - Use Codex Config Explicitly
-docker-compose -f docker-compose.codex.yml --env-file .env.codex up
-```
-
-Surf to http://localhost:84/. If you are having issues, see the [docker-compose debugging](docs/docker_compose_debugging.md) docs.
-
-### Installing from source
-
-#### Development Setup Note
-
-Installation of Houston and the other components of Codex from source is intended to facilitate development leveraging the docker-compose environment.
-
-See **Development Environment** section in [Contributing to Houston](CONTRIBUTING.md)
-for details. Full deployment of Codex outside docker-compose orchestration is not supported, and any
-changes should not be considered finished until they have been tested in the docker-compose environment.
-
-#### Clone the Project
-
-```bash
-git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
-cd houston/
-```
-
-#### Setup Codex Environment
-
-It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
-dependencies. Please, learn details yourself.
-For quickstart purposes the following will set up a virtualenv for you:
-
-```bash
-./scripts/codex/venv.sh
-source virtualenv/houston3.7/bin/activate
-
-# To add bash-completion
-export SCRIPT="$(pwd)/.invoke-completion.sh"
-invoke --print-completion-script bash > $SCRIPT
-echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
-```
-
-Set up and install the package:
-
-```bash
-invoke dependencies.install
-```
-
-#### Run Server
-
-NOTE: All dependencies and database migrations will be automatically handled,
-so go ahead and turn the server ON! (Read more details on this in Tips section)
-
-```bash
-export HOUSTON_APP_CONTEXT=codex
-$ invoke app.run
-```
-
-#### Deploy Server
-
-In general, you deploy this app as any other Flask/WSGI application. There are
-a few basic deployment strategies documented in the [`./deploy/`](./deploy/)
-folder.
-
-
-## Usage
-
+### Interactive Documentation
 Open online interactive API documentation:
 [http://127.0.0.1:5000/api/v1/](http://127.0.0.1:5000/api/v1/)
 
@@ -166,54 +121,16 @@ Autogenerated swagger config is always available from
 
 NOTE: Use On/Off switch in documentation to sign in.
 
-### Usage Tips
+### Static documentation
 
-Once you have invoke, you can learn all available commands related to this
-project from:
+To build and view the documentation use the following commands:
 
-```bash
-$ invoke --list
 ```
-
-Learn more about each command with the following syntax:
-
-```bash
-$ invoke --help <task>
+cd docs
+pip install -r requirements.txt
+make html
+open _build/html/index.html
 ```
-
-For example:
-
-```bash
-$ invoke --help codex.run
-Usage: inv[oke] [--core-opts] codex.run [--options] [other tasks here ...]
-
-Docstring:
-  Run DDOTS RESTful API Server.
-
-Options:
-  -d, --[no-]development
-  -h STRING, --host=STRING
-  -i, --[no-]install-dependencies
-  -p, --port
-  -u, --[no-]upgrade-db
-```
-
-Use the following command to enter ipython shell (`ipython` must be installed):
-
-```bash
-$ invoke app.env.enter
-```
-
-`codex.run` and `app.env.enter` tasks automatically prepare all dependencies
-(using `pip install`) and migrate database schema to the latest version.
-
-Database schema migration is handled via `app.db.*` tasks group. The most
-common migration commands are `app.db.upgrade` (it is automatically run on
-`codex.run`), and `app.db.migrate` (creates a new migration).
-
-You can use [`better_exceptions`](https://github.com/Qix-/better-exceptions)
-package to enable detailed tracebacks. Just add `better_exceptions` to the
-`app/requirements.txt` and `import better_exceptions` in the `app/__init__.py`.
 
 ## Dependencies
 
@@ -226,20 +143,6 @@ The [_tus_](https://tus.io) portions of this application require [**Redis**](htt
 [**GitLab**](https://about.gitlab.com/install/) (community edition) is required for asset and submission storage and management.
 
 [**Postgres**](https://www.postgresql.org/) is an optional dependency that can be used for a highly reliable scaled database solution.
-
-
-## Documentation
-
-### Build the documentation
-
-To build and view the documentation use the following commands:
-
-```
-cd docs
-pip install -r requirements.txt
-make html
-open _build/html/index.html
-```
 
 
 ## Site Settings
@@ -285,4 +188,4 @@ Settings can also be set via `SiteSetting`, the keys are
 
 ## License
 
-This software is subject to the provisions of Apache License Version 2.0 (APL). See `LICENSE` for details. Copyright (c) 2020 Wild Me
+This software is subject to the provisions of MIT License. See `LICENSE` for details. Copyright (c) 2023 Wild Me

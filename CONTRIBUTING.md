@@ -4,7 +4,7 @@ All contributions are welcome and encouraged. There are a few guidelines and sty
 
 ## Pull Request Considerations
 
-To submit a pull request (PR) to Houston, we require the following standards to be enforced.  Details on how to configure and pass each of these required checks is detailed in the sections in this guideline section.
+Details on how to configure and pass each of these required checks is detailed in the sections in this guideline section.
 
 ### Pre-commit
 We require code formatting with Brunette (a *better* version of Black) and linted with Flake8 using the pre-commit (includes automatic checks with brunette and flake8 plus includes other general line-ending, single-quote strings, permissions, and security checks). Pre-commit is installed once and then runs automatically.
@@ -73,10 +73,55 @@ Reference [pre-commit's installation instructions](https://pre-commit.com/#insta
 See `.pre-commit-config.yaml` for a list of configured linters and fixers.
 
 ## Development Environment
+### Install from source for troubleshooting
 
-It's recommended that you install the Houston application and its dependencies [using the Docker container environment](#container-installation). If you'd like to make things difficult you can also look at the [local installation instructions](#local-installation).
+Installation of Houston and the other components of Codex from source is intended to facilitate development leveraging the docker-compose environment. Full deployment of Codex outside docker-compose orchestration is not supported, and any changes should not be considered finished until they have been tested in the docker-compose environment.
 
-<a href="local-installation"></a>
+#### Clone the Project
+
+```bash
+git clone --recurse-submodules https://github.com/USERNAME/houston.git
+cd houston/
+```
+#### Setup Codex Environment
+
+It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
+dependencies. Please, learn details yourself.
+For quickstart purposes the following will set up a virtualenv for you:
+
+```bash
+./scripts/codex/venv.sh
+source virtualenv/houston3.7/bin/activate
+
+# To add bash-completion
+export SCRIPT="$(pwd)/.invoke-completion.sh"
+invoke --print-completion-script bash > $SCRIPT
+echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
+```
+
+Set up and install the package:
+
+```bash
+invoke dependencies.install
+```
+
+#### Run Server
+
+NOTE: All dependencies and database migrations will be automatically handled,
+so go ahead and turn the server ON! (Read more details on this in Tips section)
+
+```bash
+export HOUSTON_APP_CONTEXT=codex
+$ invoke app.run
+```
+
+#### Deploy Server
+
+In general, you deploy this app as any other Flask/WSGI application. There are
+a few basic deployment strategies documented in the [`./deploy/`](./deploy/)
+folder.
+
+
 ### Installing and running on your local system
 
 #### PyInvoke installation
@@ -125,27 +170,55 @@ invoke dependencies.install
 invoke codex.run
 ```
 
-
-<a href="container-installation"></a>
-### Installing and running with Docker
-
-These instructions will install and run the application and dependent application.
-
-The configuration is by environment variable via the `.env` file in this directory.
-
-For development purposes, this setup exposes each of the services as follows:
-
-<!-- don't use port 80 when defining any hosts -->
-- EDM - http://localhost:81/
-- Sage (Wildbook-IA) - http://localhost:82/
-- Houston - http://localhost:83/houston/
-- CODEX (frontend) - http://localhost:84/
-- CODEX (api docs) - http://localhost:84/api/v1/
-- GitLab - http://localhost:85
-
-See also the results of `docker-compose ps -a`, which will list the services and the ports exposed on those services.
-
 #### Usage
+### Usage Tips
+
+Once you have invoke, you can learn all available commands related to this
+project from:
+
+```bash
+$ invoke --list
+```
+
+Learn more about each command with the following syntax:
+
+```bash
+$ invoke --help <task>
+```
+
+For example:
+
+```bash
+$ invoke --help codex.run
+Usage: inv[oke] [--core-opts] codex.run [--options] [other tasks here ...]
+
+Docstring:
+  Run DDOTS RESTful API Server.
+
+Options:
+  -d, --[no-]development
+  -h STRING, --host=STRING
+  -i, --[no-]install-dependencies
+  -p, --port
+  -u, --[no-]upgrade-db
+```
+
+Use the following command to enter ipython shell (`ipython` must be installed):
+
+```bash
+$ invoke app.env.enter
+```
+
+`codex.run` and `app.env.enter` tasks automatically prepare all dependencies
+(using `pip install`) and migrate database schema to the latest version.
+
+Database schema migration is handled via `app.db.*` tasks group. The most
+common migration commands are `app.db.upgrade` (it is automatically run on
+`codex.run`), and `app.db.migrate` (creates a new migration).
+
+You can use [`better_exceptions`](https://github.com/Qix-/better-exceptions)
+package to enable detailed tracebacks. Just add `better_exceptions` to the
+`app/requirements.txt` and `import better_exceptions` in the `app/__init__.py`.
 
 ##### Running the applications
 
@@ -272,7 +345,7 @@ in the `docker-compose.yml` by altering the `dev-frontend` volume mapping `- _fr
 More details about Codex front end contribution are outside the scope of this README but can be found here: [**codex-frontend**](https://github.com/WildMeOrg/codex-frontend)
 
 ##### EDM
-The EDM is a compiled Java application, and no volume mapping solution to a running Docker container is available at this time.
+The EDM is presently maintained for migration of production platforms from Wildbook to Codex. It will be removed when production platforms have all been migrated.
 
 ### Testing
 

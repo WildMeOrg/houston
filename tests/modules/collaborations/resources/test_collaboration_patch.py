@@ -112,11 +112,19 @@ def test_view_revoke(flask_app_client, researcher_1, researcher_2, request):
         flask_app_client, collab_guid, researcher_2, researcher_1
     )
 
+    # Researcher 1 requests that this is escalated to an export collaboration
+    collab_utils.request_export_simple_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2
+    )
+    # which is approved
+    collab_utils.approve_export_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
     # Researcher 1 requests that this is escalated to an edit collaboration
     collab_utils.request_edit_simple_collaboration(
         flask_app_client, collab_guid, researcher_1, researcher_2
     )
-
     # which is approved
     collab_utils.approve_edit_on_collaboration(
         flask_app_client, collab_guid, researcher_2, researcher_1

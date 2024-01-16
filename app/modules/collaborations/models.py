@@ -625,13 +625,38 @@ class Collaboration(db.Model, HoustonModel):
             return other_assoc.user
         return None
 
-    def initiate_edit_with_other_user(self):
-        self.edit_initiator_guid = current_user.guid
+    def initiate_export_with_other_user(self):
+        self.export_initiator_guid = current_user.guid
         my_assoc = self._get_association_for_user(current_user.guid)
         other_assoc = self._get_association_for_other_user(current_user.guid)
         if (
             my_assoc.read_approval_state == CollaborationUserState.APPROVED
             and other_assoc.read_approval_state == CollaborationUserState.APPROVED
+        ):
+            if self._is_state_transition_valid(
+                my_assoc, CollaborationUserState.APPROVED, level='export'
+            ):
+                my_assoc.export_approval_state = CollaborationUserState.APPROVED
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(my_assoc)
+            if self._is_state_transition_valid(
+                other_assoc, CollaborationUserState.PENDING, level='export'
+            ):
+                other_assoc.export_approval_state = CollaborationUserState.PENDING
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(other_assoc)
+        else:
+            raise HoustonException(
+                log, 'Unable to start export on unapproved collaboration', obj=self
+            )
+
+    def initiate_edit_with_other_user(self):
+        self.edit_initiator_guid = current_user.guid
+        my_assoc = self._get_association_for_user(current_user.guid)
+        other_assoc = self._get_association_for_other_user(current_user.guid)
+        if (
+            my_assoc.export_approval_state == CollaborationUserState.APPROVED
+            and other_assoc.export_approval_state == CollaborationUserState.APPROVED
         ):
             if self._is_state_transition_valid(
                 my_assoc, CollaborationUserState.APPROVED, level='edit'

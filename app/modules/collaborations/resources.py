@@ -256,6 +256,31 @@ class CollaborationByID(Resource):
         return None
 
 
+@api.route('/export_request/<uuid:collaboration_guid>')
+@api.login_required(oauth_scopes=['collaborations:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Collaboration not found.',
+)
+@api.resolve_object_by_model(Collaboration, 'collaboration')
+class CollaborationExportRequest(Resource):
+    """
+    Request that a specific collaboration is escalated to export
+    """
+
+    @api.response(schemas.DetailedCollaborationSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, collaboration):
+
+        try:
+            collaboration.initiate_export_with_other_user()
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
+        collaboration.notify_pending_users()
+
+        return collaboration
+
+
 @api.route('/edit_request/<uuid:collaboration_guid>')
 @api.login_required(oauth_scopes=['collaborations:write'])
 @api.response(

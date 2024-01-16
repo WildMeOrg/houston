@@ -450,7 +450,6 @@ class Collaboration(db.Model, HoustonModel):
                 notif_type,
             )
 
-    # def set_approval_state_for_user(self, user_guid, state, collab_type='view'):
     def set_approval_state_for_user(self, user_guid, state, level='view'):
         assert user_guid
         success = False
@@ -469,7 +468,7 @@ class Collaboration(db.Model, HoustonModel):
                     success = True
             elif level == 'export':
                 if self._is_state_transition_valid(association, state, 'view'):
-                    association.read_approval_state = state
+                    association.export_approval_state = state
                     # If a user revokes export and previously allowed edit, they automatically
                     # revoke edit too
                     if (
@@ -603,6 +602,20 @@ class Collaboration(db.Model, HoustonModel):
                 and other_assoc.read_approval_state == CollaborationUserState.APPROVED
             )
 
+        return ret_val
+
+    def user_has_export_access(self, user_guid):
+        ret_val = False
+        assert isinstance(user_guid, uuid.UUID)
+
+        my_assoc = self._get_association_for_user(user_guid)
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if my_assoc and other_assoc:
+            ret_val = (
+                my_assoc.export_approval_state == CollaborationUserState.APPROVED
+                and other_assoc.export_approval_state == CollaborationUserState.APPROVED
+            )
         return ret_val
 
     def user_has_edit_access(self, user_guid):

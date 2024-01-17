@@ -532,7 +532,9 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
                 vguids.append(str(user.guid))
         else:
             for user in users:
-                if user.is_admin or self.user_has_view_permission(user):
+                if not user.is_internal and (
+                    user.is_admin or self.user_has_view_permission(user)
+                ):
                     vguids.append(str(user.guid))
         return vguids
 
@@ -546,7 +548,9 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
                 vguids.append(str(user.guid))
         else:
             for user in users:
-                if user.is_admin or self.user_has_export_permission(user):
+                if not user.is_internal and (
+                    user.is_admin or self.user_has_export_permission(user)
+                ):
                     vguids.append(str(user.guid))
         return vguids
 

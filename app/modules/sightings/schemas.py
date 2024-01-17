@@ -131,10 +131,10 @@ class ElasticsearchSightingReturnSchema(BaseSightingSchema):
 
 
 class ElasticsearchSightingSchema(ElasticsearchSightingReturnSchema):
-    viewers = base_fields.Function(lambda s: s.viewer_guids())
+    exporters = base_fields.Function(lambda s: s.exporter_guids())
 
     class Meta(ElasticsearchSightingReturnSchema.Meta):
-        fields = ElasticsearchSightingReturnSchema.Meta.fields + ('viewers',)
+        fields = ElasticsearchSightingReturnSchema.Meta.fields + ('exporters',)
 
 
 class TimedSightingSchema(CreateSightingSchema):

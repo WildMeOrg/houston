@@ -45,7 +45,8 @@ def no_test_sighting_elasticsearch_mappings(flask_app_client, researcher_1):
 @pytest.mark.skipif(
     test_utils.module_unavailable('sightings'), reason='Sightings module disabled'
 )
-def test_search(flask_app_client, researcher_1, request, test_root):
+def test_search(flask_app_client, researcher_1, researcher_2, request, test_root):
+    import tests.modules.collaborations.resources.utils as collab_utils
     from app.modules.sightings.models import Sighting
 
     sighting_guid = sighting_utils.create_sighting(
@@ -55,8 +56,20 @@ def test_search(flask_app_client, researcher_1, request, test_root):
         test_root,
     )['sighting']
     # Force created sighting to be indexed in elasticsearch
-    Sighting.query.get(sighting_guid).index()
+    sighting = Sighting.query.get(sighting_guid)
+    sighting.index()
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
+
+    # create a view-only collab between these two
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, researcher_2
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+    collab_utils.approve_view_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
 
     resp = test_utils.get_list_via_flask(
         flask_app_client,
@@ -70,7 +83,7 @@ def test_search(flask_app_client, researcher_1, request, test_root):
     assert resp.json[0]['guid'] == str(sighting_guid)
     assert resp.headers['X-Total-Count'] == '1'
     # is -1 cuz query above was "atypical" .... meh
-    assert resp.headers['X-Viewable-Count'] == '-1'
+    assert resp.headers['X-Exportable-Count'] == '-1'
 
     resp = test_utils.post_via_flask(
         flask_app_client,
@@ -85,7 +98,51 @@ def test_search(flask_app_client, researcher_1, request, test_root):
     assert len(resp.json) == 1
     assert resp.json[0]['guid'] == str(sighting_guid)
     assert resp.headers['X-Total-Count'] == '1'
-    assert resp.headers['X-Viewable-Count'] == '1'
+    assert resp.headers['X-Exportable-Count'] == '1'
+
+    # researcher_2 does NOT have export collab, so exportable-count should be zero
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        researcher_2,
+        scopes='sightings:read',
+        path='/api/v1/sightings/search',
+        data={'bool': {'filter': [], 'must_not': []}},
+        expected_status_code=200,
+        response_200=EXPECTED_KEYS,
+        returns_list=True,
+    )
+    assert len(resp.json) == 1
+    assert resp.json[0]['guid'] == str(sighting_guid)
+    assert resp.headers['X-Total-Count'] == '1'
+    assert resp.headers['X-Exportable-Count'] == '0'
+
+    # set up export collab between them now
+    collab_utils.request_export_simple_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2
+    )
+    collab_utils.approve_export_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
+    # FIXME this should be done automagically (in the future) when collab is set up  :(
+    sighting.index()
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
+
+    # now researcher_2 should be able to see sighting as exportable
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        researcher_2,
+        scopes='sightings:read',
+        path='/api/v1/sightings/search',
+        data={'bool': {'filter': [], 'must_not': []}},
+        expected_status_code=200,
+        response_200=EXPECTED_KEYS,
+        returns_list=True,
+    )
+    assert len(resp.json) == 1
+    assert resp.json[0]['guid'] == str(sighting_guid)
+    assert resp.headers['X-Total-Count'] == '1'
+    assert resp.headers['X-Exportable-Count'] == '1'
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')

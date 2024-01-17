@@ -80,10 +80,10 @@ class EncounterElasticsearch(Resource):
         search = request.get_json()
 
         args['total'] = True
-        # hacky way to skip when already querying on viewers or query is "unusual"(?)
+        # hacky way to skip when already querying on exporters or query is "unusual"(?)
         if (
             not current_user
-            or '"viewers"' in str(search)
+            or '"exporters"' in str(search)
             or 'bool' not in search
             or 'filter' not in search['bool']
             or not isinstance(search['bool']['filter'], list)
@@ -91,13 +91,15 @@ class EncounterElasticsearch(Resource):
             return Encounter.elasticsearch(search, **args)
         from copy import deepcopy
 
-        view_search = deepcopy(search)
-        view_search['bool']['filter'].append(
-            {'match': {'viewers': str(current_user.guid)}}
+        export_search = deepcopy(search)
+        export_search['bool']['filter'].append(
+            {'match': {'exporters': str(current_user.guid)}}
         )
-        log.debug(f'doing viewer search using {view_search}')
-        view_count, view_res = Encounter.elasticsearch(view_search, load=False, **args)
-        return Encounter.elasticsearch(search, **args) + (view_count,)
+        log.debug(f'doing exporters search using {export_search}')
+        export_count, export_res = Encounter.elasticsearch(
+            export_search, load=False, **args
+        )
+        return Encounter.elasticsearch(search, **args) + (export_count,)
 
 
 @api.route('/<uuid:encounter_guid>')
@@ -258,20 +260,20 @@ class EncounterExport(Resource):
         added = set()
         export = Export()
         for enc in encs:
-            if not enc.current_user_has_view_permission():
+            if not enc.current_user_has_export_permission():
                 continue
             export.add(enc)
             ct += 1
             if (
                 enc.sighting_guid not in added
-                and enc.sighting.current_user_has_view_permission()
+                and enc.sighting.current_user_has_export_permission()
             ):
                 added.add(enc.sighting_guid)
                 export.add(enc.sighting)
             if (
                 enc.individual_guid
                 and enc.individual_guid not in added
-                and enc.individual.current_user_has_view_permission()
+                and enc.individual.current_user_has_export_permission()
             ):
                 added.add(enc.individual_guid)
                 export.add(enc.individual)

@@ -536,6 +536,20 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
                     vguids.append(str(user.guid))
         return vguids
 
+    def exporter_guids(self):
+        from app.modules.users.models import User
+
+        users = User.query.all()
+        vguids = []
+        if self.is_public():
+            for user in users:
+                vguids.append(str(user.guid))
+        else:
+            for user in users:
+                if user.is_admin or self.user_has_export_permission(user):
+                    vguids.append(str(user.guid))
+        return vguids
+
     def get_all_owners(self):
         if hasattr(self, 'owner'):
             return [getattr(self, 'owner')]

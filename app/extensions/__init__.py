@@ -494,11 +494,25 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
         return rule.check()
 
+    def current_user_has_export_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT)
+        return rule.check()
+
     def current_user_has_edit_permission(self):
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
 
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
+        return rule.check()
+
+    def user_has_export_permission(self, user):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT, user=user)
         return rule.check()
 
     def user_has_view_permission(self, user):

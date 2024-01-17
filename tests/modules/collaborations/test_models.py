@@ -119,8 +119,26 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
     )
     for association in collab.collaboration_user_associations:
         assert association.read_approval_state == CollaborationUserState.APPROVED
+        assert association.export_approval_state == CollaborationUserState.NOT_INITIATED
         assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
 
+    # now export
+    with mock.patch('app.modules.collaborations.models.current_user', new=collab_user_a):
+        collab.initiate_export_with_other_user()
+
+    for association in collab.collaboration_user_associations:
+        if association.user_guid == collab_user_a.guid:
+            assert association.export_approval_state == CollaborationUserState.APPROVED
+        if association.user_guid == collab_user_b.guid:
+            assert association.export_approval_state == CollaborationUserState.PENDING
+    collab.set_approval_state_for_user(
+        collab_user_b.guid, CollaborationUserState.APPROVED, level='export'
+    )
+
+    for association in collab.collaboration_user_associations:
+        assert association.export_approval_state == CollaborationUserState.APPROVED
+
+    # now edit
     with mock.patch('app.modules.collaborations.models.current_user', new=collab_user_a):
         collab.initiate_edit_with_other_user()
 

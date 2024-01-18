@@ -50,9 +50,31 @@ def upgrade():
             ['guid'],
         )
 
+    # we set with nullable=True since we likely have rows in this already, then toggle after
     with op.batch_alter_table('collaboration_user_associations', schema=None) as batch_op:
         batch_op.add_column(
-            sa.Column('export_approval_state', sa.String(length=32), nullable=False)
+            sa.Column('export_approval_state', sa.String(length=32), nullable=True)
+        )
+    # we set export_approval_state now so we can make it not-null after
+    op.execute(
+        "UPDATE collaboration_user_associations SET export_approval_state='not_initiated'"
+    )
+    # if a collab is already in the edit=approved state, we just let them get export as well
+    op.execute(
+        "UPDATE collaboration_user_associations SET export_approval_state='approved' WHERE edit_approval_state='approved'"
+    )
+    # any other state for edit just gets pushed down to export, then edit reset to not_initiated
+    #   (note: yes this will move not_initiated too, but thats fine; just makes the sql simpler)
+    op.execute(
+        "UPDATE collaboration_user_associations SET export_approval_state=edit_approval_state WHERE edit_approval_state!='approved'"
+    )
+    op.execute(
+        "UPDATE collaboration_user_associations SET edit_approval_state='not_initiated' WHERE edit_approval_state!='approved'"
+    )
+    # and here we set nullable=False once we have values in
+    with op.batch_alter_table('collaboration_user_associations', schema=None) as batch_op:
+        batch_op.alter_column(
+            'export_approval_state', existing_type=sa.VARCHAR, nullable=False
         )
 
     # ### end Alembic commands ###

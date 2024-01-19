@@ -134,3 +134,7 @@ jobs:
           SLACK_MESSAGE: 'Nightly Docker build of Houston failed :sob:'
           SLACK_USERNAME: "GitHub CI"
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: true

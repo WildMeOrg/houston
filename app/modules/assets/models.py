@@ -24,7 +24,9 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 class AssetTags(db.Model, HoustonModel):
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
-    tag_guid = db.Column(db.GUID, db.ForeignKey('keyword.guid'), primary_key=True)
+    tag_guid = db.Column(
+        db.GUID, db.ForeignKey('keyword.guid', ondelete='CASCADE'), primary_key=True
+    )
     asset = db.relationship('Asset', back_populates='tag_refs')
     tag = db.relationship('Keyword')
 

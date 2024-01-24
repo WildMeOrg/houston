@@ -28,7 +28,7 @@ class Keywords(Resource):
     Manipulations with Keywords.
     """
 
-    @api.response(schemas.BaseKeywordSchema(many=True))
+    @api.response(schemas.DetailedKeywordSchema(many=True))
     @api.paginate()
     def get(self, args):
         """

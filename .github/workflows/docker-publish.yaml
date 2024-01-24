@@ -27,7 +27,7 @@ jobs:
           ref: main
 
       - uses: actions/checkout@v2
-        if: ${{ !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'build-image') }}
+        if: github.event)name != 'schedule'
         with:
           submodules: true
 

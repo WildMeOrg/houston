@@ -21,7 +21,9 @@ class AnnotationKeywords(db.Model, HoustonModel):
     annotation_guid = db.Column(
         db.GUID, db.ForeignKey('annotation.guid'), primary_key=True
     )
-    keyword_guid = db.Column(db.GUID, db.ForeignKey('keyword.guid'), primary_key=True)
+    keyword_guid = db.Column(
+        db.GUID, db.ForeignKey('keyword.guid', ondelete='CASCADE'), primary_key=True
+    )
     annotation = db.relationship('Annotation', back_populates='keyword_refs')
     keyword = db.relationship('Keyword')
 

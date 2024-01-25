@@ -1,6 +1,6 @@
 name: Docker
 
-on: [push. pull_request]
+on: [push, pull_request]
   schedule:
     - cron: '0 16 * * *' # Every day at 16:00 UTC (~09:00 PT)
 
@@ -38,9 +38,9 @@ jobs:
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       # Build images
-      - name: Build Codex
-        run: |
-          ./scripts/codex/buildx.sh
+      #- name: Build Codex
+      #  run: |
+      #    ./scripts/codex/buildx.sh
 
       # Log into container registries
       - name: Docker Login

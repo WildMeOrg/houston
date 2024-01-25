@@ -4,11 +4,7 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
-    tags:
-      - v*
+  push
   schedule:
     - cron: '0 16 * * *' # Every day at 16:00 UTC (~09:00 PT)
 

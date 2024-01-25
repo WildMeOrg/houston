@@ -1,10 +1,6 @@
 name: Docker
 
-on:
-  pull_request:
-    branches:
-      - main
-  push
+on: [push. pull_request]
   schedule:
     - cron: '0 16 * * *' # Every day at 16:00 UTC (~09:00 PT)
 

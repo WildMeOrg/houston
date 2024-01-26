@@ -1,25 +1,26 @@
 name: Docker
 
-on: pull_request
-  #schedule:
-  #  - cron: '0 16 * * *' # Every day at 16:00 UTC (~09:00 PT)
+on: [pull_request, workflow_dispatch]
+#  schedule:
+#    - cron: '0 16 * * *' # Every day at 16:00 UTC (~09:00 PT)
 
 jobs:
   # Push container image to GitHub Packages and Docker Hub.
   # See also https://docs.docker.com/docker-hub/builds/
   deploy:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Docker image build
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-        if: github.event_name == 'schedule'
-        with:
-          submodules: true
-          ref: main
+ #     - uses: actions/checkout@v2
+ #       if: github.event_name == 'schedule'
+ #       with:
+ #         submodules: true
+ #         ref: main
 
       - uses: actions/checkout@v2
-        if: github.event_name != 'schedule'
+ #       if: github.event_name != 'schedule'
         with:
           submodules: true
 
@@ -73,12 +74,10 @@ jobs:
 
       # Push bleeding-edge image (main tag) to registries
       - name: Bleeding Edge Docker Hub
-        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/utils/buildx.docker.sh -t main
 
       - name: Bleeding Edge GHCR
-        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/utils/buildx.docker.sh -t main -r ghcr.io/wildmeorg/houston
 

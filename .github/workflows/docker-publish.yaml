@@ -8,7 +8,7 @@ jobs:
   # Push container image to GitHub Packages and Docker Hub.
   # See also https://docs.docker.com/docker-hub/builds/
   deploy:
-    if: github.ref == 'refs/remotes/origin/main'
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Docker image build
     runs-on: ubuntu-latest
 

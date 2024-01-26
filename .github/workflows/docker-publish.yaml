@@ -74,12 +74,10 @@ jobs:
 
       # Push bleeding-edge image (main tag) to registries
       - name: Bleeding Edge Docker Hub
-        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/utils/buildx.docker.sh -t main
 
       - name: Bleeding Edge GHCR
-        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/utils/buildx.docker.sh -t main -r ghcr.io/wildmeorg/houston
 

@@ -2,7 +2,7 @@
 """empty message
 
 Revision ID: effd65fb089e
-Revises: 53b0fec87272
+Revises: dc91b517a7a4
 Create Date: 2024-01-05 18:24:21.360901
 
 """
@@ -14,7 +14,7 @@ import app.extensions
 
 # revision identifiers, used by Alembic.
 revision = 'effd65fb089e'
-down_revision = '53b0fec87272'
+down_revision = 'dc91b517a7a4'
 
 
 def upgrade():

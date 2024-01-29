@@ -120,11 +120,13 @@ else:
             'is_researcher',
         ],
         ('Encounter', AccessOperation.READ): ['is_researcher'],
+        ('Encounter', AccessOperation.EXPORT): ['is_researcher'],
         ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
         ('Sighting', AccessOperation.READ): ['is_researcher'],
         ('Sighting', AccessOperation.WRITE): ['is_active'],
         ('Sighting', AccessOperation.DELETE): ['is_admin'],
         ('Individual', AccessOperation.READ): ['is_researcher'],
+        ('Individual', AccessOperation.EXPORT): ['is_researcher'],
         ('Individual', AccessOperation.WRITE): ['is_researcher'],
         ('Individual', AccessOperation.DELETE): ['is_admin'],
         ('Annotation', AccessOperation.READ): ['is_researcher'],
@@ -198,6 +200,7 @@ else:
     # These permissions also granted by collaboration/project/etc so must not be privileged/admin
     OBJECT_USER_METHOD_MAP = {
         ('Sighting', AccessOperation.READ): ['user_is_owner'],
+        ('Sighting', AccessOperation.EXPORT): ['user_is_owner'],
         ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
         ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
         ('Asset', AccessOperation.READ): ['user_can_access'],
@@ -592,6 +595,8 @@ class ObjectActionRule(Rule):
 
         if action == AccessOperation.READ:
             collab_users = Collaboration.get_users_for_read(self._user)
+        elif action == AccessOperation.EXPORT:
+            collab_users = Collaboration.get_users_for_export(self._user)
         elif action == AccessOperation.WRITE:
             collab_users = Collaboration.get_users_for_write(self._user)
         else:

@@ -54,6 +54,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
     )
+    export_approval_state = db.Column(
+        db.String(length=32), default=CollaborationUserState.NOT_INITIATED, nullable=False
+    )
     edit_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.NOT_INITIATED, nullable=False
     )
@@ -63,6 +66,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
 
     def has_read(self):
         return self.collaboration.user_has_read_access(self.user_guid)
+
+    def has_export(self):
+        return self.collaboration.user_has_export_access(self.user_guid)
 
     def has_edit(self):
         return self.collaboration.user_has_edit_access(self.user_guid)
@@ -91,6 +97,12 @@ class Collaboration(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     init_req_notification_guid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
+    )
+    export_initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    export_req_notification_guid = db.Column(
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
     edit_initiator_guid = db.Column(
@@ -123,6 +135,7 @@ class Collaboration(db.Model, HoustonModel):
             )
 
         self.initiator_guid = None if manager_created else initiator_user.guid
+        self.export_initiator_guid = None
         self.edit_initiator_guid = None
 
         for user in members:
@@ -133,7 +146,8 @@ class Collaboration(db.Model, HoustonModel):
                 collaboration=self, user=user
             )
 
-            # Edit not enabled on creation
+            # Export and edit not enabled on creation
+            collab_user_assoc.export_approval_state = CollaborationUserState.NOT_INITIATED
             collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_user_assoc)
@@ -164,6 +178,12 @@ class Collaboration(db.Model, HoustonModel):
     def get_users_for_read(cls, user):
         return cls.get_users_for_approval_state(
             user, CollaborationUserAssociations.read_approval_state
+        )
+
+    @classmethod
+    def get_users_for_export(cls, user):
+        return cls.get_users_for_approval_state(
+            user, CollaborationUserAssociations.export_approval_state
         )
 
     @classmethod
@@ -226,6 +246,8 @@ class Collaboration(db.Model, HoustonModel):
 
             if (
                 collab_user_assoc.read_approval_state == CollaborationUserState.PENDING
+                or collab_user_assoc.export_approval_state
+                == CollaborationUserState.PENDING
                 or collab_user_assoc.edit_approval_state == CollaborationUserState.PENDING
             ):
                 from app.modules.notifications.models import NotificationType
@@ -242,6 +264,16 @@ class Collaboration(db.Model, HoustonModel):
                         other_user_assoc.user,
                         collab_user_assoc.user,
                         NotificationType.collab_request,
+                    )
+
+                if (
+                    collab_user_assoc.export_approval_state
+                    == CollaborationUserState.PENDING
+                ):
+                    self._notify_user(
+                        other_user_assoc.user,
+                        collab_user_assoc.user,
+                        NotificationType.collab_export_request,
                     )
 
                 if (
@@ -267,6 +299,8 @@ class Collaboration(db.Model, HoustonModel):
 
         if notification_type is NotificationType.collab_request:
             self.init_req_notification_guid = notif.guid
+        elif notification_type is NotificationType.collab_export_request:
+            self.export_req_notification_guid = notif.guid
         elif notification_type is NotificationType.collab_edit_request:
             self.edit_req_notification_guid = notif.guid
 
@@ -274,8 +308,11 @@ class Collaboration(db.Model, HoustonModel):
         fully_resolved_notification_states = {
             NotificationType.collab_edit_approved,
             NotificationType.collab_edit_revoke,
+            NotificationType.collab_export_approved,
+            NotificationType.collab_export_revoke,
             NotificationType.collab_revoke,
             NotificationType.collab_manager_revoke,
+            NotificationType.collab_manager_export_revoke,
             NotificationType.collab_denied,
         }
 
@@ -286,6 +323,8 @@ class Collaboration(db.Model, HoustonModel):
         elif notification_type in fully_resolved_notification_states:
             if self.init_req_notification_guid:
                 Notification.resolve(self.init_req_notification_guid)
+            if self.export_req_notification_guid:
+                Notification.resolve(self.export_req_notification_guid)
             if self.edit_req_notification_guid:
                 Notification.resolve(self.edit_req_notification_guid)
 
@@ -296,18 +335,24 @@ class Collaboration(db.Model, HoustonModel):
         for association in self.collaboration_user_associations:
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
+            assoc_data['exportState'] = association.export_approval_state
             assoc_data['editState'] = association.edit_approval_state
             user_data[str(association.user.guid)] = assoc_data
 
         return user_data
 
-    def _is_state_transition_valid(self, association, new_state, is_edit=False):
+    def _is_state_transition_valid(self, association, new_state, level='view'):
         ret_val = False
-        old_state = (
-            association.edit_approval_state
-            if is_edit
-            else association.read_approval_state
-        )
+        if level == 'view':
+            old_state = association.read_approval_state
+        elif level == 'export':
+            old_state = association.export_approval_state
+        elif level == 'edit':
+            old_state = association.edit_approval_state
+        else:
+            log.warning(f'invalid level "{level}"')
+            return False
+
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
             ret_val = new_state in [
@@ -332,28 +377,33 @@ class Collaboration(db.Model, HoustonModel):
 
         return ret_val
 
-    def _send_notification_for_manager_change(self, association, state, is_edit):
+    def _send_notification_for_manager_change(self, association, state, level):
         from app.modules.notifications.models import NotificationType
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
-            notif_type = (
-                NotificationType.collab_manager_edit_revoke
-                if is_edit
-                else NotificationType.collab_manager_revoke
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_revoke
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_revoke
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_revoke
+
         elif state == CollaborationUserState.APPROVED:
-            notif_type = (
-                NotificationType.collab_manager_edit_approved
-                if is_edit
-                else NotificationType.collab_manager_create
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_create
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_approved
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_approved
+
         elif state == CollaborationUserState.DENIED:
-            notif_type = (
-                NotificationType.collab_manager_edit_denied
-                if is_edit
-                else NotificationType.collab_manager_denied
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_manager_denied
+            elif level == 'export':
+                notif_type = NotificationType.collab_manager_export_denied
+            elif level == 'edit':
+                notif_type = NotificationType.collab_manager_edit_denied
 
         if notif_type:
             # Inform the user that the manager has changed their permission
@@ -364,28 +414,33 @@ class Collaboration(db.Model, HoustonModel):
                 notif_type,
             )
 
-    def _send_notification_for_change(self, user_guid, association, state, is_edit):
+    def _send_notification_for_change(self, user_guid, association, state, level):
         from app.modules.notifications.models import NotificationType
 
         notif_type = None
         if state == CollaborationUserState.REVOKED:
-            notif_type = (
-                NotificationType.collab_edit_revoke
-                if is_edit
-                else NotificationType.collab_revoke
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_revoke
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_revoke
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_revoke
+
         elif state == CollaborationUserState.APPROVED:
-            notif_type = (
-                NotificationType.collab_edit_approved
-                if is_edit
-                else NotificationType.collab_approved
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_approved
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_approved
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_approved
+
         elif state == CollaborationUserState.DENIED:
-            notif_type = (
-                NotificationType.collab_edit_denied
-                if is_edit
-                else NotificationType.collab_denied
-            )
+            if level == 'view':
+                notif_type = NotificationType.collab_denied
+            elif level == 'export':
+                notif_type = NotificationType.collab_export_denied
+            elif level == 'edit':
+                notif_type = NotificationType.collab_edit_denied
 
         if notif_type:
             # inform the other user that their collaborator changed the permission
@@ -395,7 +450,7 @@ class Collaboration(db.Model, HoustonModel):
                 notif_type,
             )
 
-    def set_approval_state_for_user(self, user_guid, state, is_edit=False):
+    def set_approval_state_for_user(self, user_guid, state, level='view'):
         assert user_guid
         success = False
         if state not in CollaborationUserState.ALLOWED_STATES:
@@ -407,12 +462,24 @@ class Collaboration(db.Model, HoustonModel):
         for association in self.collaboration_user_associations:
             if association.user_guid != user_guid:
                 continue
-            if is_edit:
-                if self._is_state_transition_valid(association, state, True):
+            if level == 'edit':
+                if self._is_state_transition_valid(association, state, 'edit'):
                     association.edit_approval_state = state
                     success = True
+            elif level == 'export':
+                if self._is_state_transition_valid(association, state, 'view'):
+                    association.export_approval_state = state
+                    # If a user revokes export and previously allowed edit, they automatically
+                    # revoke edit too
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and association.edit_approval_state
+                        == CollaborationUserState.APPROVED
+                    ):
+                        association.edit_approval_state = state
+                    success = True
             else:
-                if self._is_state_transition_valid(association, state, False):
+                if self._is_state_transition_valid(association, state, 'view'):
                     association.read_approval_state = state
 
                     # If a user revokes view and previously allowed edit, they automatically
@@ -423,31 +490,36 @@ class Collaboration(db.Model, HoustonModel):
                         == CollaborationUserState.APPROVED
                     ):
                         association.edit_approval_state = state
+                    # ditto for export
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and association.export_approval_state
+                        == CollaborationUserState.APPROVED
+                    ):
+                        association.export_approval_state = state
                     success = True
 
             if success:
                 with db.session.begin(subtransactions=True):
                     db.session.merge(association)
                 if current_user and current_user.guid != user_guid:
-                    self._send_notification_for_manager_change(
-                        association, state, is_edit
-                    )
+                    self._send_notification_for_manager_change(association, state, level)
                 else:
                     self._send_notification_for_change(
-                        user_guid, association, state, is_edit
+                        user_guid, association, state, level
                     )
 
             break
         return success
 
-    def set_approval_state_for_all(self, state, is_edit=False):
+    def set_approval_state_for_all(self, state, level='view'):
         if state not in CollaborationUserState.ALLOWED_STATES:
             raise ValueError(
                 f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
             )
         # Don't transition any user state unless all transitions are valid
         for association in self.collaboration_user_associations:
-            if not self._is_state_transition_valid(association, state, is_edit):
+            if not self._is_state_transition_valid(association, state, level):
                 raise HoustonException(
                     log,
                     f'Not permitted to move user {association.user_guid} to state {state}',
@@ -455,27 +527,55 @@ class Collaboration(db.Model, HoustonModel):
 
         changed = False
         for association in self.collaboration_user_associations:
-            if is_edit:
+            if level == 'edit':
                 if association.edit_approval_state != state:
                     changed = True
                     association.edit_approval_state = state
+                    # If a user manager approves edit make sure view and export are not left inconsistent
+                    if (
+                        state == CollaborationUserState.APPROVED
+                        and self._is_state_transition_valid(association, state, 'view')
+                    ):
+                        association.read_approval_state = state
+                    if (
+                        state == CollaborationUserState.APPROVED
+                        and self._is_state_transition_valid(association, state, 'export')
+                    ):
+                        association.export_approval_state = state
+
+            elif level == 'export':
+                if association.export_approval_state != state:
+                    changed = True
+                    association.export_approval_state = state
                     # If a user manager approves edit make sure view is not left inconsistent
                     if (
                         state == CollaborationUserState.APPROVED
-                        and self._is_state_transition_valid(association, state, False)
+                        and self._is_state_transition_valid(association, state, 'view')
                     ):
                         association.read_approval_state = state
+                    # If a user manager revokes export make sure edit is not left inconsistent
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and self._is_state_transition_valid(association, state, 'edit')
+                    ):
+                        association.edit_approval_state = state
+
             else:
                 if association.read_approval_state != state:
                     association.read_approval_state = state
                     changed = True
 
-                    # If a user manager revokes view make sure edit is not left inconsistent
+                    # If a user manager revokes view make sure edit and export are not left inconsistent
                     if (
                         state == CollaborationUserState.REVOKED
-                        and self._is_state_transition_valid(association, state, True)
+                        and self._is_state_transition_valid(association, state, 'edit')
                     ):
                         association.edit_approval_state = state
+                    if (
+                        state == CollaborationUserState.REVOKED
+                        and self._is_state_transition_valid(association, state, 'export')
+                    ):
+                        association.export_approval_state = state
 
                 with db.session.begin(subtransactions=True):
                     db.session.merge(association)
@@ -484,7 +584,7 @@ class Collaboration(db.Model, HoustonModel):
             # If something changed both users get a notification, it doesn't matter which association we send so
             # just pick one
             self._send_notification_for_manager_change(
-                self.collaboration_user_associations[0], state, is_edit
+                self.collaboration_user_associations[0], state, level
             )
 
         return True
@@ -502,6 +602,20 @@ class Collaboration(db.Model, HoustonModel):
                 and other_assoc.read_approval_state == CollaborationUserState.APPROVED
             )
 
+        return ret_val
+
+    def user_has_export_access(self, user_guid):
+        ret_val = False
+        assert isinstance(user_guid, uuid.UUID)
+
+        my_assoc = self._get_association_for_user(user_guid)
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if my_assoc and other_assoc:
+            ret_val = (
+                my_assoc.export_approval_state == CollaborationUserState.APPROVED
+                and other_assoc.export_approval_state == CollaborationUserState.APPROVED
+            )
         return ret_val
 
     def user_has_edit_access(self, user_guid):
@@ -524,8 +638,8 @@ class Collaboration(db.Model, HoustonModel):
             return other_assoc.user
         return None
 
-    def initiate_edit_with_other_user(self):
-        self.edit_initiator_guid = current_user.guid
+    def initiate_export_with_other_user(self):
+        self.export_initiator_guid = current_user.guid
         my_assoc = self._get_association_for_user(current_user.guid)
         other_assoc = self._get_association_for_other_user(current_user.guid)
         if (
@@ -533,13 +647,38 @@ class Collaboration(db.Model, HoustonModel):
             and other_assoc.read_approval_state == CollaborationUserState.APPROVED
         ):
             if self._is_state_transition_valid(
-                my_assoc, CollaborationUserState.APPROVED, is_edit=True
+                my_assoc, CollaborationUserState.APPROVED, level='export'
+            ):
+                my_assoc.export_approval_state = CollaborationUserState.APPROVED
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(my_assoc)
+            if self._is_state_transition_valid(
+                other_assoc, CollaborationUserState.PENDING, level='export'
+            ):
+                other_assoc.export_approval_state = CollaborationUserState.PENDING
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(other_assoc)
+        else:
+            raise HoustonException(
+                log, 'Unable to start export on unapproved collaboration', obj=self
+            )
+
+    def initiate_edit_with_other_user(self):
+        self.edit_initiator_guid = current_user.guid
+        my_assoc = self._get_association_for_user(current_user.guid)
+        other_assoc = self._get_association_for_other_user(current_user.guid)
+        if (
+            my_assoc.export_approval_state == CollaborationUserState.APPROVED
+            and other_assoc.export_approval_state == CollaborationUserState.APPROVED
+        ):
+            if self._is_state_transition_valid(
+                my_assoc, CollaborationUserState.APPROVED, level='edit'
             ):
                 my_assoc.edit_approval_state = CollaborationUserState.APPROVED
                 with db.session.begin(subtransactions=True):
                     db.session.merge(my_assoc)
             if self._is_state_transition_valid(
-                other_assoc, CollaborationUserState.PENDING, is_edit=True
+                other_assoc, CollaborationUserState.PENDING, level='edit'
             ):
                 other_assoc.edit_approval_state = CollaborationUserState.PENDING
                 with db.session.begin(subtransactions=True):

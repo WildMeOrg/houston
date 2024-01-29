@@ -135,7 +135,7 @@ class Namespace(BaseNamespace):
 
                 query = func(self_, parameters_args, *args, **kwargs)
 
-                viewable_count = -1
+                exportable_count = -1
                 if not isinstance(query, flask_sqlalchemy.BaseQuery):
                     if query is None or len(query) == 0:
                         total_count, response = 0, []
@@ -143,9 +143,9 @@ class Namespace(BaseNamespace):
                         total_count, response = query
                         assert isinstance(total_count, int)
                     elif len(query) == 3:
-                        total_count, response, viewable_count = query
+                        total_count, response, exportable_count = query
                         assert isinstance(total_count, int)
-                        assert isinstance(viewable_count, int)
+                        assert isinstance(exportable_count, int)
                     else:
                         raise ValueError(
                             'This may happen when @api.paginate is above @api.response'
@@ -239,7 +239,10 @@ class Namespace(BaseNamespace):
                 return (
                     response,
                     HTTPStatus.OK,
-                    {'X-Total-Count': total_count, 'X-Viewable-Count': viewable_count},
+                    {
+                        'X-Total-Count': total_count,
+                        'X-Exportable-Count': exportable_count,
+                    },
                 )
 
             return self.parameters(parameters, locations)(wrapper)

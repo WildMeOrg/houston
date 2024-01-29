@@ -180,6 +180,7 @@ else:
             'is_admin',
         ],
         ('Keyword', AccessOperation.READ): ['is_active'],
+        ('Keyword', AccessOperation.DELETE): ['is_admin'],
         ('Sighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
         ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
         ('Sighting', AccessOperation.READ): ['is_admin'],

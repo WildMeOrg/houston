@@ -249,7 +249,7 @@ class EncounterExport(Resource):
     )
     def post(self):
         search = request.get_json()
-        encs = Encounter.elasticsearch(search)
+        encs = Encounter.elasticsearch(search, limit=15000)
         if not encs:
             abort(400, 'No results to export')
         from flask import send_file

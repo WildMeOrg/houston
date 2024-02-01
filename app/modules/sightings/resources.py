@@ -149,7 +149,7 @@ class SightingExport(Resource):
     )
     def post(self):
         search = request.get_json()
-        sights = Sighting.elasticsearch(search)
+        sights = Sighting.elasticsearch(search, limit=15000)
         if not sights:
             abort(400, 'No results to export')
         from flask import send_file

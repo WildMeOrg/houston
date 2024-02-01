@@ -498,7 +498,7 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
 
-        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT)
+        rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
         return rule.check()
 
     def current_user_has_edit_permission(self):
@@ -512,7 +512,7 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
 
-        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT, user=user)
+        rule = ObjectActionRule(obj=self, action=AccessOperation.READ, user=user)
         return rule.check()
 
     def user_has_view_permission(self, user):

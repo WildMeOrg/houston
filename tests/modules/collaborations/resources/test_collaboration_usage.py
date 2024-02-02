@@ -16,7 +16,14 @@ from tests.utils import module_unavailable
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_use_collaboration(
-    flask_app_client, researcher_1, researcher_2, admin_user, test_root, db, request
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    admin_user,
+    user_manager_user,
+    test_root,
+    db,
+    request,
 ):
     from app.modules.sightings.models import Sighting
 
@@ -33,6 +40,7 @@ def test_use_collaboration(
     assert sighting.user_has_export_permission(researcher_1)
     assert not sighting.user_has_view_permission(researcher_2)
     assert not sighting.user_has_export_permission(researcher_2)
+    assert not sighting.user_has_export_permission(user_manager_user)
 
     # should not work and should give informative error
     ags_resp = asset_group_utils.read_asset_group_sighting(
@@ -44,7 +52,20 @@ def test_use_collaboration(
     )
     assert ags_resp['message'] == access_error
 
-    # create a (view) collab and approve
+    # create a (view) collab (between researcher1 and user_manager_user) and approve
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, user_manager_user
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+    collab_utils.approve_view_on_collaboration(
+        flask_app_client, collab_guid, user_manager_user, researcher_1
+    )
+    assert sighting.user_has_view_permission(user_manager_user)
+    assert not sighting.user_has_export_permission(user_manager_user)
+
+    # create a (view) collab (between researchers) and approve
     create_resp = collab_utils.create_simple_collaboration(
         flask_app_client, researcher_1, researcher_2
     )
@@ -58,7 +79,7 @@ def test_use_collaboration(
     assert sighting.user_has_view_permission(researcher_1)
     assert sighting.user_has_export_permission(researcher_1)
     assert sighting.user_has_view_permission(researcher_2)
-    assert sighting.user_has_export_permission(researcher_2)
+    assert not sighting.user_has_export_permission(researcher_2)
 
     # Researcher 2 should be able to view all the data but edit none of it
     asset_group_utils.read_asset_group(flask_app_client, researcher_2, asset_group_uuid)

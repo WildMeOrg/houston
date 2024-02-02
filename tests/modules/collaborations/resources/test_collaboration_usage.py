@@ -58,7 +58,7 @@ def test_use_collaboration(
     assert sighting.user_has_view_permission(researcher_1)
     assert sighting.user_has_export_permission(researcher_1)
     assert sighting.user_has_view_permission(researcher_2)
-    assert not sighting.user_has_export_permission(researcher_2)
+    assert sighting.user_has_export_permission(researcher_2)
 
     # Researcher 2 should be able to view all the data but edit none of it
     asset_group_utils.read_asset_group(flask_app_client, researcher_2, asset_group_uuid)

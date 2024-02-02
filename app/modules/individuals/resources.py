@@ -272,7 +272,7 @@ class IndividualExport(Resource):
     )
     def post(self):
         search = request.get_json()
-        indivs = Individual.elasticsearch(search)
+        indivs = Individual.elasticsearch(search, limit=15000)
         if not indivs:
             abort(400, 'No results to export')
         from flask import send_file

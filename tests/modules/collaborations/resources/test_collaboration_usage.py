@@ -16,9 +16,16 @@ from tests.utils import module_unavailable
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_use_collaboration(
-    flask_app_client, researcher_1, researcher_2, admin_user, test_root, db, request
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    admin_user,
+    user_manager_user,
+    test_root,
+    db,
+    request,
 ):
-    from app.modules.collaborations.models import Collaboration
+    from app.modules.sightings.models import Sighting
 
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root
@@ -27,9 +34,13 @@ def test_use_collaboration(
     sighting_guid = uuids['sighting']
     asset_guid = uuids['assets'][0]
     enc_guid = uuids['encounters'][0]
-    data = {
-        'user_guid': str(researcher_1.guid),
-    }
+    sighting = Sighting.query.get(sighting_guid)
+
+    assert sighting.user_has_view_permission(researcher_1)
+    assert sighting.user_has_export_permission(researcher_1)
+    assert not sighting.user_has_view_permission(researcher_2)
+    assert not sighting.user_has_export_permission(researcher_2)
+    assert not sighting.user_has_export_permission(user_manager_user)
 
     # should not work and should give informative error
     ags_resp = asset_group_utils.read_asset_group_sighting(
@@ -41,15 +52,34 @@ def test_use_collaboration(
     )
     assert ags_resp['message'] == access_error
 
-    collab_utils.create_collaboration(flask_app_client, researcher_2, data)
-    collabs = Collaboration.query.all()
-    collab = collabs[0]
-    request.addfinalizer(lambda: collab.delete())
-
-    asset_group_utils.read_asset_group(
-        flask_app_client, researcher_2, asset_group_uuid, 403
+    # create a (view) collab (between researcher1 and user_manager_user) and approve
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, user_manager_user
     )
-    collab.set_approval_state_for_user(researcher_1.guid, 'approved')
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+    collab_utils.approve_view_on_collaboration(
+        flask_app_client, collab_guid, user_manager_user, researcher_1
+    )
+    assert sighting.user_has_view_permission(user_manager_user)
+    assert not sighting.user_has_export_permission(user_manager_user)
+
+    # create a (view) collab (between researchers) and approve
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, researcher_2
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+    collab_utils.approve_view_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
+    assert sighting.user_has_view_permission(researcher_1)
+    assert sighting.user_has_export_permission(researcher_1)
+    assert sighting.user_has_view_permission(researcher_2)
+    assert not sighting.user_has_export_permission(researcher_2)
 
     # Researcher 2 should be able to view all the data but edit none of it
     asset_group_utils.read_asset_group(flask_app_client, researcher_2, asset_group_uuid)
@@ -110,3 +140,34 @@ def test_use_collaboration(
         f'To do this, you need an edit collaboration with {researcher_1.full_name}'
     )
     assert sighting_patch_resp.json['message'] == expected_err
+
+    # Researcher 1 requests that this is escalated to an export collaboration
+    collab_utils.request_export_simple_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2
+    )
+    # which is approved
+    collab_utils.approve_export_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
+    assert sighting.user_has_view_permission(researcher_1)
+    assert sighting.user_has_export_permission(researcher_1)
+    assert sighting.user_has_view_permission(researcher_2)
+    assert sighting.user_has_export_permission(researcher_2)
+
+    # Researcher 1 requests that this is escalated to an edit collaboration
+    collab_utils.request_edit_simple_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2
+    )
+    # which is approved
+    collab_utils.approve_edit_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
+    # now this should work due to edit collab
+    sighting_patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_2,
+        sighting_guid,
+        sighting_patch,
+    )

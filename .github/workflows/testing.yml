@@ -89,13 +89,11 @@ jobs:
           ./scripts/${HOUSTON_APP_CONTEXT}/activate.sh
 
       - name: Run docker-compose (MWS)
-        if: matrix.app-context == 'mws'
         run: |
           set -ex
           docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync houston celery-beat celery-worker
 
       - name: Run docker-compose (Codex)
-        if: matrix.app-context == 'codex'
         run: |
           set -ex
           docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync houston celery-beat celery-worker
@@ -125,7 +123,6 @@ jobs:
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --cov=./ --cov-append --random-order-seed=1
 
       - name: Check DB migrations (postgresql)
-        if: matrix.app-context == 'codex'
         run: |
           set -ex
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
@@ -140,7 +137,6 @@ jobs:
           LOG_WIDTH: 120
 
       - name: Run other invoke tasks for coverage and errors
-        if: matrix.app-context == 'codex'
         run: |
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
@@ -148,7 +144,7 @@ jobs:
           LOG_WIDTH: 120
 
       - name: Upload coverage to Codecov
-        if: matrix.app-context == 'codex'
+        if: github.event.pull_request.merged == true
         uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

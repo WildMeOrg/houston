@@ -46,6 +46,14 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
         flask_app_client, collab_guid, researcher_1, researcher_2
     )
 
+    # Researcher 1 requests/approves that this is escalated to an export collaboration (middle step)
+    collab_utils.request_export_simple_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2
+    )
+    collab_utils.approve_export_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+
     # Researcher 2 should now receive a notification
     researcher_2_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2

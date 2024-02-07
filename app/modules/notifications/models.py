@@ -25,6 +25,14 @@ class NotificationType(str, enum.Enum):
     # other user approved collaboration request
     collab_approved = 'collaboration_approved'
     collab_denied = 'collaboration_denied'
+    # other user requests export collaboration with you
+    collab_export_request = 'collaboration_export_request'
+    # other user approved export request
+    collab_export_approved = 'collaboration_export_approved'
+    # other user denied export request
+    collab_export_denied = 'collaboration_export_denied'
+    # other user revokes the existing export part of your collaboration
+    collab_export_revoke = 'collaboration_export_revoke'
     # other user requests edit collaboration with you
     collab_edit_request = 'collaboration_edit_request'
     # other user approved edit request
@@ -39,6 +47,12 @@ class NotificationType(str, enum.Enum):
     # A user manager has denied a collaboration for you with another user
     collab_manager_denied = 'collaboration_manager_denied'
     # A user manager has revoked a collaboration for you with another user
+    # user_manager approved export request
+    collab_manager_export_approved = 'collaboration_manager_export_approved'
+    # user_manager denied export request
+    collab_manager_export_denied = 'collaboration_manager_export_denied'
+    # user_manager revokes the existing export part of your collaboration
+    collab_manager_export_revoke = 'collaboration_manager_export_revoke'
     # user_manager approved edit request
     collab_manager_edit_approved = 'collaboration_manager_edit_approved'
     # user_manager denied edit request
@@ -76,6 +90,22 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.collab_export_request: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_export_approved: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_export_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_export_denied: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
     NotificationType.collab_edit_request: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
@@ -105,6 +135,18 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.collab_manager_denied: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_export_approved: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_export_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_export_denied: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -169,6 +211,53 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_denied: {
         'email_template_name': 'collaboration_denied',
         'email_digest_content_template': 'collaboration_denied_digest.jinja2',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_export_request: {
+        'email_template_name': 'collaboration_export_request',
+        'email_digest_content_template': 'collaboration_export_request_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
+    },
+    NotificationType.collab_export_approved: {
+        'email_template_name': 'collaboration_export_approved',
+        'email_digest_content_template': 'collaboration_export_approved_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_export_denied: {
+        'email_template_name': 'collaboration_export_denied',
+        'email_digest_content_template': 'collaboration_export_denied_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+        },
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_export_revoke: {
+        'email_template_name': 'collaboration_export_revoke',
+        'email_digest_content_template': 'collaboration_export_revoke_digest',
         'mandatory_fields': {
             'collaboration_guid',
             'user1_name',
@@ -272,6 +361,54 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_manager_denied: {
         'email_template_name': 'collaboration_manger_denied',
         'email_digest_content_template': 'collaboration_manager_denied_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+            'manager_name',
+            'manager_guid',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+        'managed': True,
+    },
+    NotificationType.collab_manager_export_approved: {
+        'email_template_name': 'collaboration_manger_export_approved',
+        'email_digest_content_template': 'collaboration_manager_export_approved_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+            'manager_name',
+            'manager_guid',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+        'managed': True,
+    },
+    NotificationType.collab_manager_export_denied: {
+        'email_template_name': 'collaboration_manger_export_denied',
+        'email_digest_content_template': 'collaboration_manager_export_denied_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'user1_guid',
+            'user2_guid',
+            'manager_name',
+            'manager_guid',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+        'managed': True,
+    },
+    NotificationType.collab_manager_export_revoke: {
+        'email_template_name': 'collaboration_manger_export_revoke',
+        'email_digest_content_template': 'collaboration_manager_export_revoke_digest',
         'mandatory_fields': {
             'collaboration_guid',
             'user1_name',

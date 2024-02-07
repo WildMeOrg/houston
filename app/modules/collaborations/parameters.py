@@ -43,8 +43,10 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
     PATH_CHOICES = (
         '/view_permission',
         '/edit_permission',
+        '/export_permission',
         '/managed_view_permission',
         '/managed_edit_permission',
+        '/managed_export_permission',
     )
 
     @classmethod
@@ -83,10 +85,16 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
             if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
                 ret_val = obj.set_approval_state_for_user(current_user.guid, value)
 
+        elif field == 'export_permission':
+            if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
+                ret_val = obj.set_approval_state_for_user(
+                    current_user.guid, value, level='export'
+                )
+
         elif field == 'edit_permission':
             if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
                 ret_val = obj.set_approval_state_for_user(
-                    current_user.guid, value, is_edit=True
+                    current_user.guid, value, level='edit'
                 )
 
         elif field == 'managed_view_permission':
@@ -97,14 +105,24 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
                 else:
                     ret_val = obj.set_approval_state_for_all(permission)
 
+        elif field == 'managed_export_permission':
+            if current_user.is_user_manager:
+                user_guid, permission = cls.get_managed_values(field, value)
+                if user_guid:
+                    ret_val = obj.set_approval_state_for_user(
+                        user_guid, permission, level='export'
+                    )
+                else:
+                    ret_val = obj.set_approval_state_for_all(permission, level='export')
+
         elif field == 'managed_edit_permission':
             if current_user.is_user_manager:
                 user_guid, permission = cls.get_managed_values(field, value)
                 if user_guid:
                     ret_val = obj.set_approval_state_for_user(
-                        user_guid, permission, is_edit=True
+                        user_guid, permission, level='edit'
                     )
                 else:
-                    ret_val = obj.set_approval_state_for_all(permission, is_edit=True)
+                    ret_val = obj.set_approval_state_for_all(permission, level='edit')
 
         return ret_val

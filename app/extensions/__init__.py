@@ -494,11 +494,25 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
         return rule.check()
 
+    def current_user_has_export_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT)
+        return rule.check()
+
     def current_user_has_edit_permission(self):
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
 
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
+        return rule.check()
+
+    def user_has_export_permission(self, user):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.EXPORT, user=user)
         return rule.check()
 
     def user_has_view_permission(self, user):
@@ -518,7 +532,25 @@ class HoustonModel(TimestampViewed, ElasticsearchModel):
                 vguids.append(str(user.guid))
         else:
             for user in users:
-                if user.is_admin or self.user_has_view_permission(user):
+                if not user.is_internal and (
+                    user.is_admin or self.user_has_view_permission(user)
+                ):
+                    vguids.append(str(user.guid))
+        return vguids
+
+    def exporter_guids(self):
+        from app.modules.users.models import User
+
+        users = User.query.all()
+        vguids = []
+        if self.is_public():
+            for user in users:
+                vguids.append(str(user.guid))
+        else:
+            for user in users:
+                if not user.is_internal and (
+                    user.is_admin or self.user_has_export_permission(user)
+                ):
                     vguids.append(str(user.guid))
         return vguids
 

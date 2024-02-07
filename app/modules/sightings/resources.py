@@ -115,10 +115,10 @@ class SightingElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
         args['total'] = True
-        # hacky way to skip when already querying on viewers or query is "unusual"(?)
+        # hacky way to skip when already querying on exporters or query is "unusual"(?)
         if (
             not current_user
-            or '"viewers"' in str(search)
+            or '"exporters"' in str(search)
             or 'bool' not in search
             or 'filter' not in search['bool']
             or not isinstance(search['bool']['filter'], list)
@@ -126,13 +126,15 @@ class SightingElasticsearch(Resource):
             return Sighting.elasticsearch(search, **args)
         from copy import deepcopy
 
-        view_search = deepcopy(search)
-        view_search['bool']['filter'].append(
-            {'match': {'viewers': str(current_user.guid)}}
+        export_search = deepcopy(search)
+        export_search['bool']['filter'].append(
+            {'match': {'exporters': str(current_user.guid)}}
         )
-        log.debug(f'doing viewer search using {view_search}')
-        view_count, view_res = Sighting.elasticsearch(view_search, load=False, **args)
-        return Sighting.elasticsearch(search, **args) + (view_count,)
+        log.debug(f'doing exporters search using {export_search}')
+        export_count, export_res = Sighting.elasticsearch(
+            export_search, load=False, **args
+        )
+        return Sighting.elasticsearch(search, **args) + (export_count,)
 
 
 @api.route('/export')
@@ -147,7 +149,7 @@ class SightingExport(Resource):
     )
     def post(self):
         search = request.get_json()
-        sights = Sighting.elasticsearch(search)
+        sights = Sighting.elasticsearch(search, limit=15000)
         if not sights:
             abort(400, 'No results to export')
         from flask import send_file
@@ -157,7 +159,7 @@ class SightingExport(Resource):
         export = Export()
         ct = 0
         for sight in sights:
-            if not sight.current_user_has_view_permission():
+            if not sight.current_user_has_export_permission():
                 continue
             ct += 1
             export.add(sight)

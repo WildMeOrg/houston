@@ -143,13 +143,14 @@ jobs:
         env:
           LOG_WIDTH: 120
 
-    #  - name: Upload coverage to Codecov
-    #    uses: codecov/codecov-action@v1.2.1
-    #    with:
-    #      token: ${{ secrets.CODECOV_TOKEN }}
-    #      files: ./_coverage/coverage.xml
-    #      env_vars: OS,PYTHON,TEST_DATABASE_URI
-    #      fail_ci_if_error: true
+      - name: Upload coverage to Codecov
+        if: github.event.pull_request.merged == true
+        uses: codecov/codecov-action@v1.2.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./_coverage/coverage.xml
+          env_vars: OS,PYTHON,TEST_DATABASE_URI
+          fail_ci_if_error: true
 
       - name: Show docker-compose logs if failed
         if: failure()

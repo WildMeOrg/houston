@@ -1649,7 +1649,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 log.error(
                     f'non-image on fetching {sage_src} to {filepath}; contents in {filepath}.err'
                 )
-                open(filepath + '.err', 'wb').write(resp.content)
+                try:
+                    open(filepath + '.err', 'wb').write(resp.content)
+                except Exception as ex:
+                    log.error(f'writing {filepath}.err got error {str(ex)}')
                 return
             try:
                 resp.raise_for_status()

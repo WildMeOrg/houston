@@ -1480,6 +1480,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
             sage_uuid = from_sage_uuid(target_annot_data['duuid'])
             target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
+                continue  # this seems better than raising the exception (that kills fetching results)
                 raise HoustonException(
                     log,
                     f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
@@ -1493,6 +1494,7 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
             sage_uuid = from_sage_uuid(target_annot_data['duuid'])
             target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
+                continue  # this seems better than raising the exception (that kills fetching results)
                 raise HoustonException(
                     log,
                     f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
@@ -1647,7 +1649,10 @@ class Sighting(db.Model, HoustonModel, CustomFieldMixin, ExportMixin):
                 log.error(
                     f'non-image on fetching {sage_src} to {filepath}; contents in {filepath}.err'
                 )
-                open(filepath + '.err', 'wb').write(resp.content)
+                try:
+                    open(filepath + '.err', 'wb').write(resp.content)
+                except Exception as ex:
+                    log.error(f'writing {filepath}.err got error {str(ex)}')
                 return
             try:
                 resp.raise_for_status()

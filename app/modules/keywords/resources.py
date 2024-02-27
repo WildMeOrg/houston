@@ -132,8 +132,6 @@ class KeywordByID(Resource):
         return None
 
 
-# @api.resolve_object_by_model(Keyword, 'keyword')
-#POST API: /api/v1/keyword/source_keyword_guid/target_keyword_guid/merge. I am getting 500 error when i am trying to run this api. How to retify this error?
 @api.route('/<uuid:source_keyword_guid>/<uuid:target_keyword_guid>/merge')
 @api.login_required(oauth_scopes=['keywords:write'])
 @api.response(
@@ -146,6 +144,7 @@ class MergeKeyword(Resource):
     """
     Merge source_keyword to target_keyword .
     """
+
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -159,10 +158,10 @@ class MergeKeyword(Resource):
         Merge source_keyword to target_keyword .
         """
         try:
-            log.info("MergeKeyword: source_keyword: %s", source_keyword)
+            log.info('MergeKeyword: source_keyword: %s', source_keyword)
             target_keyword.merge(source_keyword)
 
         except Exception as e:
-            log.error("MergeKeyword: post: %s", e)
+            log.error('MergeKeyword: post: %s', e)
 
         return target_keyword

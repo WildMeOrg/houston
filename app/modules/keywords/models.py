@@ -143,12 +143,3 @@ class Keyword(db.Model, HoustonModel):
 
         # Delete the other keyword
         other.delete()
-
-        try:
-            updated_ref_ann = AnnotationKeywords.query.filter_by(keyword_guid=self.guid).first()
-            if updated_ref_ann.keyword_guid == self.guid:
-                log.info("The annotation's keyword_guid has been successfully updated.")
-            else:
-                log.info("The update did not take place as expected.")
-        except Exception as e:
-            log.info(f"Error during merge commit: {e}")

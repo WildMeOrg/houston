@@ -89,3 +89,28 @@ def delete_keyword(flask_app_client, user, keyword_guid, expected_status_code=20
         assert response.status_code == 204
     else:
         assert response.status_code == expected_status_code
+
+
+def merge_keyword(
+    flask_app_client,
+    user,
+    source_keyword_guid,
+    target_keyword_guid,
+    expected_status_code=200,
+):
+    merge_path = f'{PATH}{source_keyword_guid}/{target_keyword_guid}/merge'
+    if user:
+        with flask_app_client.login(user, auth_scopes=('keywords:write',)):
+            response = flask_app_client.post(merge_path)
+    else:
+        response = flask_app_client.post(merge_path)
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(
+            response,
+            200,
+            {'guid', 'value'},
+        )
+    else:
+        assert response.status_code == expected_status_code
+    return response

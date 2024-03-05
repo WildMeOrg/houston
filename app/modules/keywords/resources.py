@@ -130,3 +130,38 @@ class KeywordByID(Resource):
         with context:
             db.session.delete(keyword)
         return None
+
+
+@api.route('/<uuid:source_keyword_guid>/<uuid:target_keyword_guid>/merge')
+@api.login_required(oauth_scopes=['keywords:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Keyword not found or merge failed.',
+)
+@api.resolve_object_by_model(Keyword, 'source_keyword')
+@api.resolve_object_by_model(Keyword, 'target_keyword')
+class MergeKeyword(Resource):
+    """
+    Merge source_keyword to target_keyword .
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Keyword,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(schemas.BaseKeywordSchema())
+    def post(self, source_keyword, target_keyword):
+        """
+        Merge source_keyword to target_keyword .
+        """
+        try:
+            log.info('MergeKeyword: source_keyword: %s', source_keyword)
+            target_keyword.merge(source_keyword)
+
+        except Exception as e:
+            log.error('MergeKeyword: post: %s', e)
+
+        return target_keyword

@@ -1,6 +1,6 @@
 # Contributing to Houston
 
-All contributions are welcome and encouraged. There are a few guidelines and styling aspects that we require and encourage you to use so that we might see this project through many years of successful development.
+The Wild Me team is working to sunset the Codex product. As such, contributions will be reviewed at a lower priority than active products. If you want to provide contributions, the information below is the most up-to-date information available.
 
 ## Pull Request Considerations
 

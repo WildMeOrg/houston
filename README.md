@@ -6,9 +6,6 @@
 
 Houston is a REST API component within the CODEX application suite. It is used to glue the frontend  [Wildbook-IA](https://github.com/WildMeOrg/wildbook-ia).
 
-For a high-level explanation of the application in relation to other CODEX applications read the documentation at [CODEX - Houston](https://docs.wildme.org/docs/developers/houston).
-
-
 ## About this implementation
 
 * RESTful API server should be self-documented using OpenAPI (fka Swagger) specifications, so interactive documentation UI is in place
@@ -19,6 +16,8 @@ For a high-level explanation of the application in relation to other CODEX appli
 * The package Flask-RESTX has been patched (see `flask_restx_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
 
 ## Pull Request Workflow
+
+The Wild Me team is working to sunset the Codex product. As such, contributions will be reviewed at a lower priority than active products. If you want to provide contributions, the information below is the most up-to-date information available.
 
 ### Fork Houston
 To start, you will need to be signed in to your GitHub account, have admin access to your OS's terminal, and have Git installed.

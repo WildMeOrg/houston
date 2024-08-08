@@ -17,7 +17,7 @@ Note that on Windows resource allocations cannot be set from the Docker Desktop 
 
 ## Elasticsearch container crashing
 
-There is a known issue that might be causing your ES container to crash. Read more about it in our [Elasticsearch Docs](https://docs.wildme.org/docs/developers/elasticsearch#1--sysctl-resource-limits).
+There is a known issue that might be causing your ES container to crash.
 
 ## Windows
 
